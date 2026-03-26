@@ -1,0 +1,256 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700;14..32,800&display=swap');
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+:root {
+  --tf-focus: #ff6b9d;
+  --tf-focus-ring: rgba(255, 107, 157, 0.45);
+}
+
+body {
+  font-family: 'Inter', sans-serif;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  min-height: 100vh;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Keyboard focus — visible rings without cluttering mouse clicks */
+:focus {
+  outline: none;
+}
+
+:focus-visible {
+  outline: 2px solid var(--tf-focus);
+  outline-offset: 2px;
+}
+
+button:focus-visible,
+[role="button"]:focus-visible {
+  outline-color: var(--tf-focus);
+}
+
+/* Form controls used across the app */
+.tf-field:focus-visible,
+.tf-field:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--tf-focus-ring);
+  border-color: var(--tf-focus) !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .premium-card,
+  .glass {
+    transition: none !important;
+  }
+}
+
+/* Premium Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: linear-gradient(135deg, #ff6b9d, #ff99cc);
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(135deg, #ff99cc, #ff6b9d);
+}
+
+/* Glass Morphism Effect */
+.glass {
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+/* Animations */
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-10px); }
+}
+
+@keyframes pulse-glow {
+  0%, 100% { box-shadow: 0 0 20px rgba(255, 107, 157, 0.3); }
+  50% { box-shadow: 0 0 40px rgba(255, 107, 157, 0.6); }
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -1000px 0;
+  }
+  100% {
+    background-position: 1000px 0;
+  }
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes tf-skeleton {
+  0%, 100% { opacity: 0.35; }
+  50% { opacity: 0.9; }
+}
+
+/* Gradient Text */
+.gradient-text {
+  background: linear-gradient(135deg, #ff6b9d, #ff99cc, #ffb6c1);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* Premium Card Hover Effect */
+.premium-card {
+  transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.premium-card:hover {
+  transform: translateY(-8px);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+}
+
+/* Navbar — clean responsive layout, equal-width primary links */
+.tf-navbar-inner {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 10px clamp(10px, 2.5vw, 22px);
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px clamp(10px, 1.5vw, 16px);
+}
+
+.tf-navbar-brand {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+}
+
+.tf-navbar-links {
+  flex: 1 1 280px;
+  min-width: 0;
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: clamp(4px, 1vw, 8px);
+  order: 3;
+  width: 100%;
+}
+
+.tf-navbar-tools {
+  flex: 0 0 auto;
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+@media (min-width: 900px) {
+  .tf-navbar-inner {
+    flex-wrap: nowrap;
+  }
+  .tf-navbar-links {
+    order: 0;
+    width: auto;
+    max-width: min(620px, 52vw);
+    margin: 0 auto;
+  }
+}
+
+.tf-nav-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35em;
+  min-height: 40px;
+  padding: 0 clamp(6px, 1.2vw, 10px);
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: clamp(11px, 1.9vw, 13px);
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transition: background 0.18s ease, color 0.18s ease, box-shadow 0.18s ease;
+}
+
+.tf-nav-pill--active {
+  color: #fff !important;
+  background: linear-gradient(135deg, #ff6b9d, #e84a7f) !important;
+  box-shadow: 0 2px 12px rgba(255, 107, 157, 0.35);
+}
+
+.tf-nav-pill--idle {
+  background: transparent;
+  color: inherit;
+}
+
+.tf-nav-pill--idle:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+@media (max-width: 520px) {
+  .tf-nav-pill .tf-nav-pill-label {
+    display: none;
+  }
+  .tf-nav-pill {
+    font-size: 16px;
+    padding: 0;
+    min-height: 42px;
+  }
+}
+
+.tf-navbar--dark .tf-nav-pill--idle {
+  color: rgba(255, 255, 255, 0.82);
+}
+
+.tf-navbar--dark .tf-nav-pill--idle:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.tf-navbar--light .tf-nav-pill--idle {
+  color: rgba(15, 23, 42, 0.68);
+}
+
+.tf-navbar--light .tf-nav-pill--idle:hover {
+  background: rgba(15, 23, 42, 0.06);
+}
+
+@media (max-width: 420px) {
+  .tf-navbar-user-name {
+    display: none;
+  }
+}
