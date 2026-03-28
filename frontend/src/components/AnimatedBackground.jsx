@@ -10,7 +10,9 @@ const AnimatedBackground = () => {
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
     let animId;
-    let particles = [];
+
+    // Two particle types: pink + purple
+    const particles = [];
 
     const resize = () => {
       canvas.width  = window.innerWidth;
@@ -18,14 +20,20 @@ const AnimatedBackground = () => {
     };
 
     const init = () => {
-      particles = Array.from({ length: 55 }, () => ({
-        x:      Math.random() * canvas.width,
-        y:      Math.random() * canvas.height,
-        r:      Math.random() * 1.4 + 0.4,
-        alpha:  Math.random() * 0.22 + 0.04,
-        vx:     (Math.random() - 0.5) * 0.22,
-        vy:     (Math.random() - 0.5) * 0.22,
-      }));
+      particles.length = 0;
+      for (let i = 0; i < 60; i++) {
+        const isPurple = Math.random() > 0.5;
+        particles.push({
+          x:       Math.random() * canvas.width,
+          y:       Math.random() * canvas.height,
+          r:       Math.random() * 1.6 + 0.3,
+          alpha:   Math.random() * 0.25 + 0.04,
+          vx:      (Math.random() - 0.5) * 0.2,
+          vy:      (Math.random() - 0.5) * 0.2,
+          // Alternate between pink #ff6b9d and purple #c084fc
+          color:   isPurple ? [192, 132, 252] : [255, 107, 157],
+        });
+      }
     };
 
     const draw = () => {
@@ -33,7 +41,7 @@ const AnimatedBackground = () => {
       for (const p of particles) {
         ctx.beginPath();
         ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
-        ctx.fillStyle = `rgba(255,107,157,${p.alpha})`;
+        ctx.fillStyle = `rgba(${p.color[0]},${p.color[1]},${p.color[2]},${p.alpha})`;
         ctx.fill();
         p.x += p.vx;
         p.y += p.vy;
@@ -44,7 +52,6 @@ const AnimatedBackground = () => {
     };
 
     const onResize = () => { resize(); init(); };
-
     resize();
     init();
     draw();
@@ -62,7 +69,7 @@ const AnimatedBackground = () => {
         position: "fixed", top: 0, left: 0,
         width: "100%", height: "100%",
         pointerEvents: "none", zIndex: 0,
-        opacity: isDark ? 0.32 : 0.12,
+        opacity: isDark ? 0.38 : 0.14,
       }}
     />
   );

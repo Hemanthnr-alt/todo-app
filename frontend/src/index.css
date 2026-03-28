@@ -7,21 +7,48 @@
 }
 
 :root {
-  --accent: #ff6b9d;
+  --accent:      #ff6b9d;
   --accent-glow: rgba(255, 107, 157, 0.35);
+  /* Dark theme bg — deep purple-pink instead of pure black */
+  --bg-dark:  #0e0618;
+  --bg-light: #f5f0ff;
 }
 
 body {
   font-family: 'DM Sans', sans-serif;
-  background: #080b14;
   min-height: 100vh;
   overflow-x: hidden;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* ─── GLOBAL DARK SELECT FIX ────────────────────────────────────────────── */
-/* When data-theme="dark" is on <html>, make all native selects/inputs dark  */
+/* ── DARK MODE — deep purple-pink gradient background ──── */
+[data-theme="dark"] body,
+body {
+  background: #0e0618;
+  /* Multi-stop radial mesh gradient — subtle purple + pink glow */
+  background-image:
+    radial-gradient(ellipse 80% 60% at 15% 10%,  rgba(139, 47, 180, 0.18) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 50% at 85% 5%,   rgba(255, 107, 157, 0.12) 0%, transparent 55%),
+    radial-gradient(ellipse 70% 60% at 50% 100%, rgba(120, 30, 160, 0.15) 0%, transparent 60%),
+    radial-gradient(ellipse 40% 40% at 90% 80%,  rgba(255, 107, 157, 0.09) 0%, transparent 50%),
+    radial-gradient(ellipse 50% 50% at 5%  80%,  rgba(180, 50, 200, 0.10) 0%, transparent 55%);
+  background-attachment: fixed;
+  color: #f1f5f9;
+}
+
+/* ── LIGHT MODE ──────────────────────────────────────────── */
+[data-theme="light"] body {
+  background: #f5f0ff;
+  background-image:
+    radial-gradient(ellipse 70% 50% at 10% 10%,  rgba(200, 140, 255, 0.15) 0%, transparent 60%),
+    radial-gradient(ellipse 50% 40% at 90% 10%,  rgba(255, 107, 157, 0.10) 0%, transparent 55%),
+    radial-gradient(ellipse 60% 50% at 50% 100%, rgba(180, 100, 240, 0.12) 0%, transparent 60%);
+  background-attachment: fixed;
+  color: #0f172a;
+}
+
+/* ── DARK SELECT FIX ─────────────────────────────────────── */
 [data-theme="dark"] select,
 [data-theme="dark"] input[type="date"],
 [data-theme="dark"] input[type="time"],
@@ -29,220 +56,77 @@ body {
   color-scheme: dark;
 }
 
-/* Default (light body) */
 [data-theme="light"] select,
 [data-theme="light"] input[type="date"],
 [data-theme="light"] input[type="time"] {
   color-scheme: light;
 }
 
-/* ─── FOCUS RINGS ────────────────────────────────────────────────────────── */
-:focus { outline: none; }
+/* ── FOCUS RINGS ─────────────────────────────────────────── */
+:focus         { outline: none; }
 :focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
 
-/* ─── SCROLLBAR ──────────────────────────────────────────────────────────── */
-::-webkit-scrollbar { width: 6px; height: 6px; }
-::-webkit-scrollbar-track { background: transparent; border-radius: 3px; }
-::-webkit-scrollbar-thumb {
-  background: rgba(255, 107, 157, 0.28);
+/* ── SCROLLBAR ───────────────────────────────────────────── */
+::-webkit-scrollbar        { width: 5px; height: 5px; }
+::-webkit-scrollbar-track  { background: transparent; }
+::-webkit-scrollbar-thumb  {
+  background: rgba(255, 107, 157, 0.3);
   border-radius: 3px;
 }
-::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 107, 157, 0.5);
-}
+::-webkit-scrollbar-thumb:hover { background: rgba(255, 107, 157, 0.55); }
 
-/* ─── SELECTION ──────────────────────────────────────────────────────────── */
+/* ── SELECTION ───────────────────────────────────────────── */
 ::selection {
   background: rgba(255, 107, 157, 0.25);
   color: inherit;
 }
 
-/* ─── GLASS UTIL ─────────────────────────────────────────────────────────── */
-.glass {
-  background: rgba(255, 255, 255, 0.08);
-  backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-}
-
-/* ─── GRADIENT TEXT UTIL ─────────────────────────────────────────────────── */
+/* ── UTILS ───────────────────────────────────────────────── */
 .gradient-text {
-  background: linear-gradient(135deg, #ff6b9d, #ff99cc, #ffb6c1);
+  background: linear-gradient(135deg, #ff6b9d, #c084fc, #ff99cc);
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
 }
 
-/* ─── ANIMATIONS ─────────────────────────────────────────────────────────── */
-@keyframes float {
-  0%, 100% { transform: translateY(0px); }
-  50% { transform: translateY(-10px); }
-}
-
-@keyframes pulse-glow {
-  0%, 100% { box-shadow: 0 0 20px rgba(255, 107, 157, 0.3); }
-  50% { box-shadow: 0 0 40px rgba(255, 107, 157, 0.6); }
-}
-
-@keyframes spin {
-  to { transform: rotate(360deg); }
-}
-
-@keyframes slideIn {
-  from { opacity: 0; transform: translateY(24px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
-
-@keyframes shimmer {
-  0%   { background-position: -800px 0; }
-  100% { background-position:  800px 0; }
-}
-
-@keyframes pulse {
-  0%, 100% { opacity: 0.5; }
-  50%       { opacity: 1; }
-}
-
-/* ─── PREMIUM CARD HOVER ─────────────────────────────────────────────────── */
-.premium-card {
-  transition: all 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-}
-.premium-card:hover {
-  transform: translateY(-6px);
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.18);
-}
-
-/* ─── REDUCED MOTION ─────────────────────────────────────────────────────── */
-@media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after {
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
-  }
-}
-@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,800;1,9..40,400&display=swap');
-
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-}
-
-:root {
-  --accent: #ff6b9d;
-  --accent-glow: rgba(255, 107, 157, 0.35);
-}
-
-body {
-  font-family: 'DM Sans', sans-serif;
-  background: #080b14;
-  min-height: 100vh;
-  overflow-x: hidden;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-}
-
-/* ─── GLOBAL DARK SELECT FIX ────────────────────────────────────────────── */
-/* When data-theme="dark" is on <html>, make all native selects/inputs dark  */
-[data-theme="dark"] select,
-[data-theme="dark"] input[type="date"],
-[data-theme="dark"] input[type="time"],
-[data-theme="dark"] input[type="color"] {
-  color-scheme: dark;
-}
-
-/* Default (light body) */
-[data-theme="light"] select,
-[data-theme="light"] input[type="date"],
-[data-theme="light"] input[type="time"] {
-  color-scheme: light;
-}
-
-/* ─── FOCUS RINGS ────────────────────────────────────────────────────────── */
-:focus { outline: none; }
-:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 2px;
-}
-
-/* ─── SCROLLBAR ──────────────────────────────────────────────────────────── */
-::-webkit-scrollbar { width: 6px; height: 6px; }
-::-webkit-scrollbar-track { background: transparent; border-radius: 3px; }
-::-webkit-scrollbar-thumb {
-  background: rgba(255, 107, 157, 0.28);
-  border-radius: 3px;
-}
-::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 107, 157, 0.5);
-}
-
-/* ─── SELECTION ──────────────────────────────────────────────────────────── */
-::selection {
-  background: rgba(255, 107, 157, 0.25);
-  color: inherit;
-}
-
-/* ─── GLASS UTIL ─────────────────────────────────────────────────────────── */
 .glass {
-  background: rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.06);
   backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
-/* ─── GRADIENT TEXT UTIL ─────────────────────────────────────────────────── */
-.gradient-text {
-  background: linear-gradient(135deg, #ff6b9d, #ff99cc, #ffb6c1);
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
-}
-
-/* ─── ANIMATIONS ─────────────────────────────────────────────────────────── */
+/* ── ANIMATIONS ──────────────────────────────────────────── */
 @keyframes float {
   0%, 100% { transform: translateY(0px); }
-  50% { transform: translateY(-10px); }
+  50%       { transform: translateY(-10px); }
 }
-
 @keyframes pulse-glow {
   0%, 100% { box-shadow: 0 0 20px rgba(255, 107, 157, 0.3); }
-  50% { box-shadow: 0 0 40px rgba(255, 107, 157, 0.6); }
+  50%       { box-shadow: 0 0 40px rgba(255, 107, 157, 0.6); }
 }
-
-@keyframes spin {
-  to { transform: rotate(360deg); }
+@keyframes spin  { to { transform: rotate(360deg); } }
+@keyframes pulse { 0%, 100% { opacity: 0.5; } 50% { opacity: 1; } }
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.4; }
 }
-
+@keyframes shimmer {
+  0%   { background-position: -800px 0; }
+  100% { background-position:  800px 0; }
+}
 @keyframes slideIn {
   from { opacity: 0; transform: translateY(24px); }
   to   { opacity: 1; transform: translateY(0); }
 }
 
-@keyframes shimmer {
-  0%   { background-position: -800px 0; }
-  100% { background-position:  800px 0; }
-}
-
-@keyframes pulse {
-  0%, 100% { opacity: 0.5; }
-  50%       { opacity: 1; }
-}
-
-/* ─── PREMIUM CARD HOVER ─────────────────────────────────────────────────── */
-.premium-card {
-  transition: all 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-}
-.premium-card:hover {
-  transform: translateY(-6px);
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.18);
-}
-
-/* ─── REDUCED MOTION ─────────────────────────────────────────────────────── */
+/* ── REDUCED MOTION ──────────────────────────────────────── */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
+    animation-duration:        0.01ms !important;
+    animation-iteration-count: 1      !important;
+    transition-duration:       0.01ms !important;
   }
 }
