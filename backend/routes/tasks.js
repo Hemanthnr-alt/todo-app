@@ -22,18 +22,12 @@ const storage = multer.diskStorage({
 });
 
 const allowedMimeTypes = [
-  "image/jpeg",
-  "image/png",
-  "image/gif",
-  "image/webp",
-  "application/pdf",
-  "application/msword",
+  "image/jpeg","image/png","image/gif","image/webp",
+  "application/pdf","application/msword",
   "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
   "application/vnd.ms-excel",
   "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-  "text/plain",
-  "application/zip",
-  "application/x-zip-compressed",
+  "text/plain","application/zip","application/x-zip-compressed",
 ];
 
 const upload = multer({
@@ -46,11 +40,11 @@ const upload = multer({
   },
 });
 
-// GET all tasks
+// GET all tasks for current user
 router.get("/", async (req, res) => {
   try {
     const { search, priority, categoryId, completed } = req.query;
-    const where = {};
+    const where = { userId: req.user.id };
 
     if (search) where.title = { [Op.iLike]: `%${search}%` };
     if (priority && priority !== "all") where.priority = priority;
@@ -73,12 +67,11 @@ router.get("/", async (req, res) => {
 router.get("/:id", async (req, res) => {
   try {
     const task = await Task.findOne({
-      where: { id: req.params.id },
+      where: { id: req.params.id, userId: req.user.id },
       include: [{ model: Category }],
     });
 
     if (!task) return res.status(404).json({ error: "Task not found" });
-
     res.json(task);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -88,18 +81,7 @@ router.get("/:id", async (req, res) => {
 // POST create task
 router.post("/", async (req, res) => {
   try {
-    const {
-      title,
-      description,
-      priority,
-      categoryId,
-      dueDate,
-      startTime,
-      endTime,
-      duration,
-      tags,
-      subtasks,
-    } = req.body;
+    const { title, description, priority, categoryId, dueDate, startTime, endTime, duration, tags, subtasks } = req.body;
 
     if (!title?.trim()) {
       return res.status(400).json({ error: "Title is required" });
@@ -117,6 +99,7 @@ router.post("/", async (req, res) => {
       tags: tags || [],
       subtasks: subtasks || [],
       attachments: [],
+      userId: req.user.id,
     });
 
     const taskWithCategory = await Task.findByPk(task.id, {
@@ -134,24 +117,12 @@ router.post("/", async (req, res) => {
 router.put("/:id", async (req, res) => {
   try {
     const task = await Task.findOne({
-      where: { id: req.params.id },
+      where: { id: req.params.id, userId: req.user.id },
     });
 
     if (!task) return res.status(404).json({ error: "Task not found" });
 
-    const {
-      title,
-      description,
-      completed,
-      priority,
-      dueDate,
-      startTime,
-      endTime,
-      duration,
-      categoryId,
-      tags,
-      subtasks,
-    } = req.body;
+    const { title, description, completed, priority, dueDate, startTime, endTime, duration, categoryId, tags, subtasks } = req.body;
 
     await task.update({
       ...(title !== undefined && { title: title.trim() }),
@@ -181,13 +152,75 @@ router.put("/:id", async (req, res) => {
 router.delete("/:id", async (req, res) => {
   try {
     const task = await Task.findOne({
-      where: { id: req.params.id },
+      where: { id: req.params.id, userId: req.user.id },
     });
 
     if (!task) return res.status(404).json({ error: "Task not found" });
 
+    // Delete attached files
+    if (task.attachments && task.attachments.length > 0) {
+      task.attachments.forEach((att) => {
+        const filePath = path.join(__dirname, "../uploads", path.basename(att.url));
+        if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+      });
+    }
+
     await task.destroy();
     res.json({ message: "Task deleted" });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// POST upload attachment
+router.post("/:id/upload", upload.single("file"), async (req, res) => {
+  try {
+    const task = await Task.findOne({
+      where: { id: req.params.id, userId: req.user.id },
+    });
+
+    if (!task) return res.status(404).json({ error: "Task not found" });
+    if (!req.file) return res.status(400).json({ error: "No file uploaded" });
+
+    const attachment = {
+      id: Date.now().toString(),
+      originalName: req.file.originalname,
+      filename: req.file.filename,
+      url: `/uploads/${req.file.filename}`,
+      mimeType: req.file.mimetype,
+      size: req.file.size,
+      uploadedAt: new Date().toISOString(),
+    };
+
+    const attachments = [...(task.attachments || []), attachment];
+    await task.update({ attachments });
+
+    res.json({ attachment });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// DELETE attachment
+router.delete("/:id/attachments/:attId", async (req, res) => {
+  try {
+    const task = await Task.findOne({
+      where: { id: req.params.id, userId: req.user.id },
+    });
+
+    if (!task) return res.status(404).json({ error: "Task not found" });
+
+    const attachment = (task.attachments || []).find((a) => a.id === req.params.attId);
+    if (!attachment) return res.status(404).json({ error: "Attachment not found" });
+
+    // Delete file from disk
+    const filePath = path.join(__dirname, "../uploads", attachment.filename);
+    if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+
+    const attachments = (task.attachments || []).filter((a) => a.id !== req.params.attId);
+    await task.update({ attachments });
+
+    res.json({ message: "Attachment deleted" });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

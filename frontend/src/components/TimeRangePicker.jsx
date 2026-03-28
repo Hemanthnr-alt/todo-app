@@ -1,75 +1,46 @@
-// frontend/src/components/TimeRangePicker.jsx
 import { useMemo, useEffect } from "react";
 
 const TimeRangePicker = ({ startTime, endTime, onStartChange, onEndChange, onDurationChange }) => {
-  const calculateDuration = (start, end) => {
-    if (!start || !end) return 0;
-    const [startHour, startMin] = start.split(":").map(Number);
-    const [endHour, endMin] = end.split(":").map(Number);
-    const startMinutes = startHour * 60 + startMin;
-    const endMinutes = endHour * 60 + endMin;
-    return endMinutes - startMinutes;
-  };
+  const duration = useMemo(() => {
+    if (!startTime || !endTime) return 0;
+    const [sh, sm] = startTime.split(":").map(Number);
+    const [eh, em] = endTime.split(":").map(Number);
+    return (eh * 60 + em) - (sh * 60 + sm);
+  }, [startTime, endTime]);
 
-  const duration = useMemo(
-    () => (startTime && endTime ? calculateDuration(startTime, endTime) : 0),
-    [startTime, endTime]
-  );
-
-  const formatDuration = (minutes) => {
-    if (minutes <= 0) return "";
-    const hours = Math.floor(minutes / 60);
-    const mins = minutes % 60;
-    if (hours > 0 && mins > 0) return `${hours}h ${mins}m`;
-    if (hours > 0) return `${hours}h`;
-    return `${mins}m`;
+  const fmtDuration = (m) => {
+    if (m <= 0) return "";
+    const h = Math.floor(m / 60), mins = m % 60;
+    if (h > 0 && mins > 0) return `${h}h ${mins}m`;
+    return h > 0 ? `${h}h` : `${mins}m`;
   };
 
   useEffect(() => {
-    if (startTime && endTime) {
-      onDurationChange(duration);
-    }
+    if (startTime && endTime) onDurationChange?.(duration);
   }, [startTime, endTime, duration, onDurationChange]);
+
+  const inputStyle = {
+    width: "100%", padding: "10px", borderRadius: "10px",
+    border: "1px solid rgba(255,107,157,0.2)",
+    background: "transparent", color: "inherit",
+    fontFamily: "inherit", fontSize: "13px", outline: "none",
+  };
 
   return (
     <div style={{ marginBottom: "16px" }}>
       <div style={{ display: "flex", gap: "12px", alignItems: "center" }}>
         <div style={{ flex: 1 }}>
-          <label style={{ fontSize: "12px", marginBottom: "4px", display: "block" }}>Start Time</label>
-          <input
-            type="time"
-            value={startTime || ""}
-            onChange={(e) => onStartChange(e.target.value)}
-            style={{
-              width: "100%",
-              padding: "10px",
-              borderRadius: "10px",
-              border: "1px solid #ddd",
-              background: "transparent",
-              color: "inherit"
-            }}
-          />
+          <label style={{ fontSize: "11px", marginBottom: "4px", display: "block", fontWeight: 600 }}>Start</label>
+          <input type="time" value={startTime || ""} onChange={e => onStartChange(e.target.value)} style={inputStyle} />
         </div>
         {duration > 0 && (
-          <div style={{ padding: "0 8px" }}>
-            <span style={{ fontSize: "12px", color: "#10b981" }}>{formatDuration(duration)}</span>
+          <div style={{ padding: "0 4px", marginTop: "16px" }}>
+            <span style={{ fontSize: "11px", color: "#10b981", fontWeight: 600 }}>{fmtDuration(duration)}</span>
           </div>
         )}
         <div style={{ flex: 1 }}>
-          <label style={{ fontSize: "12px", marginBottom: "4px", display: "block" }}>End Time</label>
-          <input
-            type="time"
-            value={endTime || ""}
-            onChange={(e) => onEndChange(e.target.value)}
-            style={{
-              width: "100%",
-              padding: "10px",
-              borderRadius: "10px",
-              border: "1px solid #ddd",
-              background: "transparent",
-              color: "inherit"
-            }}
-          />
+          <label style={{ fontSize: "11px", marginBottom: "4px", display: "block", fontWeight: 600 }}>End</label>
+          <input type="time" value={endTime || ""} onChange={e => onEndChange(e.target.value)} style={inputStyle} />
         </div>
       </div>
     </div>

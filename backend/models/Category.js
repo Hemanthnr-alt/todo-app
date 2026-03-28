@@ -15,9 +15,7 @@ const Category = sequelize.define("Category", {
   color: {
     type: DataTypes.STRING,
     defaultValue: "#ff6b9d",
-    validate: {
-      is: /^#[0-9A-Fa-f]{6}$/,
-    },
+    validate: { is: /^#[0-9A-Fa-f]{6}$/ },
   },
   icon: {
     type: DataTypes.STRING,
@@ -28,8 +26,6 @@ const Category = sequelize.define("Category", {
     allowNull: false,
     references: { model: "Users", key: "id" },
   },
-}, {
-  timestamps: true,
-});
+}, { timestamps: true });
 
 module.exports = Category;

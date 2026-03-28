@@ -1,23 +1,20 @@
 import { motion } from "framer-motion";
 
 const AnimatedProgressBar = ({ value, max = 100, color = "#ff6b9d" }) => {
-  const percentage = (value / max) * 100;
-  
+  const pct = Math.min(100, Math.max(0, (value / max) * 100));
   return (
     <div style={{
-      width: "100%",
-      height: "8px",
+      width: "100%", height: "8px",
       background: "rgba(128,128,128,0.2)",
-      borderRadius: "4px",
-      overflow: "hidden",
+      borderRadius: "4px", overflow: "hidden",
     }}>
       <motion.div
         initial={{ width: 0 }}
-        animate={{ width: `${percentage}%` }}
+        animate={{ width: `${pct}%` }}
         transition={{ duration: 0.5, ease: "easeOut" }}
         style={{
           height: "100%",
-          background: `linear-gradient(90deg, ${color}, ${color}aa)`,
+          background: `linear-gradient(90deg,${color},${color}aa)`,
           borderRadius: "4px",
         }}
       />

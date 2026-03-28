@@ -66,8 +66,6 @@ const Task = sequelize.define("Task", {
     allowNull: true,
     references: { model: "Categories", key: "id" },
   },
-}, {
-  timestamps: true,
-});
+}, { timestamps: true });
 
 module.exports = Task;

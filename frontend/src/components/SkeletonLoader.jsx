@@ -1,43 +1,42 @@
-import ContentLoader from 'react-content-loader';
+import ContentLoader from "react-content-loader";
+import { useTheme } from "../context/ThemeContext";
+
+// FIX: was accessing document.body.style at render time (SSR-unsafe + incorrect detection)
+// Now uses ThemeContext correctly
 
 const TaskCardSkeleton = () => {
-  // Use inline styles with light/dark detection from CSS
-  const isDark = document.body.style.backgroundColor === 'rgb(15, 23, 42)' || 
-                  document.body.classList.contains('dark-mode');
-  
+  const { isDark } = useTheme();
   return (
     <ContentLoader
       speed={2}
-      width={400}
-      height={120}
-      viewBox="0 0 400 120"
-      backgroundColor={isDark ? "#2d2d3a" : "#f0f0f0"}
-      foregroundColor={isDark ? "#3d3d4a" : "#e0e0e0"}
+      width="100%"
+      height={90}
+      viewBox="0 0 400 90"
+      backgroundColor={isDark ? "#1e293b" : "#f1f5f9"}
+      foregroundColor={isDark ? "#2d3f54" : "#e2e8f0"}
     >
-      <circle cx="20" cy="20" r="15" />
-      <rect x="50" y="12" rx="8" ry="8" width="200" height="18" />
-      <rect x="50" y="40" rx="6" ry="6" width="300" height="12" />
-      <rect x="50" y="65" rx="6" ry="6" width="150" height="10" />
-      <rect x="250" y="85" rx="8" ry="8" width="80" height="28" />
+      <circle cx="18" cy="18" r="12" />
+      <rect x="40" y="10" rx="6" ry="6" width="200" height="14" />
+      <rect x="40" y="32" rx="5" ry="5" width="280" height="10" />
+      <rect x="40" y="50" rx="5" ry="5" width="120" height="9" />
+      <rect x="310" y="55" rx="7" ry="7" width="74" height="24" />
     </ContentLoader>
   );
 };
 
 const StatsCardSkeleton = () => {
-  const isDark = document.body.style.backgroundColor === 'rgb(15, 23, 42)' || 
-                  document.body.classList.contains('dark-mode');
-  
+  const { isDark } = useTheme();
   return (
     <ContentLoader
       speed={2}
       width={180}
-      height={100}
-      viewBox="0 0 180 100"
-      backgroundColor={isDark ? "#2d2d3a" : "#f0f0f0"}
-      foregroundColor={isDark ? "#3d3d4a" : "#e0e0e0"}
+      height={90}
+      viewBox="0 0 180 90"
+      backgroundColor={isDark ? "#1e293b" : "#f1f5f9"}
+      foregroundColor={isDark ? "#2d3f54" : "#e2e8f0"}
     >
-      <rect x="60" y="20" rx="8" ry="8" width="50" height="25" />
-      <rect x="70" y="55" rx="4" ry="4" width="30" height="12" />
+      <rect x="55" y="18" rx="7" ry="7" width="60" height="22" />
+      <rect x="65" y="50" rx="4" ry="4" width="40" height="11" />
     </ContentLoader>
   );
 };

@@ -3,13 +3,19 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>TodoPro — Stay on top of everything</title>
+    <title>30 — Stay on top of everything</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,800;1,9..40,400&display=swap" rel="stylesheet" />
     <style>
       *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
       body { font-family: 'DM Sans', sans-serif; -webkit-font-smoothing: antialiased; }
+
+      /* Dark-mode selects — global fix so native dropdowns inherit theme */
+      select {
+        color-scheme: dark;
+      }
+
       ::-webkit-scrollbar { width: 6px; }
       ::-webkit-scrollbar-track { background: transparent; }
       ::-webkit-scrollbar-thumb { background: rgba(255,107,157,0.3); border-radius: 3px; }
@@ -22,10 +28,3 @@
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>
-```
-
----
-
-### `frontend/.env`
-```
-VITE_API_URL=http://localhost:5000/api

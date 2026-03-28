@@ -13,8 +13,12 @@ api.interceptors.response.use(
   (res) => res,
   (error) => {
     if (error.response?.status === 401) {
+      // Silently clear token and reload — no toast, no console error spam
       localStorage.removeItem("token");
-      window.location.reload();
+      // Only reload if we actually had a token (i.e., session expired, not just unauthenticated)
+      if (error.config?.headers?.Authorization) {
+        window.location.reload();
+      }
     }
     return Promise.reject(error);
   }

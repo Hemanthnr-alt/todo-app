@@ -11,8 +11,8 @@ export const useAuth = () => {
 };
 
 export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(null);
-  const [token, setToken] = useState(() => localStorage.getItem("token"));
+  const [user,    setUser]    = useState(null);
+  const [token,   setToken]   = useState(() => localStorage.getItem("token"));
   const [loading, setLoading] = useState(true);
 
   const logout = useCallback(() => {
@@ -23,7 +23,7 @@ export const AuthProvider = ({ children }) => {
 
   const verifyToken = useCallback(async () => {
     try {
-      const res = await fetch(`${API_URL}/auth/verify`, {
+      const res  = await fetch(`${API_URL}/auth/verify`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       const data = await res.json();
@@ -43,7 +43,7 @@ export const AuthProvider = ({ children }) => {
 
   const register = async (name, email, password) => {
     try {
-      const res = await fetch(`${API_URL}/auth/register`, {
+      const res  = await fetch(`${API_URL}/auth/register`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name, email, password }),
@@ -63,7 +63,7 @@ export const AuthProvider = ({ children }) => {
 
   const login = async (email, password) => {
     try {
-      const res = await fetch(`${API_URL}/auth/login`, {
+      const res  = await fetch(`${API_URL}/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password }),
@@ -82,7 +82,11 @@ export const AuthProvider = ({ children }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, token, loading, register, login, logout, isAuthenticated: !!user }}>
+    <AuthContext.Provider value={{
+      user, token, loading,
+      register, login, logout,
+      isAuthenticated: !!user,
+    }}>
       {children}
     </AuthContext.Provider>
   );

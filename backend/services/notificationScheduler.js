@@ -5,25 +5,26 @@ const Task = require("../models/Task");
 
 const checkUpcomingTasks = async () => {
   try {
-    const tomorrow = new Date();
+    const tomorrow    = new Date();
     tomorrow.setDate(tomorrow.getDate() + 1);
     const tomorrowStr = tomorrow.toISOString().split("T")[0];
 
-    const tasksDueTomorrow = await Task.findAll({
+    const tasks = await Task.findAll({
       where: { dueDate: tomorrowStr, completed: false, reminderSent: false },
       include: [{ model: User }],
     });
 
-    for (const task of tasksDueTomorrow) {
+    for (const task of tasks) {
       if (task.User?.email) {
+        const prefs = task.User.notificationPreferences || {};
+        if (prefs.dueDateReminders === false) continue;
         const sent = await sendTaskReminder(task.User.email, task.User.name, task);
         if (sent) await task.update({ reminderSent: true });
       }
     }
-
-    console.log(`📬 Sent reminders for ${tasksDueTomorrow.length} tasks`);
+    console.log(`📬 Sent reminders for ${tasks.length} tasks`);
   } catch (error) {
-    console.error("Error in reminder check:", error);
+    console.error("Reminder check error:", error);
   }
 };
 
@@ -43,27 +44,26 @@ const sendDailySummaries = async () => {
 
       await sendDailySummary(user.email, user.name, tasks);
     }
-
-    console.log(`📊 Sent daily summaries to ${users.length} users`);
+    console.log(`📊 Daily summaries sent to ${users.length} users`);
   } catch (error) {
-    console.error("Error sending daily summaries:", error);
+    console.error("Daily summary error:", error);
   }
 };
 
 const startNotificationScheduler = () => {
-  // Daily reminders at 9 AM only (not hourly to avoid duplicate emails)
+  // Reminders at 9 AM daily
   cron.schedule("0 9 * * *", () => {
-    console.log("⏰ Running daily reminder check...");
+    console.log("⏰ Running daily reminder check…");
     checkUpcomingTasks();
   });
 
   // End-of-day summary at 6 PM
   cron.schedule("0 18 * * *", () => {
-    console.log("📊 Running daily summary...");
+    console.log("📊 Running daily summary…");
     sendDailySummaries();
   });
 
-  // Reset reminderSent flags at midnight for next day
+  // Reset reminderSent flags at midnight
   cron.schedule("0 0 * * *", async () => {
     try {
       await Task.update({ reminderSent: false }, { where: { reminderSent: true } });

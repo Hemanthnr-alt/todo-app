@@ -1,4 +1,4 @@
-const jwt = require("jsonwebtoken");
+const jwt  = require("jsonwebtoken");
 const User = require("../models/User");
 
 const protect = async (req, res, next) => {
@@ -8,7 +8,7 @@ const protect = async (req, res, next) => {
       return res.status(401).json({ error: "Not authorized, no token" });
     }
 
-    const token = authHeader.split(" ")[1];
+    const token   = authHeader.split(" ")[1];
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
     const user = await User.findByPk(decoded.id, {
@@ -21,7 +21,7 @@ const protect = async (req, res, next) => {
 
     req.user = user;
     next();
-  } catch (error) {
+  } catch {
     return res.status(401).json({ error: "Not authorized, token failed" });
   }
 };

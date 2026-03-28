@@ -21,10 +21,10 @@ app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true }));
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
-// Routes
+// All routes protected with auth
 app.use("/api/auth", authRoutes);
-app.use("/api/tasks", taskRoutes);
-app.use("/api/categories", categoryRoutes);
+app.use("/api/tasks", protect, taskRoutes);
+app.use("/api/categories", protect, categoryRoutes);
 
 // User notification preferences
 app.put("/api/user/notifications", protect, async (req, res) => {
@@ -56,6 +56,9 @@ app.get("/api/health", (req, res) => {
 // Global error handler
 app.use((err, req, res, next) => {
   console.error(err.stack);
+  if (err.multer) {
+    return res.status(400).json({ error: err.message });
+  }
   res.status(500).json({ error: err.message || "Internal Server Error" });
 });
 

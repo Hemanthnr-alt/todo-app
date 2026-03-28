@@ -9,10 +9,14 @@ import Today from "./pages/Today";
 import Calendar from "./pages/Calendar";
 import Habits from "./pages/Habits";
 import Categories from "./pages/Categories";
+import AIAssistant from "./components/AIAssistant";
+import { useTasks } from "./hooks/useTasks";
 
 function AppContent() {
   const [page, setPage] = useState("today");
   const { loading } = useAuth();
+  // Load tasks at app level so AI assistant gets live context
+  const { tasks, categories } = useTasks();
 
   if (loading) {
     return (
@@ -24,15 +28,16 @@ function AppContent() {
       }}>
         <div style={{ textAlign: "center" }}>
           <div style={{
-            width: "48px", height: "48px", margin: "0 auto 16px",
-            border: "3px solid rgba(255,107,157,0.2)",
-            borderTopColor: "#ff6b9d",
-            borderRadius: "50%",
-            animation: "spin 0.8s linear infinite",
-          }} />
-          <p style={{ color: "rgba(255,255,255,0.5)", fontSize: "14px", margin: 0 }}>Loading workspace…</p>
+            width: "56px", height: "56px",
+            background: "linear-gradient(135deg,#ff6b9d,#ff99cc)",
+            borderRadius: "16px",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            fontSize: "22px", fontWeight: 900, color: "white",
+            margin: "0 auto 20px",
+            boxShadow: "0 8px 28px rgba(255,107,157,0.35)",
+          }}>30</div>
+          <p style={{ color: "rgba(255,255,255,0.4)", fontSize: "14px", margin: 0 }}>Loading workspace…</p>
         </div>
-        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
       </div>
     );
   }
@@ -42,12 +47,15 @@ function AppContent() {
       <AnimatedBackground />
       <div style={{ position: "relative", zIndex: 1 }}>
         <Navbar activePage={page} onPageChange={setPage} />
-        {page === "today" && <Today onGoToTasks={() => setPage("tasks")} />}
-        {page === "tasks" && <Tasks />}
-        {page === "calendar" && <Calendar />}
-        {page === "habits" && <Habits />}
+        {page === "today"      && <Today onGoToTasks={() => setPage("tasks")} />}
+        {page === "tasks"      && <Tasks />}
+        {page === "calendar"   && <Calendar />}
+        {page === "habits"     && <Habits />}
         {page === "categories" && <Categories />}
       </div>
+
+      {/* AI Assistant FAB — always visible */}
+      <AIAssistant tasks={tasks} categories={categories} />
     </div>
   );
 }
@@ -67,6 +75,7 @@ export default function App() {
               borderRadius: "12px",
               fontSize: "13px",
               fontFamily: "'DM Sans', sans-serif",
+              marginBottom: "80px", // above AI FAB
             },
             success: { iconTheme: { primary: "#ff6b9d", secondary: "#0f172a" } },
           }}

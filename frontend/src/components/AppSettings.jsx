@@ -1,38 +1,65 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useTheme } from "../context/ThemeContext";
 import { useAuth } from "../context/AuthContext";
+import api from "../services/api";
 import toast from "react-hot-toast";
 
 const DEFAULTS = {
-  notifications: { browser: true, sound: true, dueReminders: true, dailySummary: true, reminderTime: "1hour" },
-  appearance: { compactView: false, showCompleted: true, defaultView: "today" },
-  privacy: { showEmail: false, showActivity: true },
+  notifications: {
+    browser: false,
+    dueReminders: true,
+    dailySummary: true,
+    reminderTime: "1hour",
+  },
+  appearance: {
+    compactView: false,
+    showCompleted: true,
+    animationsEnabled: true,
+  },
+  privacy: {
+    showEmail: false,
+    showActivity: true,
+  },
 };
 
-function load() {
+function loadSettings() {
   try {
     const s = JSON.parse(localStorage.getItem("tp_settings") || "null");
-    if (!s) return DEFAULTS;
-    return { ...DEFAULTS, ...s, notifications: { ...DEFAULTS.notifications, ...s.notifications }, appearance: { ...DEFAULTS.appearance, ...s.appearance }, privacy: { ...DEFAULTS.privacy, ...s.privacy } };
-  } catch { return DEFAULTS; }
+    if (!s) return structuredClone(DEFAULTS);
+    return {
+      notifications: { ...DEFAULTS.notifications, ...s.notifications },
+      appearance: { ...DEFAULTS.appearance, ...s.appearance },
+      privacy: { ...DEFAULTS.privacy, ...s.privacy },
+    };
+  } catch {
+    return structuredClone(DEFAULTS);
+  }
 }
 
-function Toggle({ label, desc, value, onChange, isDark }) {
+function Toggle({ label, desc, value, onChange, isDark, accentColor = "#ff6b9d" }) {
   const textColor = isDark ? "#f1f5f9" : "#0f172a";
-  const mutedColor = isDark ? "rgba(241,245,249,0.45)" : "rgba(15,23,42,0.45)";
+  const mutedColor = isDark ? "rgba(241,245,249,0.42)" : "rgba(15,23,42,0.42)";
+
   return (
-    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 0", borderBottom: `1px solid ${isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.06)"}` }}>
-      <div>
-        <div style={{ fontSize: "13px", fontWeight: 600, color: textColor }}>{label}</div>
-        {desc && <div style={{ fontSize: "11px", color: mutedColor, marginTop: "2px" }}>{desc}</div>}
+    <div style={{
+      display: "flex", justifyContent: "space-between", alignItems: "center",
+      padding: "13px 0",
+      borderBottom: `1px solid ${isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.06)"}`,
+    }}>
+      <div style={{ flex: 1, paddingRight: "16px" }}>
+        <div style={{ fontSize: "13px", fontWeight: 600, color: textColor, marginBottom: desc ? "2px" : 0 }}>{label}</div>
+        {desc && <div style={{ fontSize: "11px", color: mutedColor, lineHeight: 1.4 }}>{desc}</div>}
       </div>
-      <div
+      <button
         onClick={() => onChange(!value)}
+        aria-label={`Toggle ${label}`}
         style={{
           width: "44px", height: "24px", borderRadius: "12px", cursor: "pointer",
-          background: value ? "linear-gradient(135deg,#ff6b9d,#ff99cc)" : (isDark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.12)"),
-          position: "relative", transition: "background 0.2s", flexShrink: 0,
+          background: value ? `linear-gradient(135deg, ${accentColor}, ${accentColor}cc)` : (isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)"),
+          position: "relative", transition: "background 0.22s", flexShrink: 0,
+          border: "none", outline: "none",
+          boxShadow: value ? `0 2px 10px ${accentColor}55` : "none",
         }}
       >
         <div style={{
@@ -40,158 +67,474 @@ function Toggle({ label, desc, value, onChange, isDark }) {
           left: value ? "23px" : "3px",
           width: "18px", height: "18px", borderRadius: "9px",
           background: "white",
-          boxShadow: "0 2px 4px rgba(0,0,0,0.2)",
-          transition: "left 0.2s",
+          boxShadow: "0 1px 4px rgba(0,0,0,0.22)",
+          transition: "left 0.22s cubic-bezier(0.34,1.56,0.64,1)",
         }} />
-      </div>
+      </button>
     </div>
   );
 }
 
 export default function AppSettings({ isOpen, onClose }) {
   const { isDark, toggleTheme } = useTheme();
-  const { user } = useAuth();
-  const [settings, setSettings] = useState(load);
+  const { user, isAuthenticated } = useAuth();
+  const [settings, setSettings] = useState(loadSettings);
+  const [saving, setSaving] = useState(false);
+  const [activeTab, setActiveTab] = useState("appearance");
+  const [notifPermission, setNotifPermission] = useState("default");
+
+  useEffect(() => {
+    if ("Notification" in window) {
+      setNotifPermission(Notification.permission);
+    }
+  }, [isOpen]);
 
   const upd = (cat, key, val) => {
-    const next = { ...settings, [cat]: { ...settings[cat], [key]: val } };
-    setSettings(next);
+    setSettings(prev => ({ ...prev, [cat]: { ...prev[cat], [key]: val } }));
+    // Live-apply theme changes
     if (cat === "appearance" && key === "theme") {
-      if (val === "dark" && !isDark) toggleTheme();
-      if (val === "light" && isDark) toggleTheme();
+      const wantDark = val === "dark";
+      if (wantDark !== isDark) toggleTheme();
     }
   };
 
-  const save = () => {
-    localStorage.setItem("tp_settings", JSON.stringify(settings));
-    toast.success("Settings saved!");
-    onClose();
+  const requestBrowserNotifications = async () => {
+    if (!("Notification" in window)) {
+      toast.error("Browser notifications not supported");
+      return;
+    }
+    const perm = await Notification.requestPermission();
+    setNotifPermission(perm);
+    if (perm === "granted") {
+      upd("notifications", "browser", true);
+      toast.success("Browser notifications enabled! 🔔");
+    } else {
+      upd("notifications", "browser", false);
+      toast.error("Notification permission denied");
+    }
   };
 
-  const bg = isDark ? "rgba(8,11,20,0.98)" : "rgba(248,250,252,0.98)";
-  const border = isDark ? "rgba(255,107,157,0.12)" : "rgba(255,107,157,0.15)";
-  const textColor = isDark ? "#f1f5f9" : "#0f172a";
-  const mutedColor = isDark ? "rgba(241,245,249,0.45)" : "rgba(15,23,42,0.45)";
+  const handleToggleBrowserNotif = (val) => {
+    if (val && notifPermission !== "granted") {
+      requestBrowserNotifications();
+    } else {
+      upd("notifications", "browser", val);
+    }
+  };
 
-  const Section = ({ title, children }) => (
-    <div style={{ marginBottom: "24px" }}>
-      <h4 style={{ fontSize: "11px", fontWeight: 700, color: "#ff6b9d", textTransform: "uppercase", letterSpacing: "0.08em", margin: "0 0 8px" }}>{title}</h4>
-      {children}
-    </div>
-  );
+  const save = async () => {
+    setSaving(true);
+    try {
+      localStorage.setItem("tp_settings", JSON.stringify(settings));
+
+      // Apply appearance settings
+      if (settings.appearance.animationsEnabled === false) {
+        document.documentElement.style.setProperty("--motion-duration", "0s");
+      } else {
+        document.documentElement.style.removeProperty("--motion-duration");
+      }
+
+      // Sync notification prefs to backend if logged in
+      if (isAuthenticated) {
+        try {
+          await api.put("/user/notifications", {
+            dueDateReminders: settings.notifications.dueReminders,
+            dailySummary: settings.notifications.dailySummary,
+            reminderTime: settings.notifications.reminderTime,
+            emailReminders: settings.notifications.dueReminders,
+          });
+        } catch (err) {
+          // non-critical
+        }
+      }
+
+      toast.success("Settings saved! ✓");
+      onClose();
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const reset = () => {
+    const fresh = structuredClone(DEFAULTS);
+    setSettings(fresh);
+    localStorage.removeItem("tp_settings");
+    toast("Settings reset to defaults");
+  };
+
+  const bg = isDark ? "rgba(8,11,20,0.98)" : "rgba(250,251,253,0.98)";
+  const border = isDark ? "rgba(255,107,157,0.1)" : "rgba(255,107,157,0.14)";
+  const textColor = isDark ? "#f1f5f9" : "#0f172a";
+  const mutedColor = isDark ? "rgba(241,245,249,0.42)" : "rgba(15,23,42,0.42)";
+  const cardBg = isDark ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.03)";
+
+  const TABS = [
+    { id: "appearance", label: "Appearance", icon: "🎨" },
+    { id: "notifications", label: "Notifications", icon: "🔔" },
+    { id: "account", label: "Account", icon: "👤" },
+    { id: "privacy", label: "Privacy", icon: "🔒" },
+  ];
 
   return (
     <AnimatePresence>
       {isOpen && (
         <>
-          <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", zIndex: 1000 }} />
+          {/* Backdrop */}
+          <motion.div
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            onClick={onClose}
+            style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.35)", zIndex: 1000 }}
+          />
+
+          {/* Drawer */}
           <motion.div
             initial={{ x: "100%" }} animate={{ x: 0 }} exit={{ x: "100%" }}
-            transition={{ type: "spring", damping: 28, stiffness: 260 }}
+            transition={{ type: "spring", damping: 30, stiffness: 280 }}
             style={{
-              position: "fixed", top: 0, right: 0, height: "100vh", width: "380px",
-              background: bg, backdropFilter: "blur(20px)",
+              position: "fixed", top: 0, right: 0, height: "100dvh", width: "min(420px, 100vw)",
+              background: bg, backdropFilter: "blur(24px)",
               borderLeft: `1px solid ${border}`,
-              boxShadow: "-8px 0 40px rgba(0,0,0,0.15)",
+              boxShadow: "-8px 0 48px rgba(0,0,0,0.16)",
               zIndex: 1001, display: "flex", flexDirection: "column",
               fontFamily: "'DM Sans', sans-serif",
             }}
           >
             {/* Header */}
             <div style={{
-              padding: "20px 24px", display: "flex", justifyContent: "space-between", alignItems: "center",
+              padding: "18px 22px 16px",
               borderBottom: `1px solid ${border}`,
+              display: "flex", justifyContent: "space-between", alignItems: "center",
+              flexShrink: 0,
             }}>
               <div>
-                <h2 style={{ fontSize: "18px", fontWeight: 800, margin: 0, color: textColor }}>Settings</h2>
-                <p style={{ fontSize: "12px", color: mutedColor, margin: "2px 0 0" }}>Customize your experience</p>
-              </div>
-              <button onClick={onClose} style={{ background: "none", border: "none", fontSize: "20px", cursor: "pointer", color: mutedColor }}>✕</button>
-            </div>
-
-            <div style={{ flex: 1, overflowY: "auto", padding: "24px" }}>
-              {/* Account */}
-              <Section title="Account">
-                <div style={{
-                  padding: "14px", borderRadius: "12px",
-                  background: isDark ? "rgba(255,107,157,0.08)" : "rgba(255,107,157,0.06)",
-                  border: `1px solid rgba(255,107,157,0.15)`,
-                  display: "flex", gap: "12px", alignItems: "center",
-                }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "3px" }}>
                   <div style={{
-                    width: "40px", height: "40px", borderRadius: "12px",
+                    width: "26px", height: "26px", borderRadius: "7px",
                     background: "linear-gradient(135deg,#ff6b9d,#ff99cc)",
                     display: "flex", alignItems: "center", justifyContent: "center",
-                    fontSize: "16px", fontWeight: 700, color: "white",
-                  }}>
-                    {user?.name?.charAt(0)?.toUpperCase() || "?"}
-                  </div>
-                  <div>
-                    <div style={{ fontSize: "14px", fontWeight: 700, color: textColor }}>{user?.name || "Guest"}</div>
-                    <div style={{ fontSize: "12px", color: mutedColor }}>{user?.email || "Not signed in"}</div>
-                  </div>
+                    fontSize: "11px", fontWeight: 900, color: "white", flexShrink: 0,
+                  }}>30</div>
+                  <h2 style={{ fontSize: "18px", fontWeight: 800, margin: 0, color: textColor, letterSpacing: "-0.03em" }}>Settings</h2>
                 </div>
-              </Section>
+                <p style={{ fontSize: "12px", color: mutedColor, margin: 0 }}>Customise your 30 experience</p>
+              </div>
+              <button
+                onClick={onClose}
+                style={{
+                  width: "32px", height: "32px", borderRadius: "9px",
+                  background: isDark ? "rgba(255,255,255,0.07)" : "rgba(0,0,0,0.06)",
+                  border: `1px solid ${border}`, cursor: "pointer",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  color: mutedColor, fontSize: "14px",
+                }}
+              >✕</button>
+            </div>
 
-              {/* Appearance */}
-              <Section title="Appearance">
-                <div style={{ marginBottom: "12px" }}>
-                  <label style={{ fontSize: "12px", color: mutedColor, display: "block", marginBottom: "6px" }}>Theme</label>
-                  <div style={{ display: "flex", gap: "8px" }}>
-                    {["dark", "light"].map((t) => (
-                      <button
-                        key={t}
-                        onClick={() => upd("appearance", "theme", t)}
-                        style={{
-                          flex: 1, padding: "8px", borderRadius: "10px",
-                          border: `1px solid ${(isDark ? "dark" : "light") === t ? "#ff6b9d" : border}`,
-                          background: (isDark ? "dark" : "light") === t ? "rgba(255,107,157,0.12)" : "transparent",
-                          color: textColor, cursor: "pointer", fontSize: "13px", fontFamily: "inherit",
-                        }}
-                      >
-                        {t === "dark" ? "🌙 Dark" : "☀️ Light"}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-                <Toggle label="Compact View" value={settings.appearance.compactView} onChange={(v) => upd("appearance", "compactView", v)} isDark={isDark} />
-                <Toggle label="Show Completed Tasks" value={settings.appearance.showCompleted} onChange={(v) => upd("appearance", "showCompleted", v)} isDark={isDark} />
-              </Section>
+            {/* Tabs */}
+            <div style={{
+              display: "flex", gap: "4px", padding: "12px 22px 0",
+              flexShrink: 0, borderBottom: `1px solid ${border}`,
+              overflowX: "auto",
+            }}>
+              {TABS.map(tab => (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  style={{
+                    padding: "7px 12px", borderRadius: "8px 8px 0 0",
+                    border: `1px solid ${activeTab === tab.id ? border : "transparent"}`,
+                    borderBottom: activeTab === tab.id ? `2px solid #ff6b9d` : "2px solid transparent",
+                    background: activeTab === tab.id ? (isDark ? "rgba(255,107,157,0.08)" : "rgba(255,107,157,0.06)") : "transparent",
+                    color: activeTab === tab.id ? "#ff6b9d" : mutedColor,
+                    cursor: "pointer", fontSize: "12px", fontWeight: activeTab === tab.id ? 700 : 500,
+                    fontFamily: "inherit", whiteSpace: "nowrap",
+                    display: "flex", alignItems: "center", gap: "5px",
+                    transition: "all 0.15s",
+                  }}
+                >
+                  <span style={{ fontSize: "13px" }}>{tab.icon}</span>
+                  {tab.label}
+                </button>
+              ))}
+            </div>
 
-              {/* Notifications */}
-              <Section title="Notifications">
-                <Toggle label="Browser Notifications" desc="Show popup alerts" value={settings.notifications.browser} onChange={(v) => upd("notifications", "browser", v)} isDark={isDark} />
-                <Toggle label="Due Date Reminders" desc="Remind me before deadlines" value={settings.notifications.dueReminders} onChange={(v) => upd("notifications", "dueReminders", v)} isDark={isDark} />
-                <Toggle label="Daily Summary Email" desc="End-of-day task digest" value={settings.notifications.dailySummary} onChange={(v) => upd("notifications", "dailySummary", v)} isDark={isDark} />
-              </Section>
+            {/* Content */}
+            <div style={{ flex: 1, overflowY: "auto", padding: "20px 22px" }}>
+              <AnimatePresence mode="wait">
+                <motion.div
+                  key={activeTab}
+                  initial={{ opacity: 0, y: 6 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -6 }}
+                  transition={{ duration: 0.15 }}
+                >
 
-              {/* Privacy */}
-              <Section title="Privacy">
-                <Toggle label="Show Email on Profile" value={settings.privacy.showEmail} onChange={(v) => upd("privacy", "showEmail", v)} isDark={isDark} />
-                <Toggle label="Show Activity Status" value={settings.privacy.showActivity} onChange={(v) => upd("privacy", "showActivity", v)} isDark={isDark} />
-              </Section>
+                  {/* ── APPEARANCE TAB ── */}
+                  {activeTab === "appearance" && (
+                    <div>
+                      {/* Theme */}
+                      <div style={{ marginBottom: "20px" }}>
+                        <label style={{ fontSize: "11px", fontWeight: 700, color: mutedColor, textTransform: "uppercase", letterSpacing: "0.07em", display: "block", marginBottom: "10px" }}>
+                          Theme
+                        </label>
+                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
+                          {[
+                            { value: "dark",  label: "🌙 Dark",  desc: "Easy on the eyes" },
+                            { value: "light", label: "☀️ Light", desc: "Bright & clean" },
+                          ].map(opt => {
+                            const active = (isDark ? "dark" : "light") === opt.value;
+                            return (
+                              <button
+                                key={opt.value}
+                                onClick={() => {
+                                  if (!active) toggleTheme();
+                                }}
+                                style={{
+                                  padding: "12px", borderRadius: "12px",
+                                  border: `1.5px solid ${active ? "#ff6b9d" : border}`,
+                                  background: active ? "rgba(255,107,157,0.1)" : cardBg,
+                                  color: active ? "#ff6b9d" : textColor,
+                                  cursor: "pointer", textAlign: "left",
+                                  fontFamily: "inherit",
+                                  transition: "all 0.18s",
+                                }}
+                              >
+                                <div style={{ fontSize: "14px", fontWeight: 700, marginBottom: "2px" }}>{opt.label}</div>
+                                <div style={{ fontSize: "11px", color: active ? "#ff6b9d" : mutedColor }}>{opt.desc}</div>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      {/* Toggles */}
+                      <div style={{ background: cardBg, borderRadius: "12px", padding: "0 14px", border: `1px solid ${border}` }}>
+                        <Toggle label="Compact View" desc="Reduce spacing between items" value={settings.appearance.compactView} onChange={v => upd("appearance", "compactView", v)} isDark={isDark} />
+                        <Toggle label="Show Completed Tasks" desc="Keep completed tasks visible" value={settings.appearance.showCompleted} onChange={v => upd("appearance", "showCompleted", v)} isDark={isDark} />
+                        <Toggle label="Enable Animations" desc="Smooth transitions and effects" value={settings.appearance.animationsEnabled} onChange={v => upd("appearance", "animationsEnabled", v)} isDark={isDark} />
+                      </div>
+                    </div>
+                  )}
+
+                  {/* ── NOTIFICATIONS TAB ── */}
+                  {activeTab === "notifications" && (
+                    <div>
+                      {/* Browser notif status */}
+                      <div style={{
+                        padding: "12px 14px", borderRadius: "12px",
+                        background: notifPermission === "granted" ? "rgba(16,185,129,0.08)" : "rgba(245,158,11,0.08)",
+                        border: `1px solid ${notifPermission === "granted" ? "rgba(16,185,129,0.2)" : "rgba(245,158,11,0.2)"}`,
+                        marginBottom: "16px",
+                        display: "flex", justifyContent: "space-between", alignItems: "center",
+                      }}>
+                        <div>
+                          <div style={{ fontSize: "12px", fontWeight: 700, color: notifPermission === "granted" ? "#10b981" : "#f59e0b" }}>
+                            {notifPermission === "granted" ? "✓ Notifications allowed" : "⚠ Notifications blocked"}
+                          </div>
+                          <div style={{ fontSize: "11px", color: mutedColor, marginTop: "2px" }}>
+                            {notifPermission === "granted" ? "Browser can show alerts" : "Click to enable browser alerts"}
+                          </div>
+                        </div>
+                        {notifPermission !== "granted" && (
+                          <button onClick={requestBrowserNotifications} style={{
+                            padding: "6px 12px", borderRadius: "8px",
+                            background: "linear-gradient(135deg,#f59e0b,#f97316)",
+                            border: "none", color: "white", cursor: "pointer",
+                            fontSize: "11px", fontWeight: 700, fontFamily: "inherit",
+                          }}>Enable</button>
+                        )}
+                      </div>
+
+                      <div style={{ background: cardBg, borderRadius: "12px", padding: "0 14px", border: `1px solid ${border}`, marginBottom: "16px" }}>
+                        <Toggle
+                          label="Browser Notifications"
+                          desc="Pop-up alerts when tasks are due"
+                          value={settings.notifications.browser && notifPermission === "granted"}
+                          onChange={handleToggleBrowserNotif}
+                          isDark={isDark}
+                        />
+                        <Toggle
+                          label="Due Date Reminders"
+                          desc="Alert before tasks are due"
+                          value={settings.notifications.dueReminders}
+                          onChange={v => upd("notifications", "dueReminders", v)}
+                          isDark={isDark}
+                        />
+                        <Toggle
+                          label="Daily Summary Email"
+                          desc="End-of-day digest in your inbox"
+                          value={settings.notifications.dailySummary}
+                          onChange={v => upd("notifications", "dailySummary", v)}
+                          isDark={isDark}
+                        />
+                      </div>
+
+                      {settings.notifications.dueReminders && (
+                        <div style={{ background: cardBg, borderRadius: "12px", padding: "14px", border: `1px solid ${border}` }}>
+                          <label style={{ fontSize: "11px", fontWeight: 700, color: mutedColor, textTransform: "uppercase", letterSpacing: "0.07em", display: "block", marginBottom: "8px" }}>
+                            Reminder Lead Time
+                          </label>
+                          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "6px" }}>
+                            {[
+                              { value: "15min", label: "15 min" },
+                              { value: "30min", label: "30 min" },
+                              { value: "1hour", label: "1 hour" },
+                              { value: "1day",  label: "1 day" },
+                            ].map(opt => (
+                              <button key={opt.value} onClick={() => upd("notifications", "reminderTime", opt.value)}
+                                style={{
+                                  padding: "9px", borderRadius: "9px",
+                                  border: `1.5px solid ${settings.notifications.reminderTime === opt.value ? "#ff6b9d" : border}`,
+                                  background: settings.notifications.reminderTime === opt.value ? "rgba(255,107,157,0.1)" : "transparent",
+                                  color: settings.notifications.reminderTime === opt.value ? "#ff6b9d" : textColor,
+                                  cursor: "pointer", fontSize: "12px", fontWeight: 600,
+                                  fontFamily: "inherit", transition: "all 0.15s",
+                                }}
+                              >{opt.label}</button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* ── ACCOUNT TAB ── */}
+                  {activeTab === "account" && (
+                    <div>
+                      {isAuthenticated ? (
+                        <>
+                          {/* Profile card */}
+                          <div style={{
+                            padding: "16px", borderRadius: "14px",
+                            background: "rgba(255,107,157,0.07)",
+                            border: "1px solid rgba(255,107,157,0.15)",
+                            display: "flex", gap: "14px", alignItems: "center",
+                            marginBottom: "20px",
+                          }}>
+                            <div style={{
+                              width: "52px", height: "52px", borderRadius: "14px",
+                              background: "linear-gradient(135deg,#ff6b9d,#ff99cc)",
+                              display: "flex", alignItems: "center", justifyContent: "center",
+                              fontSize: "20px", fontWeight: 800, color: "white", flexShrink: 0,
+                            }}>
+                              {user?.name?.charAt(0)?.toUpperCase() || "?"}
+                            </div>
+                            <div>
+                              <div style={{ fontSize: "15px", fontWeight: 800, color: textColor }}>{user?.name}</div>
+                              <div style={{ fontSize: "12px", color: mutedColor, marginTop: "2px" }}>{user?.email}</div>
+                              <div style={{
+                                marginTop: "6px", display: "inline-flex", alignItems: "center", gap: "4px",
+                                padding: "2px 8px", borderRadius: "6px",
+                                background: "rgba(16,185,129,0.12)", color: "#10b981", fontSize: "10px", fontWeight: 700,
+                              }}>
+                                ✓ Active account
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Account info rows */}
+                          <div style={{ background: cardBg, borderRadius: "12px", border: `1px solid ${border}`, overflow: "hidden", marginBottom: "16px" }}>
+                            {[
+                              { label: "Name", value: user?.name, icon: "👤" },
+                              { label: "Email", value: user?.email, icon: "✉️" },
+                            ].map((row, i) => (
+                              <div key={row.label} style={{
+                                display: "flex", justifyContent: "space-between", alignItems: "center",
+                                padding: "12px 14px",
+                                borderBottom: i === 0 ? `1px solid ${isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.05)"}` : "none",
+                              }}>
+                                <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                                  <span style={{ fontSize: "14px" }}>{row.icon}</span>
+                                  <span style={{ fontSize: "12px", color: mutedColor }}>{row.label}</span>
+                                </div>
+                                <span style={{ fontSize: "12px", fontWeight: 600, color: textColor }}>{row.value}</span>
+                              </div>
+                            ))}
+                          </div>
+
+                          <div style={{ padding: "12px", borderRadius: "12px", background: "rgba(244,63,94,0.06)", border: "1px solid rgba(244,63,94,0.15)" }}>
+                            <div style={{ fontSize: "12px", fontWeight: 700, color: "#f43f5e", marginBottom: "4px" }}>⚠ Danger Zone</div>
+                            <div style={{ fontSize: "11px", color: mutedColor, marginBottom: "10px" }}>These actions cannot be undone.</div>
+                            <button
+                              onClick={() => { if (window.confirm("Clear all data from this browser? Your account and tasks are safe.")) { localStorage.clear(); toast("Local data cleared"); } }}
+                              style={{
+                                padding: "8px 14px", borderRadius: "8px",
+                                background: "rgba(244,63,94,0.1)", border: "1px solid rgba(244,63,94,0.2)",
+                                color: "#f43f5e", cursor: "pointer", fontSize: "12px", fontWeight: 600,
+                                fontFamily: "inherit",
+                              }}
+                            >
+                              Clear local data
+                            </button>
+                          </div>
+                        </>
+                      ) : (
+                        <div style={{ textAlign: "center", padding: "40px 20px" }}>
+                          <div style={{ fontSize: "48px", marginBottom: "12px" }}>👋</div>
+                          <h3 style={{ fontSize: "16px", fontWeight: 700, color: textColor, margin: "0 0 8px" }}>Not signed in</h3>
+                          <p style={{ fontSize: "13px", color: mutedColor }}>Sign in to sync your tasks across devices</p>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* ── PRIVACY TAB ── */}
+                  {activeTab === "privacy" && (
+                    <div>
+                      <div style={{ background: cardBg, borderRadius: "12px", padding: "0 14px", border: `1px solid ${border}`, marginBottom: "16px" }}>
+                        <Toggle label="Show Email on Profile" value={settings.privacy.showEmail} onChange={v => upd("privacy", "showEmail", v)} isDark={isDark} />
+                        <Toggle label="Show Activity Status" value={settings.privacy.showActivity} onChange={v => upd("privacy", "showActivity", v)} isDark={isDark} />
+                      </div>
+
+                      <div style={{
+                        padding: "14px", borderRadius: "12px",
+                        background: "rgba(59,130,246,0.06)",
+                        border: "1px solid rgba(59,130,246,0.15)",
+                      }}>
+                        <div style={{ fontSize: "12px", fontWeight: 700, color: "#3b82f6", marginBottom: "6px" }}>ℹ Data & Privacy</div>
+                        <div style={{ fontSize: "11px", color: mutedColor, lineHeight: 1.6 }}>
+                          Your tasks are stored securely on our servers. We never sell your data. Local settings are stored only in your browser.
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                </motion.div>
+              </AnimatePresence>
             </div>
 
             {/* Footer */}
-            <div style={{ padding: "16px 24px", borderTop: `1px solid ${border}`, display: "flex", gap: "8px" }}>
+            <div style={{
+              padding: "14px 22px",
+              borderTop: `1px solid ${border}`,
+              display: "flex", gap: "8px",
+              flexShrink: 0,
+              background: isDark ? "rgba(0,0,0,0.2)" : "rgba(255,255,255,0.4)",
+            }}>
               <button
-                onClick={() => { localStorage.removeItem("tp_settings"); setSettings(DEFAULTS); toast("Settings reset"); }}
+                onClick={reset}
                 style={{
                   flex: 1, padding: "10px", borderRadius: "10px",
                   border: `1px solid ${border}`, background: "transparent",
-                  color: mutedColor, cursor: "pointer", fontSize: "13px", fontFamily: "inherit",
+                  color: mutedColor, cursor: "pointer", fontSize: "12px", fontWeight: 600,
+                  fontFamily: "inherit", transition: "all 0.15s",
                 }}
+                onMouseEnter={e => e.currentTarget.style.color = textColor}
+                onMouseLeave={e => e.currentTarget.style.color = mutedColor}
               >Reset</button>
               <button
                 onClick={save}
+                disabled={saving}
                 style={{
                   flex: 2, padding: "10px", borderRadius: "10px",
                   background: "linear-gradient(135deg,#ff6b9d,#ff99cc)",
-                  border: "none", color: "white", cursor: "pointer",
+                  border: "none", color: "white", cursor: saving ? "not-allowed" : "pointer",
                   fontSize: "13px", fontWeight: 700, fontFamily: "inherit",
                   boxShadow: "0 4px 14px rgba(255,107,157,0.3)",
+                  opacity: saving ? 0.75 : 1,
+                  transition: "opacity 0.2s",
                 }}
-              >Save Changes</button>
+              >{saving ? "Saving…" : "Save Changes"}</button>
             </div>
           </motion.div>
         </>
