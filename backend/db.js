@@ -20,9 +20,9 @@ const sequelize = new Sequelize(process.env.DATABASE_URL, {
     max: 5,
     min: 0,
     idle: 10000,
+    acquire: 30000,
   },
 
-  // 🔥 IMPORTANT FOR SUPABASE POOLER
   define: {
     freezeTableName: true,
   },
@@ -37,17 +37,27 @@ const connectDB = async () => {
     const Category = require("./models/Category");
     const Task     = require("./models/Task");
 
-    User.hasMany(Task, { foreignKey: "userId", onDelete: "CASCADE" });
-    Task.belongsTo(User, { foreignKey: "userId" });
+    // Associations
+    User.hasMany(Task,         { foreignKey: "userId",     onDelete: "CASCADE" });
+    Task.belongsTo(User,       { foreignKey: "userId" });
 
-    User.hasMany(Category, { foreignKey: "userId", onDelete: "CASCADE" });
-    Category.belongsTo(User, { foreignKey: "userId" });
+    User.hasMany(Category,     { foreignKey: "userId",     onDelete: "CASCADE" });
+    Category.belongsTo(User,   { foreignKey: "userId" });
 
-    Category.hasMany(Task, { foreignKey: "categoryId", onDelete: "SET NULL" });
-    Task.belongsTo(Category, { foreignKey: "categoryId" });
+    Category.hasMany(Task,     { foreignKey: "categoryId", onDelete: "SET NULL" });
+    Task.belongsTo(Category,   { foreignKey: "categoryId" });
 
+    // ✅ FIX: Use force:false, alter:false in production with Supabase pooler
+    // Instead manually ensure tables exist safely
     const isProduction = process.env.NODE_ENV === "production";
-    await sequelize.sync({ alter: !isProduction });
+
+    if (isProduction) {
+      // In production: just create tables if they don't exist, never alter
+      // This avoids pgBouncer transaction issues with ALTER TABLE
+      await sequelize.sync({ force: false, alter: false });
+    } else {
+      await sequelize.sync({ alter: true });
+    }
 
     console.log("✅ Tables synced");
   } catch (error) {

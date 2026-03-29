@@ -24,8 +24,13 @@ const Category = sequelize.define("Category", {
   userId: {
     type: DataTypes.UUID,
     allowNull: false,
-    references: { model: "Users", key: "id" },
+    // ✅ FIX: Match exact table name ("User" not "Users")
+    references: { model: "User", key: "id" },
+    onDelete: "CASCADE",
   },
-}, { timestamps: true });
+}, {
+  timestamps: true,
+  freezeTableName: true,
+});
 
 module.exports = Category;

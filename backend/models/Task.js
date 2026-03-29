@@ -59,13 +59,20 @@ const Task = sequelize.define("Task", {
   userId: {
     type: DataTypes.UUID,
     allowNull: false,
-    references: { model: "Users", key: "id" },
+    // ✅ FIX: Match exact table name Sequelize creates ("Task" → "User" not "Users")
+    references: { model: "User", key: "id" },
+    onDelete: "CASCADE",
   },
   categoryId: {
     type: DataTypes.UUID,
     allowNull: true,
-    references: { model: "Categories", key: "id" },
+    // ✅ FIX: Match exact table name ("Category" not "Categories")
+    references: { model: "Category", key: "id" },
+    onDelete: "SET NULL",
   },
-}, { timestamps: true });
+}, {
+  timestamps: true,
+  freezeTableName: true,
+});
 
 module.exports = Task;

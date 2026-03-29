@@ -6,31 +6,30 @@ const User = sequelize.define("User", {
   id: {
     type: DataTypes.UUID,
     defaultValue: DataTypes.UUIDV4,
-    primaryKey: true
+    primaryKey: true,
   },
   name: {
     type: DataTypes.STRING,
     allowNull: false,
-    validate: { len: [2, 50] }
+    validate: { len: [2, 50] },
   },
   email: {
     type: DataTypes.STRING,
     allowNull: false,
     unique: true,
-    validate: { isEmail: true }
+    validate: { isEmail: true },
   },
   password: {
     type: DataTypes.STRING,
-    allowNull: false
+    allowNull: false,
   },
   avatar: {
     type: DataTypes.STRING,
-    defaultValue: ""
+    defaultValue: "",
   },
   lastLogin: {
-    type: DataTypes.DATE
+    type: DataTypes.DATE,
   },
-  // FIX: this field was used in notificationScheduler but not defined in model
   notificationPreferences: {
     type: DataTypes.JSONB,
     defaultValue: {
@@ -38,10 +37,13 @@ const User = sequelize.define("User", {
       dueDateReminders: true,
       reminderTime: "1hour",
       dailySummary: true,
-    }
-  }
+    },
+  },
 }, {
   timestamps: true,
+  // ✅ FIX: freezeTableName is set globally in sequelize config,
+  // but explicitly set here too so table is always "User" not "Users"
+  freezeTableName: true,
   hooks: {
     beforeCreate: async (user) => {
       if (user.password) {
@@ -54,11 +56,11 @@ const User = sequelize.define("User", {
         const salt = await bcrypt.genSalt(10);
         user.password = await bcrypt.hash(user.password, salt);
       }
-    }
-  }
+    },
+  },
 });
 
-User.prototype.comparePassword = async function(password) {
+User.prototype.comparePassword = async function (password) {
   return await bcrypt.compare(password, this.password);
 };
 
