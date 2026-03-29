@@ -3,8 +3,6 @@ const cors = require("cors");
 const path = require("path");
 require("dotenv").config();
 
-console.log("🚀 NEW SERVER VERSION RUNNING"); // 🔥 DEBUG LINE
-
 const { connectDB } = require("./db");
 const { protect } = require("./middleware/auth");
 const User = require("./models/User");
@@ -19,8 +17,14 @@ const { startNotificationScheduler } = require("./services/notificationScheduler
 const app = express();
 
 
-// 🔥 GUARANTEED WORKING CORS (OPEN)
-app.use(cors());
+// ✅ FINAL CORS (VERCEL + LOCALHOST)
+app.use(cors({
+  origin: [
+    "http://localhost:5173",
+    "https://todo-app-five-chi-14.vercel.app"
+  ],
+  credentials: true
+}));
 
 
 // ✅ Body parsing
@@ -34,10 +38,10 @@ app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
 // ── Routes ─────────────────────────
 
-// Public routes
+// Public
 app.use("/api/auth", authRoutes);
 
-// Protected routes
+// Protected
 app.use("/api/tasks", protect, taskRoutes);
 app.use("/api/categories", protect, categoryRoutes);
 app.use("/api/ai", protect, aiRoutes);
