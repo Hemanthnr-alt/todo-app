@@ -1,91 +1,75 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useTheme } from "../context/ThemeContext";
 import { useTasks } from "../hooks/useTasks";
 import CenteredModal from "../components/CenteredModal";
 import CustomSelect from "../components/CustomSelect";
-import toast from "react-hot-toast";
-import api from "../services/api";
 
 const MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
-const DAYS = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+const DAYS_FULL  = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+const DAYS_SHORT = ["S","M","T","W","T","F","S"];
 
 const PRIORITY_META = {
-  high:   { color: "#f43f5e", dot: "🔴" },
-  medium: { color: "#f59e0b", dot: "🟡" },
-  low:    { color: "#10b981", dot: "🟢" },
+  high:   { color: "#f43f5e" },
+  medium: { color: "#f59e0b" },
+  low:    { color: "#10b981" },
 };
 
 export default function Calendar() {
   const { isDark } = useTheme();
-  const { tasks, categories, loading, addTask, updateTask, deleteTask } = useTasks();
-  const [currentDate, setCurrentDate] = useState(new Date());
-  const [selectedDate, setSelectedDate] = useState(null);
-  const [showAddModal, setShowAddModal] = useState(false);
-  const [newTaskTitle, setNewTaskTitle] = useState("");
-  const [newTaskPriority, setNewTaskPriority] = useState("medium");
-  const [newTaskCategory, setNewTaskCategory] = useState("");
-  const [addingTask, setAddingTask] = useState(false);
+  const { tasks, categories, addTask, updateTask, deleteTask } = useTasks();
 
-  const textColor = isDark ? "#f1f5f9" : "#0f172a";
+  const [currentDate,    setCurrentDate]    = useState(new Date());
+  const [selectedDate,   setSelectedDate]   = useState(null);
+  const [showAddModal,   setShowAddModal]   = useState(false);
+  const [newTaskTitle,   setNewTaskTitle]   = useState("");
+  const [newTaskPriority,setNewTaskPriority]= useState("medium");
+  const [newTaskCategory,setNewTaskCategory]= useState("");
+  const [addingTask,     setAddingTask]     = useState(false);
+  const [showDaySheet,   setShowDaySheet]   = useState(false); // mobile day detail
+
+  const textColor  = isDark ? "#f1f5f9"                : "#0f172a";
   const mutedColor = isDark ? "rgba(241,245,249,0.45)" : "rgba(15,23,42,0.45)";
-  const cardBg = isDark ? "rgba(15,23,42,0.7)" : "rgba(255,255,255,0.9)";
-  const border = isDark ? "rgba(255,107,157,0.12)" : "rgba(255,107,157,0.18)";
+  const cardBg     = isDark ? "rgba(15,23,42,0.7)"     : "rgba(255,255,255,0.9)";
+  const border     = isDark ? "rgba(255,107,157,0.12)" : "rgba(255,107,157,0.18)";
 
-  const year = currentDate.getFullYear();
+  const year  = currentDate.getFullYear();
   const month = currentDate.getMonth();
-
-  const firstDay = new Date(year, month, 1).getDay();
-  const daysInMonth = new Date(year, month + 1, 0).getDate();
-  const prevMonthDays = new Date(year, month, 0).getDate();
-
   const today = new Date().toISOString().split("T")[0];
 
-  const getTasksForDate = (dateStr) => tasks.filter((t) => t.dueDate === dateStr);
+  const firstDay     = new Date(year, month, 1).getDay();
+  const daysInMonth  = new Date(year, month + 1, 0).getDate();
+  const prevMonthDays= new Date(year, month, 0).getDate();
 
-  const formatDateStr = (y, m, d) => {
-    const mm = String(m + 1).padStart(2, "0");
-    const dd = String(d).padStart(2, "0");
-    return `${y}-${mm}-${dd}`;
-  };
+  const fmt = (y, m, d) =>
+    `${y}-${String(m+1).padStart(2,"0")}-${String(d).padStart(2,"0")}`;
+
+  const getTasksForDate = (ds) => tasks.filter(t => t.dueDate === ds);
+
+  // Build 42-cell grid
+  const cells = [];
+  for (let i = firstDay - 1; i >= 0; i--)
+    cells.push({ day: prevMonthDays - i, current: false, dateStr: null });
+  for (let d = 1; d <= daysInMonth; d++)
+    cells.push({ day: d, current: true, dateStr: fmt(year, month, d) });
+  while (cells.length < 42)
+    cells.push({ day: cells.length - firstDay - daysInMonth + 1, current: false, dateStr: null });
+
+  const selectedTasks = selectedDate ? getTasksForDate(selectedDate) : [];
 
   const handleAddTask = async () => {
     if (!newTaskTitle.trim() || !selectedDate) return;
     setAddingTask(true);
-    await addTask({
-      title: newTaskTitle.trim(),
-      priority: newTaskPriority,
-      categoryId: newTaskCategory || null,
-      dueDate: selectedDate,
-    });
-    setNewTaskTitle("");
-    setNewTaskPriority("medium");
-    setNewTaskCategory("");
-    setShowAddModal(false);
-    setAddingTask(false);
+    await addTask({ title: newTaskTitle.trim(), priority: newTaskPriority, categoryId: newTaskCategory || null, dueDate: selectedDate });
+    setNewTaskTitle(""); setNewTaskPriority("medium"); setNewTaskCategory("");
+    setShowAddModal(false); setAddingTask(false);
   };
 
-  const prevMonth = () => setCurrentDate(new Date(year, month - 1, 1));
-  const nextMonth = () => setCurrentDate(new Date(year, month + 1, 1));
-  const goToToday = () => { setCurrentDate(new Date()); setSelectedDate(today); };
-
-  // Build calendar grid
-  const calendarCells = [];
-  // Prev month trailing days
-  for (let i = firstDay - 1; i >= 0; i--) {
-    calendarCells.push({ day: prevMonthDays - i, isCurrentMonth: false, dateStr: null });
-  }
-  // Current month days
-  for (let d = 1; d <= daysInMonth; d++) {
-    calendarCells.push({ day: d, isCurrentMonth: true, dateStr: formatDateStr(year, month, d) });
-  }
-  // Next month leading days
-  const remaining = 42 - calendarCells.length;
-  for (let d = 1; d <= remaining; d++) {
-    calendarCells.push({ day: d, isCurrentMonth: false, dateStr: null });
-  }
-
-  const selectedTasks = selectedDate ? getTasksForDate(selectedDate) : [];
+  const handleDayClick = (cell) => {
+    if (!cell.current || !cell.dateStr) return;
+    setSelectedDate(cell.dateStr);
+    setShowDaySheet(true); // mobile: open sheet
+  };
 
   const inputStyle = {
     padding: "10px 14px", borderRadius: "10px",
@@ -95,237 +79,253 @@ export default function Calendar() {
     width: "100%", boxSizing: "border-box",
   };
 
+  const monthStr = `${year}-${String(month+1).padStart(2,"0")}`;
+  const monthTasks = tasks.filter(t => t.dueDate?.startsWith(monthStr));
+  const done = monthTasks.filter(t => t.completed).length;
+  const pct  = monthTasks.length > 0 ? Math.round((done/monthTasks.length)*100) : 0;
+
   return (
-    <div style={{ maxWidth: "1000px", margin: "0 auto", padding: "28px 20px", fontFamily: "'DM Sans', sans-serif", color: textColor }}>
+    <div style={{ maxWidth: "900px", margin: "0 auto", padding: "20px 12px", fontFamily: "'DM Sans',sans-serif", color: textColor }}>
 
       {/* Header */}
-      <motion.div initial={{ opacity: 0, y: -12 }} animate={{ opacity: 1, y: 0 }} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "28px", flexWrap: "wrap", gap: "12px" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px", flexWrap: "wrap", gap: "10px" }}>
         <div>
-          <h1 style={{ fontSize: "28px", fontWeight: 800, margin: "0 0 4px", letterSpacing: "-0.04em" }}>
+          <h1 style={{ fontSize: "clamp(22px,5vw,28px)", fontWeight: 800, margin: 0, letterSpacing: "-0.04em" }}>
             <span style={{ background: "linear-gradient(135deg,#ff6b9d,#ff99cc)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>Calendar</span>
           </h1>
-          <p style={{ fontSize: "13px", color: mutedColor, margin: 0 }}>
-            {tasks.filter(t => t.dueDate?.startsWith(`${year}-${String(month+1).padStart(2,"0")}`)).length} tasks this month
-          </p>
+          <p style={{ fontSize: "12px", color: mutedColor, margin: 0 }}>{monthTasks.length} tasks this month</p>
         </div>
-        <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
-          <motion.button whileTap={{ scale: 0.95 }} onClick={goToToday}
-            style={{ padding: "8px 16px", borderRadius: "10px", border: `1px solid ${border}`, background: "rgba(255,107,157,0.1)", color: "#ff6b9d", cursor: "pointer", fontSize: "13px", fontWeight: 600, fontFamily: "inherit" }}>
+
+        {/* Month nav */}
+        <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+          <motion.button whileTap={{ scale: 0.92 }} onClick={() => setCurrentDate(new Date(year, month-1, 1))}
+            style={{ width: "34px", height: "34px", borderRadius: "10px", border: `1px solid ${border}`, background: isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.04)", cursor: "pointer", color: textColor, fontSize: "16px" }}>‹</motion.button>
+          <span style={{ fontSize: "14px", fontWeight: 700, minWidth: "110px", textAlign: "center" }}>{MONTHS[month].slice(0,3)} {year}</span>
+          <motion.button whileTap={{ scale: 0.92 }} onClick={() => setCurrentDate(new Date(year, month+1, 1))}
+            style={{ width: "34px", height: "34px", borderRadius: "10px", border: `1px solid ${border}`, background: isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.04)", cursor: "pointer", color: textColor, fontSize: "16px" }}>›</motion.button>
+          <motion.button whileTap={{ scale: 0.95 }} onClick={() => { setCurrentDate(new Date()); setSelectedDate(today); }}
+            style={{ padding: "6px 12px", borderRadius: "8px", border: `1px solid ${border}`, background: "rgba(255,107,157,0.1)", color: "#ff6b9d", cursor: "pointer", fontSize: "12px", fontWeight: 600, fontFamily: "inherit" }}>
             Today
           </motion.button>
-          <motion.button whileTap={{ scale: 0.92 }} onClick={prevMonth}
-            style={{ width: "36px", height: "36px", borderRadius: "10px", border: `1px solid ${border}`, background: isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.04)", cursor: "pointer", color: textColor, fontSize: "16px" }}>‹</motion.button>
-          <span style={{ fontSize: "15px", fontWeight: 700, minWidth: "140px", textAlign: "center" }}>{MONTHS[month]} {year}</span>
-          <motion.button whileTap={{ scale: 0.92 }} onClick={nextMonth}
-            style={{ width: "36px", height: "36px", borderRadius: "10px", border: `1px solid ${border}`, background: isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.04)", cursor: "pointer", color: textColor, fontSize: "16px" }}>›</motion.button>
         </div>
-      </motion.div>
+      </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 300px", gap: "20px", alignItems: "start" }}>
-        {/* Calendar Grid */}
-        <div style={{ background: cardBg, backdropFilter: "blur(12px)", borderRadius: "20px", border: `1px solid ${border}`, overflow: "hidden" }}>
-          {/* Day headers */}
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", borderBottom: `1px solid ${border}` }}>
-            {DAYS.map(d => (
-              <div key={d} style={{ padding: "12px 0", textAlign: "center", fontSize: "11px", fontWeight: 700, color: mutedColor, textTransform: "uppercase", letterSpacing: "0.06em" }}>{d}</div>
-            ))}
+      {/* Month stats strip */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: "8px", marginBottom: "14px" }}>
+        {[
+          { label: "Total", value: monthTasks.length, color: "#ff6b9d" },
+          { label: "Done",  value: done,              color: "#10b981" },
+          { label: `${pct}% done`, value: monthTasks.length - done, color: "#f59e0b" },
+        ].map(s => (
+          <div key={s.label} style={{ padding: "10px 12px", borderRadius: "12px", background: cardBg, backdropFilter: "blur(10px)", border: `1px solid ${border}` }}>
+            <div style={{ fontSize: "18px", fontWeight: 800, color: s.color }}>{s.value}</div>
+            <div style={{ fontSize: "10px", color: mutedColor }}>{s.label}</div>
           </div>
+        ))}
+      </div>
 
-          {/* Calendar cells */}
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)" }}>
-            {calendarCells.map((cell, i) => {
-              const isToday = cell.dateStr === today;
-              const isSelected = cell.dateStr === selectedDate;
-              const cellTasks = cell.dateStr ? getTasksForDate(cell.dateStr) : [];
-              const hasOverdue = cellTasks.some(t => !t.completed);
-
-              return (
-                <motion.div
-                  key={i}
-                  whileHover={cell.isCurrentMonth ? { scale: 1.02 } : {}}
-                  onClick={() => { if (cell.isCurrentMonth && cell.dateStr) setSelectedDate(cell.dateStr); }}
-                  style={{
-                    minHeight: "80px", padding: "8px", cursor: cell.isCurrentMonth ? "pointer" : "default",
-                    borderBottom: `1px solid ${isDark ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.04)"}`,
-                    borderRight: `1px solid ${isDark ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.04)"}`,
-                    background: isSelected ? "rgba(255,107,157,0.12)" : isToday ? "rgba(255,107,157,0.06)" : "transparent",
-                    transition: "background 0.15s",
-                    position: "relative",
-                  }}
-                >
-                  {/* Day number */}
-                  <div style={{
-                    width: "26px", height: "26px", borderRadius: "8px",
-                    display: "flex", alignItems: "center", justifyContent: "center",
-                    fontSize: "13px", fontWeight: isToday ? 800 : 500,
-                    background: isToday ? "linear-gradient(135deg,#ff6b9d,#ff99cc)" : "transparent",
-                    color: isToday ? "white" : cell.isCurrentMonth ? textColor : mutedColor,
-                    marginBottom: "4px",
-                  }}>{cell.day}</div>
-
-                  {/* Task dots */}
-                  {cellTasks.length > 0 && (
-                    <div style={{ display: "flex", flexWrap: "wrap", gap: "2px" }}>
-                      {cellTasks.slice(0, 3).map((t, ti) => (
-                        <div key={ti} style={{
-                          width: "6px", height: "6px", borderRadius: "50%",
-                          background: PRIORITY_META[t.priority]?.color || "#ff6b9d",
-                          opacity: t.completed ? 0.4 : 1,
-                        }} />
-                      ))}
-                      {cellTasks.length > 3 && (
-                        <span style={{ fontSize: "9px", color: mutedColor }}>+{cellTasks.length - 3}</span>
-                      )}
-                    </div>
-                  )}
-                </motion.div>
-              );
-            })}
-          </div>
+      {/* Calendar grid */}
+      <div style={{ background: cardBg, backdropFilter: "blur(12px)", borderRadius: "16px", border: `1px solid ${border}`, overflow: "hidden" }}>
+        {/* Day headers */}
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(7,1fr)", borderBottom: `1px solid ${border}` }}>
+          {DAYS_FULL.map((d, i) => (
+            <div key={d} style={{ padding: "10px 0", textAlign: "center", fontSize: "10px", fontWeight: 700, color: mutedColor, textTransform: "uppercase", letterSpacing: "0.05em" }}>
+              <span className="day-full">{d}</span>
+              <span className="day-short">{DAYS_SHORT[i]}</span>
+            </div>
+          ))}
         </div>
 
-        {/* Side panel */}
-        <div>
-          {/* Selected day tasks */}
+        {/* Cells */}
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(7,1fr)" }}>
+          {cells.map((cell, i) => {
+            const isToday    = cell.dateStr === today;
+            const isSelected = cell.dateStr === selectedDate;
+            const cellTasks  = cell.dateStr ? getTasksForDate(cell.dateStr) : [];
+
+            return (
+              <motion.div
+                key={i}
+                whileTap={cell.current ? { scale: 0.94 } : {}}
+                onClick={() => handleDayClick(cell)}
+                style={{
+                  minHeight: "clamp(52px, 10vw, 80px)",
+                  padding: "6px 4px",
+                  cursor: cell.current ? "pointer" : "default",
+                  borderBottom: `1px solid ${isDark ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.04)"}`,
+                  borderRight:  `1px solid ${isDark ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.04)"}`,
+                  background: isSelected ? "rgba(255,107,157,0.14)"
+                            : isToday    ? "rgba(255,107,157,0.07)"
+                            : "transparent",
+                  transition: "background 0.15s",
+                }}
+              >
+                <div style={{
+                  width: "clamp(22px,5vw,26px)", height: "clamp(22px,5vw,26px)",
+                  borderRadius: "7px", margin: "0 auto 3px",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  fontSize: "clamp(11px,2.5vw,13px)", fontWeight: isToday ? 800 : 500,
+                  background: isToday ? "linear-gradient(135deg,#ff6b9d,#ff99cc)" : "transparent",
+                  color: isToday ? "white" : cell.current ? textColor : mutedColor,
+                }}>{cell.day}</div>
+
+                {/* Task dots */}
+                {cellTasks.length > 0 && (
+                  <div style={{ display: "flex", justifyContent: "center", flexWrap: "wrap", gap: "2px" }}>
+                    {cellTasks.slice(0, 3).map((t, ti) => (
+                      <div key={ti} style={{
+                        width: "5px", height: "5px", borderRadius: "50%",
+                        background: PRIORITY_META[t.priority]?.color || "#ff6b9d",
+                        opacity: t.completed ? 0.4 : 1,
+                      }} />
+                    ))}
+                    {cellTasks.length > 3 && (
+                      <span style={{ fontSize: "8px", color: mutedColor, lineHeight: 1 }}>+{cellTasks.length - 3}</span>
+                    )}
+                  </div>
+                )}
+              </motion.div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Desktop: side panel (hidden on mobile, shown inline below on mobile) */}
+      {selectedDate && (
+        <div className="calendar-side-desktop" style={{ marginTop: "16px" }}>
+          <DayPanel
+            selectedDate={selectedDate}
+            selectedTasks={selectedTasks}
+            categories={categories}
+            isDark={isDark} textColor={textColor} mutedColor={mutedColor}
+            cardBg={cardBg} border={border}
+            onAdd={() => setShowAddModal(true)}
+            onToggle={(task) => updateTask(task.id, { completed: !task.completed })}
+            onDelete={deleteTask}
+          />
+        </div>
+      )}
+
+      {/* Mobile: bottom sheet for day detail */}
+      <AnimatePresence>
+        {showDaySheet && selectedDate && (
           <motion.div
-            initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }}
-            style={{ background: cardBg, backdropFilter: "blur(12px)", borderRadius: "16px", border: `1px solid ${border}`, overflow: "hidden", marginBottom: "12px" }}
+            className="mobile-day-sheet"
+            initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }}
+            transition={{ type: "spring", damping: 28, stiffness: 300 }}
+            style={{
+              position: "fixed", bottom: 0, left: 0, right: 0,
+              zIndex: 500,
+              background: isDark ? "rgba(8,11,20,0.98)" : "rgba(248,250,252,0.98)",
+              backdropFilter: "blur(24px)",
+              borderRadius: "20px 20px 0 0",
+              border: `1px solid ${border}`,
+              paddingBottom: "calc(env(safe-area-inset-bottom) + 80px)",
+              maxHeight: "75vh", overflowY: "auto",
+            }}
           >
-            <div style={{ padding: "14px 16px", borderBottom: `1px solid ${border}`, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <div>
-                <div style={{ fontSize: "13px", fontWeight: 700, color: textColor }}>
-                  {selectedDate ? new Date(selectedDate + "T00:00:00").toLocaleDateString("en-US", { weekday: "long", month: "short", day: "numeric" }) : "Select a day"}
-                </div>
-                {selectedDate && <div style={{ fontSize: "11px", color: mutedColor }}>{selectedTasks.length} tasks</div>}
-              </div>
-              {selectedDate && (
-                <motion.button whileTap={{ scale: 0.95 }} onClick={() => setShowAddModal(true)}
-                  style={{ padding: "6px 12px", borderRadius: "8px", background: "linear-gradient(135deg,#ff6b9d,#ff99cc)", border: "none", color: "white", cursor: "pointer", fontSize: "12px", fontWeight: 700, fontFamily: "inherit" }}>
-                  + Add
-                </motion.button>
-              )}
+            {/* Sheet handle */}
+            <div style={{ display: "flex", justifyContent: "center", padding: "12px 0 4px" }}>
+              <div style={{ width: "36px", height: "4px", borderRadius: "2px", background: isDark ? "rgba(255,255,255,0.15)" : "rgba(0,0,0,0.15)" }} />
             </div>
 
-            <div style={{ maxHeight: "380px", overflowY: "auto", padding: "8px" }}>
-              {!selectedDate ? (
-                <div style={{ textAlign: "center", padding: "32px 16px", color: mutedColor, fontSize: "13px" }}>Click a date to view tasks</div>
-              ) : selectedTasks.length === 0 ? (
+            {/* Sheet header */}
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 16px 12px" }}>
+              <div>
+                <div style={{ fontSize: "15px", fontWeight: 700, color: textColor }}>
+                  {new Date(selectedDate + "T00:00:00").toLocaleDateString("en-US", { weekday: "long", month: "short", day: "numeric" })}
+                </div>
+                <div style={{ fontSize: "12px", color: mutedColor }}>{selectedTasks.length} tasks</div>
+              </div>
+              <div style={{ display: "flex", gap: "8px" }}>
+                <motion.button whileTap={{ scale: 0.95 }} onClick={() => setShowAddModal(true)}
+                  style={{ padding: "7px 14px", borderRadius: "8px", background: "linear-gradient(135deg,#ff6b9d,#ff99cc)", border: "none", color: "white", cursor: "pointer", fontSize: "13px", fontWeight: 700, fontFamily: "inherit" }}>
+                  + Add
+                </motion.button>
+                <button onClick={() => setShowDaySheet(false)}
+                  style={{ width: "34px", height: "34px", borderRadius: "8px", border: `1px solid ${border}`, background: "none", color: mutedColor, cursor: "pointer", fontSize: "16px" }}>
+                  ✕
+                </button>
+              </div>
+            </div>
+
+            {/* Tasks list */}
+            <div style={{ padding: "0 12px 12px" }}>
+              {selectedTasks.length === 0 ? (
                 <div style={{ textAlign: "center", padding: "32px 16px" }}>
                   <div style={{ fontSize: "32px", marginBottom: "8px" }}>🌿</div>
                   <p style={{ fontSize: "13px", color: mutedColor }}>No tasks on this day</p>
                 </div>
               ) : (
-                <AnimatePresence>
-                  {selectedTasks.map((task, i) => {
-                    const pm = PRIORITY_META[task.priority] || PRIORITY_META.medium;
-                    const cat = categories.find(c => c.id === task.categoryId);
-                    return (
-                      <motion.div
-                        key={task.id}
-                        initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0 }} transition={{ delay: i * 0.04 }}
+                selectedTasks.map((task, i) => {
+                  const pm  = PRIORITY_META[task.priority] || PRIORITY_META.medium;
+                  const cat = categories.find(c => c.id === task.categoryId);
+                  return (
+                    <motion.div key={task.id}
+                      initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: i * 0.04 }}
+                      style={{
+                        display: "flex", alignItems: "center", gap: "10px",
+                        padding: "12px 14px", borderRadius: "12px", marginBottom: "8px",
+                        background: isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.03)",
+                        borderLeft: `3px solid ${pm.color}`,
+                      }}
+                    >
+                      <div onClick={() => updateTask(task.id, { completed: !task.completed })}
                         style={{
-                          display: "flex", alignItems: "center", gap: "10px", padding: "10px 12px",
-                          borderRadius: "10px", marginBottom: "6px",
-                          background: isDark ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.03)",
-                          borderLeft: `3px solid ${pm.color}`,
-                        }}
-                      >
-                        <div
-                          onClick={() => updateTask(task.id, { completed: !task.completed })}
-                          style={{
-                            width: "18px", height: "18px", borderRadius: "5px", flexShrink: 0,
-                            border: `2px solid ${task.completed ? "#10b981" : "rgba(255,255,255,0.25)"}`,
-                            background: task.completed ? "#10b981" : "transparent",
-                            cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
-                          }}
-                        >
-                          {task.completed && <span style={{ color: "white", fontSize: "10px" }}>✓</span>}
+                          width: "20px", height: "20px", borderRadius: "6px", flexShrink: 0,
+                          border: `2px solid ${task.completed ? "#10b981" : "rgba(255,255,255,0.25)"}`,
+                          background: task.completed ? "#10b981" : "transparent",
+                          cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
+                        }}>
+                        {task.completed && <span style={{ color: "white", fontSize: "11px" }}>✓</span>}
+                      </div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: "14px", fontWeight: 600, color: textColor, textDecoration: task.completed ? "line-through" : "none", opacity: task.completed ? 0.5 : 1 }}>
+                          {task.title}
                         </div>
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ fontSize: "13px", fontWeight: 600, color: textColor, textDecoration: task.completed ? "line-through" : "none", opacity: task.completed ? 0.5 : 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                            {task.title}
-                          </div>
-                          {cat && <div style={{ fontSize: "10px", color: cat.color, marginTop: "2px" }}>{cat.icon} {cat.name}</div>}
-                        </div>
-                        <button onClick={() => deleteTask(task.id)} style={{ background: "none", border: "none", color: "#f43f5e", cursor: "pointer", fontSize: "11px", flexShrink: 0 }}>✕</button>
-                      </motion.div>
-                    );
-                  })}
-                </AnimatePresence>
+                        {cat && <div style={{ fontSize: "11px", color: cat.color, marginTop: "2px" }}>{cat.icon} {cat.name}</div>}
+                      </div>
+                      <button onClick={() => { deleteTask(task.id); }}
+                        style={{ background: "none", border: "none", color: "#f43f5e", cursor: "pointer", fontSize: "14px", padding: "4px" }}>✕</button>
+                    </motion.div>
+                  );
+                })
               )}
             </div>
           </motion.div>
+        )}
+      </AnimatePresence>
 
-          {/* Month stats */}
-          <div style={{ background: cardBg, backdropFilter: "blur(12px)", borderRadius: "16px", border: `1px solid ${border}`, padding: "14px 16px" }}>
-            <div style={{ fontSize: "11px", fontWeight: 700, color: mutedColor, textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: "12px" }}>Month Overview</div>
-            {(() => {
-              const monthStr = `${year}-${String(month + 1).padStart(2, "0")}`;
-              const monthTasks = tasks.filter(t => t.dueDate?.startsWith(monthStr));
-              const done = monthTasks.filter(t => t.completed).length;
-              const pct = monthTasks.length > 0 ? Math.round((done / monthTasks.length) * 100) : 0;
-              return (
-                <>
-                  {[
-                    { label: "Total", value: monthTasks.length, color: "#ff6b9d" },
-                    { label: "Done", value: done, color: "#10b981" },
-                    { label: "Pending", value: monthTasks.length - done, color: "#f59e0b" },
-                  ].map(s => (
-                    <div key={s.label} style={{ display: "flex", justifyContent: "space-between", padding: "6px 0", borderBottom: `1px solid ${isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.05)"}` }}>
-                      <span style={{ fontSize: "12px", color: mutedColor }}>{s.label}</span>
-                      <span style={{ fontSize: "12px", fontWeight: 700, color: s.color }}>{s.value}</span>
-                    </div>
-                  ))}
-                  <div style={{ marginTop: "12px" }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "6px" }}>
-                      <span style={{ fontSize: "11px", color: mutedColor }}>Completion</span>
-                      <span style={{ fontSize: "11px", fontWeight: 700, color: "#ff6b9d" }}>{pct}%</span>
-                    </div>
-                    <div style={{ height: "4px", background: isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.08)", borderRadius: "2px", overflow: "hidden" }}>
-                      <motion.div animate={{ width: `${pct}%` }} transition={{ duration: 0.5 }}
-                        style={{ height: "100%", background: "linear-gradient(90deg,#ff6b9d,#ff99cc)", borderRadius: "2px" }} />
-                    </div>
-                  </div>
-                </>
-              );
-            })()}
-          </div>
-        </div>
-      </div>
+      {/* Backdrop for mobile sheet */}
+      <AnimatePresence>
+        {showDaySheet && (
+          <motion.div
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            onClick={() => setShowDaySheet(false)}
+            className="mobile-day-sheet"
+            style={{ position: "fixed", inset: 0, zIndex: 499, background: "rgba(0,0,0,0.4)", backdropFilter: "blur(2px)" }}
+          />
+        )}
+      </AnimatePresence>
 
-      {/* Add Task Modal — via Portal, always centered */}
-      <CenteredModal
-        isOpen={showAddModal && !!selectedDate}
-        onClose={() => setShowAddModal(false)}
-        title="Add Task"
-        maxWidth="380px"
-      >
-        <div style={{ fontFamily: "'DM Sans', sans-serif" }}>
-          <p style={{ fontSize: "12px", color: mutedColor, margin: "0 0 16px" }}>
+      {/* Add task modal */}
+      <CenteredModal isOpen={showAddModal && !!selectedDate} onClose={() => setShowAddModal(false)} title="Add Task" maxWidth="380px">
+        <div style={{ fontFamily: "'DM Sans',sans-serif" }}>
+          <p style={{ fontSize: "12px", color: mutedColor, margin: "0 0 14px" }}>
             {selectedDate && new Date(selectedDate + "T00:00:00").toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })}
           </p>
           <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
             <input autoFocus placeholder="Task title *" value={newTaskTitle} onChange={e => setNewTaskTitle(e.target.value)}
               onKeyDown={e => e.key === "Enter" && handleAddTask()}
-              style={{ ...inputStyle, width: "100%", boxSizing: "border-box" }} />
-            <CustomSelect
-              value={newTaskPriority}
-              onChange={setNewTaskPriority}
-              options={[
-                { value: "high",   label: "🔴 High"   },
-                { value: "medium", label: "🟡 Medium" },
-                { value: "low",    label: "🟢 Low"    },
-              ]}
-            />
-            <CustomSelect
-              value={newTaskCategory}
-              onChange={setNewTaskCategory}
-              options={[
-                { value: "", label: "No category" },
-                ...categories.map(c => ({ value: c.id, label: `${c.icon} ${c.name}` })),
-              ]}
-            />
+              style={inputStyle} />
+            <CustomSelect value={newTaskPriority} onChange={setNewTaskPriority} options={[
+              { value: "high", label: "🔴 High" }, { value: "medium", label: "🟡 Medium" }, { value: "low", label: "🟢 Low" },
+            ]} />
+            <CustomSelect value={newTaskCategory} onChange={setNewTaskCategory} options={[
+              { value: "", label: "No category" },
+              ...categories.map(c => ({ value: c.id, label: `${c.icon} ${c.name}` })),
+            ]} />
           </div>
           <div style={{ display: "flex", gap: "8px", marginTop: "16px" }}>
             <button onClick={() => setShowAddModal(false)}
@@ -339,6 +339,76 @@ export default function Calendar() {
           </div>
         </div>
       </CenteredModal>
+
+      <style>{`
+        .day-short { display: none; }
+        .calendar-side-desktop { display: block; }
+        .mobile-day-sheet { display: block; }
+
+        @media (max-width: 600px) {
+          .day-full  { display: none; }
+          .day-short { display: inline; }
+          .calendar-side-desktop { display: none; }
+        }
+        @media (min-width: 601px) {
+          .mobile-day-sheet { display: none !important; }
+        }
+      `}</style>
+    </div>
+  );
+}
+
+// Reusable day panel (desktop sidebar)
+function DayPanel({ selectedDate, selectedTasks, categories, isDark, textColor, mutedColor, cardBg, border, onAdd, onToggle, onDelete }) {
+  return (
+    <div style={{ background: cardBg, backdropFilter: "blur(12px)", borderRadius: "16px", border: `1px solid ${border}`, overflow: "hidden" }}>
+      <div style={{ padding: "14px 16px", borderBottom: `1px solid ${border}`, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <div>
+          <div style={{ fontSize: "13px", fontWeight: 700, color: textColor }}>
+            {new Date(selectedDate + "T00:00:00").toLocaleDateString("en-US", { weekday: "long", month: "short", day: "numeric" })}
+          </div>
+          <div style={{ fontSize: "11px", color: mutedColor }}>{selectedTasks.length} tasks</div>
+        </div>
+        <motion.button whileTap={{ scale: 0.95 }} onClick={onAdd}
+          style={{ padding: "6px 12px", borderRadius: "8px", background: "linear-gradient(135deg,#ff6b9d,#ff99cc)", border: "none", color: "white", cursor: "pointer", fontSize: "12px", fontWeight: 700, fontFamily: "inherit" }}>
+          + Add
+        </motion.button>
+      </div>
+      <div style={{ maxHeight: "300px", overflowY: "auto", padding: "8px" }}>
+        {selectedTasks.length === 0 ? (
+          <div style={{ textAlign: "center", padding: "24px 16px" }}>
+            <div style={{ fontSize: "28px", marginBottom: "6px" }}>🌿</div>
+            <p style={{ fontSize: "13px", color: mutedColor }}>No tasks on this day</p>
+          </div>
+        ) : selectedTasks.map((task, i) => {
+          const pm  = { high: "#f43f5e", medium: "#f59e0b", low: "#10b981" };
+          const cat = categories.find(c => c.id === task.categoryId);
+          return (
+            <div key={task.id} style={{
+              display: "flex", alignItems: "center", gap: "10px",
+              padding: "10px 12px", borderRadius: "10px", marginBottom: "6px",
+              background: isDark ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.03)",
+              borderLeft: `3px solid ${pm[task.priority] || pm.medium}`,
+            }}>
+              <div onClick={() => onToggle(task)} style={{
+                width: "18px", height: "18px", borderRadius: "5px", flexShrink: 0,
+                border: `2px solid ${task.completed ? "#10b981" : "rgba(255,255,255,0.25)"}`,
+                background: task.completed ? "#10b981" : "transparent",
+                cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
+              }}>
+                {task.completed && <span style={{ color: "white", fontSize: "10px" }}>✓</span>}
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: "13px", fontWeight: 600, color: textColor, textDecoration: task.completed ? "line-through" : "none", opacity: task.completed ? 0.5 : 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  {task.title}
+                </div>
+                {cat && <div style={{ fontSize: "10px", color: cat.color }}>{cat.icon} {cat.name}</div>}
+              </div>
+              <button onClick={() => onDelete(task.id)} style={{ background: "none", border: "none", color: "#f43f5e", cursor: "pointer", fontSize: "11px" }}>✕</button>
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }
