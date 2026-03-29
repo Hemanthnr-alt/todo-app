@@ -3,6 +3,8 @@ const cors = require("cors");
 const path = require("path");
 require("dotenv").config();
 
+console.log("🚀 NEW SERVER VERSION RUNNING"); // 🔥 DEBUG LINE
+
 const { connectDB } = require("./db");
 const { protect } = require("./middleware/auth");
 const User = require("./models/User");
@@ -17,10 +19,8 @@ const { startNotificationScheduler } = require("./services/notificationScheduler
 const app = express();
 
 
-// 🔥 TEMP OPEN CORS (THIS WILL DEFINITELY FIX YOUR ERROR)
+// 🔥 GUARANTEED WORKING CORS (OPEN)
 app.use(cors());
-
-// (After everything works, we can restrict later)
 
 
 // ✅ Body parsing
@@ -34,10 +34,10 @@ app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
 // ── Routes ─────────────────────────
 
-// Public
+// Public routes
 app.use("/api/auth", authRoutes);
 
-// Protected
+// Protected routes
 app.use("/api/tasks", protect, taskRoutes);
 app.use("/api/categories", protect, categoryRoutes);
 app.use("/api/ai", protect, aiRoutes);
