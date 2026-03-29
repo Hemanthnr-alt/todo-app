@@ -20,22 +20,13 @@ const allowedOrigins = [
   "https://todo-frontend-ajmr.onrender.com",
 ];
 
-app.use(
-  cors({
-    origin: function (origin, callback) {
-      // allow requests with no origin (Postman, mobile apps)
-      if (!origin) return callback(null, true);
+app.use(cors({
+  origin: true,
+  credentials: true,
+}));
 
-      if (allowedOrigins.includes(origin)) {
-        return callback(null, true);
-      } else {
-        console.log("❌ Blocked by CORS:", origin);
-        return callback(new Error("Not allowed by CORS"));
-      }
-    },
-    credentials: true,
-  })
-);
+// ✅ VERY IMPORTANT (this fixes preflight)
+app.options("*", cors());
 
 
 // Middlewares
