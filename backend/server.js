@@ -16,14 +16,28 @@ const { startNotificationScheduler } = require("./services/notificationScheduler
 
 const app = express();
 
-// ✅ CLEAN CORS (ONLY THIS — NO DUPLICATES)
+
+// ✅ BULLETPROOF CORS (FINAL FIX)
+const allowedOrigins = [
+  "http://localhost:5173",
+  "https://todo-frontend-ajmr.onrender.com", // 🔥 your frontend
+];
+
 app.use(cors({
-  origin: [
-    "http://localhost:5173",
-    "https://todo-frontend-ajmr.onrender.com"
-  ],
-  credentials: true
+  origin: function (origin, callback) {
+    // allow requests without origin (postman, mobile apps, etc.)
+    if (!origin) return callback(null, true);
+
+    if (allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    } else {
+      console.log("❌ Blocked by CORS:", origin);
+      return callback(new Error("Not allowed by CORS"));
+    }
+  },
+  credentials: true,
 }));
+
 
 // ✅ Body parsing
 app.use(express.json({ limit: "10mb" }));
@@ -32,17 +46,19 @@ app.use(express.urlencoded({ extended: true }));
 // ✅ Static files
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
+
 // ── Routes ─────────────────────────────────────────
 
-// Auth (no protection)
+// Public
 app.use("/api/auth", authRoutes);
 
-// Protected routes
+// Protected
 app.use("/api/tasks", protect, taskRoutes);
 app.use("/api/categories", protect, categoryRoutes);
 app.use("/api/ai", protect, aiRoutes);
 
-// ✅ User notification preferences
+
+// ✅ Notification preferences
 app.put("/api/user/notifications", protect, async (req, res) => {
   try {
     const { emailReminders, dueDateReminders, reminderTime, dailySummary } = req.body;
@@ -65,27 +81,29 @@ app.put("/api/user/notifications", protect, async (req, res) => {
   }
 });
 
+
 // ✅ Health check
 app.get("/api/health", (req, res) => {
   res.json({
     status: "healthy",
     timestamp: new Date().toISOString(),
-    version: "2.0.0",
   });
 });
+
 
 // ✅ Global error handler
 app.use((err, req, res, next) => {
   console.error("❌ Error:", err.message);
 
-  if (err.multer) {
-    return res.status(400).json({ error: err.message });
+  if (err.message === "Not allowed by CORS") {
+    return res.status(403).json({ error: "CORS blocked request" });
   }
 
   res.status(500).json({
     error: err.message || "Internal Server Error",
   });
 });
+
 
 // ✅ Start server
 const PORT = process.env.PORT || 5000;
