@@ -49,11 +49,9 @@ function Message({ msg, isDark }) {
   const textColor = isDark ? "#f1f5f9" : "#0f172a";
   const mutedColor = isDark ? "rgba(241,245,249,0.45)" : "rgba(15,23,42,0.45)";
 
-  // Render markdown-like formatting (bold, bullet points)
   const renderContent = (text) => {
     const lines = text.split("\n");
     return lines.map((line, i) => {
-      // Bold: **text**
       const rendered = line.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
       const isBullet = line.trim().startsWith("- ") || line.trim().startsWith("• ");
       return (
@@ -63,9 +61,7 @@ function Message({ msg, isDark }) {
           display: "flex", gap: isBullet ? "6px" : 0,
         }}>
           {isBullet && <span style={{ color: "#ff6b9d", flexShrink: 0, marginTop: "1px" }}>•</span>}
-          <span
-            dangerouslySetInnerHTML={{ __html: isBullet ? rendered.replace(/^[-•]\s+/, "") : rendered }}
-          />
+          <span dangerouslySetInnerHTML={{ __html: isBullet ? rendered.replace(/^[-•]\s+/, "") : rendered }} />
         </div>
       );
     });
@@ -84,7 +80,6 @@ function Message({ msg, isDark }) {
         marginBottom: "16px",
       }}
     >
-      {/* Avatar */}
       <div style={{
         width: "30px", height: "30px", borderRadius: "10px", flexShrink: 0,
         background: isUser ? "linear-gradient(135deg,#ff6b9d,#ff99cc)" : (isDark ? "rgba(255,107,157,0.15)" : "rgba(255,107,157,0.1)"),
@@ -97,7 +92,6 @@ function Message({ msg, isDark }) {
       </div>
 
       <div style={{ maxWidth: "80%", minWidth: "60px" }}>
-        {/* Role label */}
         <div style={{
           fontSize: "10px", fontWeight: 600, color: mutedColor,
           marginBottom: "4px", textAlign: isUser ? "right" : "left",
@@ -106,7 +100,6 @@ function Message({ msg, isDark }) {
           {isUser ? "You" : "30 AI"}
         </div>
 
-        {/* Bubble */}
         <div style={{
           padding: "11px 14px",
           borderRadius: isUser ? "16px 4px 16px 16px" : "4px 16px 16px 16px",
@@ -122,7 +115,6 @@ function Message({ msg, isDark }) {
           {msg.typing ? <TypingDots /> : renderContent(msg.content)}
         </div>
 
-        {/* Timestamp */}
         {msg.time && (
           <div style={{ fontSize: "10px", color: mutedColor, marginTop: "3px", textAlign: isUser ? "right" : "left" }}>
             {msg.time}
@@ -141,14 +133,25 @@ export default function AIAssistant({ tasks = [], categories = [] }) {
   const [messages, setMessages]   = useState([]);
   const [loading, setLoading]     = useState(false);
   const [error, setError]         = useState(null);
+  const [isMobile, setIsMobile]   = useState(window.innerWidth <= 768);
   const messagesEndRef             = useRef(null);
   const inputRef                   = useRef(null);
+
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth <= 768);
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
 
   const textColor  = isDark ? "#f1f5f9"                : "#0f172a";
   const mutedColor = isDark ? "rgba(241,245,249,0.45)" : "rgba(15,23,42,0.45)";
   const bg         = isDark ? "rgba(8,11,20,0.98)"     : "rgba(248,250,252,0.98)";
   const border     = isDark ? "rgba(255,107,157,0.12)" : "rgba(255,107,157,0.18)";
   const inputBg    = isDark ? "rgba(255,255,255,0.06)" : "#ffffff";
+
+  const MOBILE_NAV_HEIGHT = 72; // px
+  const FAB_BOTTOM = isMobile ? MOBILE_NAV_HEIGHT + 12 : 24;
+  const PANEL_BOTTOM = isMobile ? MOBILE_NAV_HEIGHT + 12 : 92;
 
   const timestamp = () => new Date().toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" });
 
@@ -201,7 +204,6 @@ ${pending.slice(0,8).map(t=>`- [${t.priority}] ${t.title}${t.dueDate?" (due "+t.
     setMessages(prev => [...prev, userMsg, typingMsg]);
     setLoading(true);
 
-    // Build conversation history for the API
     const history = messages
       .filter(m => !m.typing)
       .map(m => ({ role: m.role, content: m.content }));
@@ -259,6 +261,13 @@ ${pending.slice(0,8).map(t=>`- [${t.priority}] ${t.title}${t.dueDate?" (due "+t.
     }, 100);
   };
 
+  // Panel dimensions
+  const panelWidth = isMobile ? "calc(100vw - 16px)" : "min(400px, calc(100vw - 32px))";
+  const panelHeight = isMobile
+    ? `min(520px, calc(100dvh - ${MOBILE_NAV_HEIGHT + 80}px))`
+    : "min(580px, calc(100dvh - 120px))";
+  const panelRight = isMobile ? "8px" : "24px";
+
   return (
     <>
       {/* FAB */}
@@ -268,8 +277,12 @@ ${pending.slice(0,8).map(t=>`- [${t.priority}] ${t.title}${t.dueDate?" (due "+t.
         onClick={() => setOpen(!open)}
         title="30 AI Assistant"
         style={{
-          position: "fixed", bottom: "24px", right: "24px",
-          width: "56px", height: "56px", borderRadius: "18px",
+          position: "fixed",
+          bottom: `${FAB_BOTTOM}px`,
+          right: isMobile ? "12px" : "24px",
+          width: isMobile ? "50px" : "56px",
+          height: isMobile ? "50px" : "56px",
+          borderRadius: "18px",
           background: open
             ? (isDark ? "rgba(255,107,157,0.2)" : "rgba(255,107,157,0.15)")
             : "linear-gradient(135deg,#ff6b9d,#ff99cc)",
@@ -277,7 +290,8 @@ ${pending.slice(0,8).map(t=>`- [${t.priority}] ${t.title}${t.dueDate?" (due "+t.
           cursor: "pointer", zIndex: 8000,
           display: "flex", alignItems: "center", justifyContent: "center",
           boxShadow: open ? "none" : "0 8px 28px rgba(255,107,157,0.45)",
-          fontSize: "22px", transition: "all 0.2s",
+          fontSize: isMobile ? "20px" : "22px",
+          transition: "all 0.2s",
           color: open ? "#ff6b9d" : "white",
         }}
       >
@@ -302,9 +316,8 @@ ${pending.slice(0,8).map(t=>`- [${t.priority}] ${t.title}${t.dueDate?" (due "+t.
                 style={{
                   position: "fixed", inset: 0, zIndex: 8001,
                   background: "rgba(0,0,0,0.3)", backdropFilter: "blur(2px)",
-                  display: "none",
+                  display: isMobile ? "block" : "none",
                 }}
-                className="ai-mobile-backdrop"
               />
 
               <motion.div
@@ -314,9 +327,10 @@ ${pending.slice(0,8).map(t=>`- [${t.priority}] ${t.title}${t.dueDate?" (due "+t.
                 transition={{ type: "spring", damping: 26, stiffness: 300 }}
                 style={{
                   position: "fixed",
-                  bottom: "92px", right: "24px",
-                  width: "min(400px, calc(100vw - 32px))",
-                  height: "min(580px, calc(100dvh - 120px))",
+                  bottom: `${PANEL_BOTTOM}px`,
+                  right: panelRight,
+                  width: panelWidth,
+                  height: panelHeight,
                   background: bg,
                   backdropFilter: "blur(24px)",
                   borderRadius: "24px",
@@ -329,21 +343,21 @@ ${pending.slice(0,8).map(t=>`- [${t.priority}] ${t.title}${t.dueDate?" (due "+t.
               >
                 {/* Header */}
                 <div style={{
-                  padding: "16px 18px",
+                  padding: "14px 16px",
                   borderBottom: `1px solid ${border}`,
                   display: "flex", alignItems: "center", gap: "12px",
                   flexShrink: 0,
                 }}>
                   <div style={{
-                    width: "36px", height: "36px", borderRadius: "10px",
+                    width: "32px", height: "32px", borderRadius: "9px",
                     background: "linear-gradient(135deg,#ff6b9d,#ff99cc)",
                     display: "flex", alignItems: "center", justifyContent: "center",
-                    fontSize: "16px", flexShrink: 0, boxShadow: "0 4px 12px rgba(255,107,157,0.35)",
+                    fontSize: "14px", flexShrink: 0, boxShadow: "0 4px 12px rgba(255,107,157,0.35)",
                   }}>✦</div>
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: "14px", fontWeight: 800, color: textColor, letterSpacing: "-0.02em" }}>30 AI</div>
+                    <div style={{ fontSize: "13px", fontWeight: 800, color: textColor, letterSpacing: "-0.02em" }}>30 AI</div>
                     <div style={{ fontSize: "11px", color: "#10b981", display: "flex", alignItems: "center", gap: "4px" }}>
-                      <div style={{ width: "6px", height: "6px", borderRadius: "50%", background: "#10b981", animation: "pulse-dot 2s infinite" }} />
+                      <div style={{ width: "6px", height: "6px", borderRadius: "50%", background: "#10b981" }} />
                       Online · Powered by Claude
                     </div>
                   </div>
@@ -351,29 +365,22 @@ ${pending.slice(0,8).map(t=>`- [${t.priority}] ${t.title}${t.dueDate?" (due "+t.
                     <button onClick={clearChat} title="Clear chat" style={{
                       background: "none", border: "none", cursor: "pointer",
                       color: mutedColor, fontSize: "14px", padding: "4px",
-                      borderRadius: "6px", transition: "color 0.15s",
-                    }}
-                      onMouseEnter={e => e.currentTarget.style.color = "#ff6b9d"}
-                      onMouseLeave={e => e.currentTarget.style.color = mutedColor}
-                    >🗑</button>
+                      borderRadius: "6px",
+                    }}>🗑</button>
                     <button onClick={() => setOpen(false)} style={{
                       background: "none", border: "none", cursor: "pointer",
                       color: mutedColor, fontSize: "14px", padding: "4px",
-                      borderRadius: "6px", transition: "color 0.15s",
-                    }}
-                      onMouseEnter={e => e.currentTarget.style.color = textColor}
-                      onMouseLeave={e => e.currentTarget.style.color = mutedColor}
-                    >✕</button>
+                      borderRadius: "6px",
+                    }}>✕</button>
                   </div>
                 </div>
 
                 {/* Messages */}
-                <div style={{ flex: 1, overflowY: "auto", padding: "16px", display: "flex", flexDirection: "column" }}>
+                <div style={{ flex: 1, overflowY: "auto", padding: "14px", display: "flex", flexDirection: "column" }}>
                   {messages.map((msg, i) => (
                     <Message key={i} msg={msg} isDark={isDark} />
                   ))}
 
-                  {/* Error banner */}
                   {error && (
                     <div style={{
                       padding: "10px 14px", borderRadius: "10px",
@@ -382,12 +389,11 @@ ${pending.slice(0,8).map(t=>`- [${t.priority}] ${t.title}${t.dueDate?" (due "+t.
                       display: "flex", gap: "8px", alignItems: "center",
                     }}>
                       <span>⚠️</span>
-                      <span>{error}</span>
-                      <button onClick={() => setError(null)} style={{ marginLeft: "auto", background: "none", border: "none", color: "#f43f5e", cursor: "pointer", fontSize: "12px" }}>✕</button>
+                      <span style={{ flex: 1 }}>{error}</span>
+                      <button onClick={() => setError(null)} style={{ background: "none", border: "none", color: "#f43f5e", cursor: "pointer", fontSize: "12px" }}>✕</button>
                     </div>
                   )}
 
-                  {/* Quick prompts — show when only greeting present */}
                   {messages.length <= 1 && !loading && (
                     <div style={{ marginTop: "8px" }}>
                       <div style={{ fontSize: "11px", color: mutedColor, marginBottom: "8px", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em" }}>
@@ -403,12 +409,10 @@ ${pending.slice(0,8).map(t=>`- [${t.priority}] ${t.title}${t.dueDate?" (due "+t.
                               border: `1px solid ${border}`,
                               background: isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.04)",
                               color: textColor, cursor: "pointer",
-                              fontSize: "12px", fontFamily: "inherit",
+                              fontSize: "11px", fontFamily: "inherit",
                               transition: "all 0.15s",
                               textAlign: "left",
                             }}
-                            onMouseEnter={e => { e.currentTarget.style.borderColor = "#ff6b9d"; e.currentTarget.style.color = "#ff6b9d"; }}
-                            onMouseLeave={e => { e.currentTarget.style.borderColor = border; e.currentTarget.style.color = textColor; }}
                           >
                             {qp.label}
                           </button>
@@ -422,15 +426,14 @@ ${pending.slice(0,8).map(t=>`- [${t.priority}] ${t.title}${t.dueDate?" (due "+t.
 
                 {/* Input */}
                 <div style={{
-                  padding: "12px 14px",
+                  padding: "10px 12px",
                   borderTop: `1px solid ${border}`,
                   flexShrink: 0,
                 }}>
-                  {/* Context indicator */}
                   {tasks.length > 0 && (
-                    <div style={{ fontSize: "10px", color: mutedColor, marginBottom: "8px", display: "flex", alignItems: "center", gap: "4px" }}>
+                    <div style={{ fontSize: "10px", color: mutedColor, marginBottom: "6px", display: "flex", alignItems: "center", gap: "4px" }}>
                       <span style={{ color: "#10b981" }}>●</span>
-                      Context: {tasks.length} tasks, {categories.length} categories loaded
+                      {tasks.length} tasks, {categories.length} categories loaded
                     </div>
                   )}
                   <div style={{ display: "flex", gap: "8px", alignItems: "flex-end" }}>
@@ -448,15 +451,14 @@ ${pending.slice(0,8).map(t=>`- [${t.priority}] ${t.title}${t.dueDate?" (due "+t.
                       rows={1}
                       disabled={loading}
                       style={{
-                        flex: 1, padding: "10px 13px",
+                        flex: 1, padding: "9px 12px",
                         borderRadius: "12px",
                         border: `1px solid ${border}`,
                         background: inputBg, color: textColor,
                         fontSize: "13px", fontFamily: "inherit",
                         outline: "none", resize: "none",
-                        maxHeight: "100px", overflowY: "auto",
+                        maxHeight: "80px", overflowY: "auto",
                         lineHeight: "1.5",
-                        transition: "border-color 0.15s",
                       }}
                       onFocus={e => e.target.style.borderColor = "#ff6b9d"}
                       onBlur={e => e.target.style.borderColor = border}
@@ -467,7 +469,7 @@ ${pending.slice(0,8).map(t=>`- [${t.priority}] ${t.title}${t.dueDate?" (due "+t.
                       onClick={() => sendMessage()}
                       disabled={loading || !input.trim()}
                       style={{
-                        width: "38px", height: "38px", borderRadius: "12px",
+                        width: "36px", height: "36px", borderRadius: "10px",
                         background: loading || !input.trim()
                           ? (isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.06)")
                           : "linear-gradient(135deg,#ff6b9d,#ff99cc)",
@@ -475,7 +477,6 @@ ${pending.slice(0,8).map(t=>`- [${t.priority}] ${t.title}${t.dueDate?" (due "+t.
                         color: loading || !input.trim() ? mutedColor : "white",
                         fontSize: "16px", flexShrink: 0,
                         display: "flex", alignItems: "center", justifyContent: "center",
-                        transition: "all 0.15s",
                       }}
                     >
                       {loading ? (
@@ -486,9 +487,6 @@ ${pending.slice(0,8).map(t=>`- [${t.priority}] ${t.title}${t.dueDate?" (due "+t.
                         >⟳</motion.span>
                       ) : "↑"}
                     </motion.button>
-                  </div>
-                  <div style={{ fontSize: "10px", color: mutedColor, marginTop: "6px", textAlign: "center" }}>
-                    Shift+Enter for new line · Powered by Claude Sonnet
                   </div>
                 </div>
               </motion.div>

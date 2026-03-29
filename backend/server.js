@@ -12,35 +12,55 @@ const categoryRoutes = require("./routes/categories");
 const { startNotificationScheduler } = require("./services/notificationScheduler");
 
 const app = express();
-console.log("🚀 CORS FIX DEPLOYED");
 
-
-// ✅ FINAL CORS FIX (works for local + deployed frontend)
 const allowedOrigins = [
   "http://localhost:5173",
+  "http://localhost:3000",
   "https://todo-frontend-ajmr.onrender.com",
 ];
 
+// ✅ CORS — must be before all routes
+app.use((req, res, next) => {
+  const origin = req.headers.origin;
+  if (!origin || allowedOrigins.includes(origin)) {
+    res.setHeader("Access-Control-Allow-Origin", origin || "*");
+  }
+  res.setHeader("Access-Control-Allow-Methods", "GET,POST,PUT,DELETE,OPTIONS,PATCH");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type,Authorization,X-Requested-With");
+  res.setHeader("Access-Control-Allow-Credentials", "true");
+
+  // Handle preflight
+  if (req.method === "OPTIONS") {
+    return res.status(204).end();
+  }
+  next();
+});
+
+// Also use cors package as backup
 app.use(cors({
-  origin: true,
+  origin: function (origin, callback) {
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(null, true); // allow all for now — restrict once confirmed working
+    }
+  },
   credentials: true,
+  methods: ["GET","POST","PUT","DELETE","OPTIONS","PATCH"],
+  allowedHeaders: ["Content-Type","Authorization","X-Requested-With"],
 }));
 
-// ✅ VERY IMPORTANT (this fixes preflight)
 app.options("*", cors());
-
 
 // Middlewares
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true }));
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
-
 // Routes
 app.use("/api/auth", authRoutes);
 app.use("/api/tasks", protect, taskRoutes);
 app.use("/api/categories", protect, categoryRoutes);
-
 
 // User notification preferences
 app.put("/api/user/notifications", protect, async (req, res) => {
@@ -65,7 +85,6 @@ app.put("/api/user/notifications", protect, async (req, res) => {
   }
 });
 
-
 // Health check
 app.get("/api/health", (req, res) => {
   res.json({
@@ -75,14 +94,9 @@ app.get("/api/health", (req, res) => {
   });
 });
 
-
 // Global error handler
 app.use((err, req, res, next) => {
   console.error("❌ Error:", err.message);
-
-  if (err.message === "Not allowed by CORS") {
-    return res.status(403).json({ error: "CORS blocked request" });
-  }
 
   if (err.multer) {
     return res.status(400).json({ error: err.message });
@@ -90,7 +104,6 @@ app.use((err, req, res, next) => {
 
   res.status(500).json({ error: err.message || "Internal Server Error" });
 });
-
 
 // Start server
 const PORT = process.env.PORT || 5000;
