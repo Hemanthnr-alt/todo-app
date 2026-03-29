@@ -12,6 +12,7 @@ const categoryRoutes = require("./routes/categories");
 const { startNotificationScheduler } = require("./services/notificationScheduler");
 
 const app = express();
+console.log("🚀 CORS FIX DEPLOYED");
 
 
 // ✅ FINAL CORS FIX (works for local + deployed frontend)
