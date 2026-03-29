@@ -16,11 +16,7 @@ const app = express();
 
 // ✅ SIMPLE & WORKING CORS (FINAL)
 app.use(cors({
-  origin: [
-    "http://localhost:5173",
-    "https://todo-frontend-ajmr.onrender.com"
-  ],
-  credentials: true,
+  origin: "*",
 }));
 
 
