@@ -13,11 +13,10 @@ const { startNotificationScheduler } = require("./services/notificationScheduler
 
 const app = express();
 
-
-// ✅ FIXED CORS (supports localhost + deployed frontend)
+// ✅ FINAL CORS FIX
 const allowedOrigins = [
   "http://localhost:5173",
-  "https://todo-app-91pe.onrender.com",
+  "https://todo-frontend-ajmr.onrender.com", // ✅ YOUR FRONTEND URL
 ];
 
 app.use(
@@ -34,18 +33,15 @@ app.use(
   })
 );
 
-
 // Middlewares
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true }));
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
-
 // Routes
 app.use("/api/auth", authRoutes);
 app.use("/api/tasks", protect, taskRoutes);
 app.use("/api/categories", protect, categoryRoutes);
-
 
 // User notification preferences
 app.put("/api/user/notifications", protect, async (req, res) => {
@@ -70,7 +66,6 @@ app.put("/api/user/notifications", protect, async (req, res) => {
   }
 });
 
-
 // Health check
 app.get("/api/health", (req, res) => {
   res.json({
@@ -79,7 +74,6 @@ app.get("/api/health", (req, res) => {
     version: "2.0.0",
   });
 });
-
 
 // Global error handler
 app.use((err, req, res, next) => {
@@ -91,7 +85,6 @@ app.use((err, req, res, next) => {
 
   res.status(500).json({ error: err.message || "Internal Server Error" });
 });
-
 
 // Start server
 const PORT = process.env.PORT || 5000;
