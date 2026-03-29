@@ -13,37 +13,30 @@ const { startNotificationScheduler } = require("./services/notificationScheduler
 
 const app = express();
 
-// ✅ FINAL CORS FIX
-const allowedOrigins = [
-  "http://localhost:5173",
-  "https://todo-frontend-ajmr.onrender.com", // ✅ YOUR FRONTEND URL
-];
 
-app.use(
-  cors({
-    origin: function (origin, callback) {
-      if (!origin) return callback(null, true); // allow Postman / curl
-      if (allowedOrigins.includes(origin)) {
-        return callback(null, true);
-      } else {
-        return callback(new Error("Not allowed by CORS"));
-      }
-    },
-    credentials: true,
-  })
-);
+// ✅ SIMPLE & WORKING CORS (FINAL)
+app.use(cors({
+  origin: [
+    "http://localhost:5173",
+    "https://todo-frontend-ajmr.onrender.com"
+  ],
+  credentials: true,
+}));
 
-// Middlewares
+
+// ✅ Middlewares
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true }));
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
-// Routes
+
+// ✅ Routes
 app.use("/api/auth", authRoutes);
 app.use("/api/tasks", protect, taskRoutes);
 app.use("/api/categories", protect, categoryRoutes);
 
-// User notification preferences
+
+// ✅ User notification preferences
 app.put("/api/user/notifications", protect, async (req, res) => {
   try {
     const { emailReminders, dueDateReminders, reminderTime, dailySummary } = req.body;
@@ -66,7 +59,8 @@ app.put("/api/user/notifications", protect, async (req, res) => {
   }
 });
 
-// Health check
+
+// ✅ Health check
 app.get("/api/health", (req, res) => {
   res.json({
     status: "healthy",
@@ -75,7 +69,8 @@ app.get("/api/health", (req, res) => {
   });
 });
 
-// Global error handler
+
+// ✅ Global error handler
 app.use((err, req, res, next) => {
   console.error(err.stack);
 
@@ -86,7 +81,8 @@ app.use((err, req, res, next) => {
   res.status(500).json({ error: err.message || "Internal Server Error" });
 });
 
-// Start server
+
+// ✅ Start server
 const PORT = process.env.PORT || 5000;
 
 connectDB()
