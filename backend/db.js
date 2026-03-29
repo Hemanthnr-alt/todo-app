@@ -5,17 +5,28 @@ if (!process.env.JWT_SECRET) {
   throw new Error("JWT_SECRET environment variable must be set");
 }
 
-const sequelize = new Sequelize(
-  process.env.DB_NAME,
-  process.env.DB_USER,
-  process.env.DB_PASSWORD,
-  {
-    host:    process.env.DB_HOST || "localhost",
-    port:    process.env.DB_PORT || 5432,
-    dialect: "postgres",
-    logging: false,
-  }
-);
+const sequelize = new Sequelize(process.env.DATABASE_URL, {
+  dialect: "postgres",
+  logging: false,
+
+  dialectOptions: {
+    ssl: {
+      require: true,
+      rejectUnauthorized: false,
+    },
+  },
+
+  pool: {
+    max: 5,
+    min: 0,
+    idle: 10000,
+  },
+
+  // 🔥 IMPORTANT FOR SUPABASE POOLER
+  define: {
+    freezeTableName: true,
+  },
+});
 
 const connectDB = async () => {
   try {
@@ -26,18 +37,18 @@ const connectDB = async () => {
     const Category = require("./models/Category");
     const Task     = require("./models/Task");
 
-    // Associations
-    User.hasMany(Task,     { foreignKey: "userId",     onDelete: "CASCADE" });
-    Task.belongsTo(User,   { foreignKey: "userId" });
+    User.hasMany(Task, { foreignKey: "userId", onDelete: "CASCADE" });
+    Task.belongsTo(User, { foreignKey: "userId" });
 
-    User.hasMany(Category,     { foreignKey: "userId",     onDelete: "CASCADE" });
-    Category.belongsTo(User,   { foreignKey: "userId" });
+    User.hasMany(Category, { foreignKey: "userId", onDelete: "CASCADE" });
+    Category.belongsTo(User, { foreignKey: "userId" });
 
-    Category.hasMany(Task,     { foreignKey: "categoryId", onDelete: "SET NULL" });
-    Task.belongsTo(Category,   { foreignKey: "categoryId" });
+    Category.hasMany(Task, { foreignKey: "categoryId", onDelete: "SET NULL" });
+    Task.belongsTo(Category, { foreignKey: "categoryId" });
 
     const isProduction = process.env.NODE_ENV === "production";
     await sequelize.sync({ alter: !isProduction });
+
     console.log("✅ Tables synced");
   } catch (error) {
     console.error("❌ Database error:", error.message);

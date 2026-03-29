@@ -2,31 +2,16 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useTheme } from "../context/ThemeContext";
 import { useAuth } from "../context/AuthContext";
+import api from "../services/api";
 import Portal from "./Portal";
 
-const SYSTEM_PROMPT = `You are **30 AI**, a smart productivity assistant built into the 30 task manager app.
-
-You help users with:
-- Creating and managing tasks (suggest titles, priorities, due dates)
-- Breaking down big goals into subtasks
-- Time management and scheduling advice
-- Habit-building strategies
-- Productivity tips and techniques (Pomodoro, time-blocking, GTD, etc.)
-- Reviewing their task list and giving actionable suggestions
-- Motivational support and accountability
-
-When the user shares their tasks, analyse them and give specific, actionable advice.
-Keep responses concise, friendly, and practical. Use bullet points and emojis naturally.
-Format important things in **bold**. Never be generic — always reference their specific situation.
-App name: 30. Always refer to tasks/habits/categories as they exist in the app.`;
-
 const QUICK_PROMPTS = [
-  { label: "📋 Plan my day", text: "Help me plan my day effectively. What should I focus on?" },
-  { label: "🎯 Break down a goal", text: "Help me break down a big goal into smaller actionable tasks." },
-  { label: "⏰ Time tips", text: "Give me 3 practical time management techniques I can start today." },
+  { label: "📋 Plan my day",          text: "Help me plan my day effectively. What should I focus on?" },
+  { label: "🎯 Break down a goal",    text: "Help me break down a big goal into smaller actionable tasks." },
+  { label: "⏰ Time tips",            text: "Give me 3 practical time management techniques I can start today." },
   { label: "🔥 Beat procrastination", text: "I keep procrastinating. What should I do?" },
-  { label: "🧘 Habit advice", text: "How do I build habits that actually stick?" },
-  { label: "📊 Review tasks", text: "Review my current tasks and tell me what to prioritise." },
+  { label: "🧘 Habit advice",         text: "How do I build habits that actually stick?" },
+  { label: "📊 Review tasks",         text: "Review my current tasks and tell me what to prioritise." },
 ];
 
 function TypingDots() {
@@ -45,8 +30,8 @@ function TypingDots() {
 }
 
 function Message({ msg, isDark }) {
-  const isUser = msg.role === "user";
-  const textColor = isDark ? "#f1f5f9" : "#0f172a";
+  const isUser     = msg.role === "user";
+  const textColor  = isDark ? "#f1f5f9" : "#0f172a";
   const mutedColor = isDark ? "rgba(241,245,249,0.45)" : "rgba(15,23,42,0.45)";
 
   const renderContent = (text) => {
@@ -75,18 +60,18 @@ function Message({ msg, isDark }) {
       style={{
         display: "flex",
         flexDirection: isUser ? "row-reverse" : "row",
-        gap: "10px",
-        alignItems: "flex-end",
-        marginBottom: "16px",
+        gap: "10px", alignItems: "flex-end", marginBottom: "16px",
       }}
     >
       <div style={{
         width: "30px", height: "30px", borderRadius: "10px", flexShrink: 0,
-        background: isUser ? "linear-gradient(135deg,#ff6b9d,#ff99cc)" : (isDark ? "rgba(255,107,157,0.15)" : "rgba(255,107,157,0.1)"),
+        background: isUser
+          ? "linear-gradient(135deg,#ff6b9d,#ff99cc)"
+          : (isDark ? "rgba(255,107,157,0.15)" : "rgba(255,107,157,0.1)"),
         border: isUser ? "none" : "1px solid rgba(255,107,157,0.3)",
         display: "flex", alignItems: "center", justifyContent: "center",
-        fontSize: isUser ? "12px" : "14px",
-        fontWeight: 900, color: isUser ? "white" : "#ff6b9d",
+        fontSize: isUser ? "12px" : "14px", fontWeight: 900,
+        color: isUser ? "white" : "#ff6b9d",
       }}>
         {isUser ? "U" : "✦"}
       </div>
@@ -99,7 +84,6 @@ function Message({ msg, isDark }) {
         }}>
           {isUser ? "You" : "30 AI"}
         </div>
-
         <div style={{
           padding: "11px 14px",
           borderRadius: isUser ? "16px 4px 16px 16px" : "4px 16px 16px 16px",
@@ -107,14 +91,12 @@ function Message({ msg, isDark }) {
             ? "linear-gradient(135deg,#ff6b9d,#ff99cc)"
             : (isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.04)"),
           border: isUser ? "none" : `1px solid ${isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.08)"}`,
-          fontSize: "13px",
-          lineHeight: "1.6",
+          fontSize: "13px", lineHeight: "1.6",
           color: isUser ? "white" : textColor,
           boxShadow: isUser ? "0 4px 14px rgba(255,107,157,0.25)" : "none",
         }}>
           {msg.typing ? <TypingDots /> : renderContent(msg.content)}
         </div>
-
         {msg.time && (
           <div style={{ fontSize: "10px", color: mutedColor, marginTop: "3px", textAlign: isUser ? "right" : "left" }}>
             {msg.time}
@@ -126,16 +108,16 @@ function Message({ msg, isDark }) {
 }
 
 export default function AIAssistant({ tasks = [], categories = [] }) {
-  const { isDark } = useTheme();
+  const { isDark }          = useTheme();
   const { isAuthenticated } = useAuth();
-  const [open, setOpen]           = useState(false);
-  const [input, setInput]         = useState("");
-  const [messages, setMessages]   = useState([]);
-  const [loading, setLoading]     = useState(false);
-  const [error, setError]         = useState(null);
-  const [isMobile, setIsMobile]   = useState(window.innerWidth <= 768);
-  const messagesEndRef             = useRef(null);
-  const inputRef                   = useRef(null);
+  const [open, setOpen]         = useState(false);
+  const [input, setInput]       = useState("");
+  const [messages, setMessages] = useState([]);
+  const [loading, setLoading]   = useState(false);
+  const [error, setError]       = useState(null);
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+  const messagesEndRef           = useRef(null);
+  const inputRef                 = useRef(null);
 
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth <= 768);
@@ -149,17 +131,18 @@ export default function AIAssistant({ tasks = [], categories = [] }) {
   const border     = isDark ? "rgba(255,107,157,0.12)" : "rgba(255,107,157,0.18)";
   const inputBg    = isDark ? "rgba(255,255,255,0.06)" : "#ffffff";
 
-  const MOBILE_NAV_HEIGHT = 72; // px
-  const FAB_BOTTOM = isMobile ? MOBILE_NAV_HEIGHT + 12 : 24;
+  const MOBILE_NAV_HEIGHT = 72;
+  const FAB_BOTTOM   = isMobile ? MOBILE_NAV_HEIGHT + 12 : 24;
   const PANEL_BOTTOM = isMobile ? MOBILE_NAV_HEIGHT + 12 : 92;
 
-  const timestamp = () => new Date().toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" });
+  const timestamp = () =>
+    new Date().toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" });
 
   useEffect(() => {
     if (open && messages.length === 0) {
       setMessages([{
         role: "assistant",
-        content: `Hey! I'm **30 AI**, your productivity assistant ✦\n\nI can help you plan your day, break down goals, manage your tasks, and give you actionable advice. What would you like to work on?`,
+        content: `Hey! I'm **30 AI**, your productivity assistant ✦\n\nI can help you plan your day, break down goals, manage your tasks, and give actionable advice. What would you like to work on?`,
         time: timestamp(),
       }]);
     }
@@ -174,21 +157,20 @@ export default function AIAssistant({ tasks = [], categories = [] }) {
   }, [open]);
 
   const buildTaskContext = () => {
-    if (!tasks.length) return "\n\nThe user currently has no tasks.";
-    const today = new Date().toISOString().split("T")[0];
-    const pending = tasks.filter(t => !t.completed);
-    const overdue = pending.filter(t => t.dueDate && t.dueDate < today);
+    if (!tasks.length) return "";
+    const today    = new Date().toISOString().split("T")[0];
+    const pending  = tasks.filter(t => !t.completed);
+    const overdue  = pending.filter(t => t.dueDate && t.dueDate < today);
     const dueToday = pending.filter(t => t.dueDate === today);
-    const high = pending.filter(t => t.priority === "high");
-
-    return `\n\n--- USER'S CURRENT TASK DATA ---
-Total tasks: ${tasks.length} (${tasks.filter(t=>t.completed).length} completed, ${pending.length} pending)
-Overdue: ${overdue.length} tasks
-Due today: ${dueToday.length} tasks  
-High priority pending: ${high.length} tasks
-Categories: ${categories.map(c=>c.name).join(", ") || "none"}
-${pending.slice(0,8).map(t=>`- [${t.priority}] ${t.title}${t.dueDate?" (due "+t.dueDate+")":""}${t.completed?" ✓":""}`).join("\n")}
---- END TASK DATA ---`;
+    const high     = pending.filter(t => t.priority === "high");
+    return (
+      `User tasks: ${tasks.length} total (${tasks.filter(t => t.completed).length} done, ${pending.length} pending). ` +
+      `Overdue: ${overdue.length}. Due today: ${dueToday.length}. High priority: ${high.length}. ` +
+      `Categories: ${categories.map(c => c.name).join(", ") || "none"}. ` +
+      `Recent pending: ${pending.slice(0, 6).map(t =>
+        `"${t.title}" [${t.priority}]${t.dueDate ? ` due ${t.dueDate}` : ""}`
+      ).join(", ")}`
+    );
   };
 
   const sendMessage = useCallback(async (text) => {
@@ -198,7 +180,7 @@ ${pending.slice(0,8).map(t=>`- [${t.priority}] ${t.title}${t.dueDate?" (due "+t.
     setInput("");
     setError(null);
 
-    const userMsg = { role: "user", content: userText, time: timestamp() };
+    const userMsg   = { role: "user", content: userText, time: timestamp() };
     const typingMsg = { role: "assistant", content: "", typing: true };
 
     setMessages(prev => [...prev, userMsg, typingMsg]);
@@ -209,39 +191,25 @@ ${pending.slice(0,8).map(t=>`- [${t.priority}] ${t.title}${t.dueDate?" (due "+t.
       .map(m => ({ role: m.role, content: m.content }));
 
     try {
-      const response = await fetch("https://api.anthropic.com/v1/messages", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          model: "claude-sonnet-4-20250514",
-          max_tokens: 1000,
-          system: SYSTEM_PROMPT + buildTaskContext(),
-          messages: [
-            ...history,
-            { role: "user", content: userText },
-          ],
-        }),
+      // ✅ Groq API key stays on the server — never exposed in the browser
+      const res = await api.post("/ai/chat", {
+        messages:    [...history, { role: "user", content: userText }],
+        taskContext: buildTaskContext(),
       });
 
-      if (!response.ok) {
-        const err = await response.json().catch(() => ({}));
-        throw new Error(err.error?.message || `API error ${response.status}`);
-      }
-
-      const data = await response.json();
-      const aiText = data.content?.find(b => b.type === "text")?.text || "I couldn't generate a response.";
-
+      const aiText = res.data?.content || "I couldn't generate a response.";
       setMessages(prev => [
         ...prev.filter(m => !m.typing),
         { role: "assistant", content: aiText, time: timestamp() },
       ]);
     } catch (err) {
       console.error("AI error:", err);
-      const errMsg = err.message?.includes("401")
-        ? "API key issue — the AI couldn't authenticate."
-        : err.message?.includes("529") || err.message?.includes("overloaded")
-        ? "The AI is busy. Please try again in a moment."
-        : "Couldn't reach the AI. Check your connection.";
+      const status = err.response?.status;
+      const errMsg =
+        status === 401 ? "Please sign in to use the AI assistant." :
+        status === 429 ? "Too many requests. Please wait a moment." :
+        status === 503 ? "AI service is busy. Try again shortly." :
+        "Couldn't reach the AI. Check your connection.";
       setError(errMsg);
       setMessages(prev => prev.filter(m => !m.typing));
     } finally {
@@ -253,24 +221,18 @@ ${pending.slice(0,8).map(t=>`- [${t.priority}] ${t.title}${t.dueDate?" (due "+t.
     setMessages([]);
     setError(null);
     setTimeout(() => {
-      setMessages([{
-        role: "assistant",
-        content: "Chat cleared! How can I help you? ✦",
-        time: timestamp(),
-      }]);
+      setMessages([{ role: "assistant", content: "Chat cleared! How can I help? ✦", time: timestamp() }]);
     }, 100);
   };
 
-  // Panel dimensions
-  const panelWidth = isMobile ? "calc(100vw - 16px)" : "min(400px, calc(100vw - 32px))";
+  const panelWidth  = isMobile ? "calc(100vw - 16px)" : "min(400px, calc(100vw - 32px))";
   const panelHeight = isMobile
     ? `min(520px, calc(100dvh - ${MOBILE_NAV_HEIGHT + 80}px))`
     : "min(580px, calc(100dvh - 120px))";
-  const panelRight = isMobile ? "8px" : "24px";
 
   return (
     <>
-      {/* FAB */}
+      {/* FAB button */}
       <motion.button
         whileHover={{ scale: 1.08 }}
         whileTap={{ scale: 0.93 }}
@@ -304,21 +266,22 @@ ${pending.slice(0,8).map(t=>`- [${t.priority}] ${t.title}${t.dueDate?" (due "+t.
         </motion.span>
       </motion.button>
 
-      {/* Panel */}
+      {/* Chat panel */}
       <Portal>
         <AnimatePresence>
           {open && (
             <>
               {/* Mobile backdrop */}
-              <motion.div
-                initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                onClick={() => setOpen(false)}
-                style={{
-                  position: "fixed", inset: 0, zIndex: 8001,
-                  background: "rgba(0,0,0,0.3)", backdropFilter: "blur(2px)",
-                  display: isMobile ? "block" : "none",
-                }}
-              />
+              {isMobile && (
+                <motion.div
+                  initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                  onClick={() => setOpen(false)}
+                  style={{
+                    position: "fixed", inset: 0, zIndex: 8001,
+                    background: "rgba(0,0,0,0.3)", backdropFilter: "blur(2px)",
+                  }}
+                />
+              )}
 
               <motion.div
                 initial={{ opacity: 0, y: 20, scale: 0.95 }}
@@ -328,25 +291,20 @@ ${pending.slice(0,8).map(t=>`- [${t.priority}] ${t.title}${t.dueDate?" (due "+t.
                 style={{
                   position: "fixed",
                   bottom: `${PANEL_BOTTOM}px`,
-                  right: panelRight,
-                  width: panelWidth,
-                  height: panelHeight,
-                  background: bg,
-                  backdropFilter: "blur(24px)",
-                  borderRadius: "24px",
-                  border: `1px solid ${border}`,
+                  right: isMobile ? "8px" : "24px",
+                  width: panelWidth, height: panelHeight,
+                  background: bg, backdropFilter: "blur(24px)",
+                  borderRadius: "24px", border: `1px solid ${border}`,
                   boxShadow: "0 24px 60px rgba(0,0,0,0.25), 0 0 0 1px rgba(255,107,157,0.06)",
                   display: "flex", flexDirection: "column",
                   overflow: "hidden", zIndex: 8002,
                   fontFamily: "'DM Sans', sans-serif",
                 }}
               >
-                {/* Header */}
+                {/* ── Header ── */}
                 <div style={{
-                  padding: "14px 16px",
-                  borderBottom: `1px solid ${border}`,
-                  display: "flex", alignItems: "center", gap: "12px",
-                  flexShrink: 0,
+                  padding: "14px 16px", borderBottom: `1px solid ${border}`,
+                  display: "flex", alignItems: "center", gap: "12px", flexShrink: 0,
                 }}>
                   <div style={{
                     width: "32px", height: "32px", borderRadius: "9px",
@@ -355,27 +313,35 @@ ${pending.slice(0,8).map(t=>`- [${t.priority}] ${t.title}${t.dueDate?" (due "+t.
                     fontSize: "14px", flexShrink: 0, boxShadow: "0 4px 12px rgba(255,107,157,0.35)",
                   }}>✦</div>
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: "13px", fontWeight: 800, color: textColor, letterSpacing: "-0.02em" }}>30 AI</div>
+                    <div style={{ fontSize: "13px", fontWeight: 800, color: textColor, letterSpacing: "-0.02em" }}>
+                      30 AI
+                    </div>
                     <div style={{ fontSize: "11px", color: "#10b981", display: "flex", alignItems: "center", gap: "4px" }}>
                       <div style={{ width: "6px", height: "6px", borderRadius: "50%", background: "#10b981" }} />
-                      Online · Powered by Claude
+                      Online · Powered by Groq
                     </div>
                   </div>
                   <div style={{ display: "flex", gap: "6px" }}>
                     <button onClick={clearChat} title="Clear chat" style={{
                       background: "none", border: "none", cursor: "pointer",
-                      color: mutedColor, fontSize: "14px", padding: "4px",
-                      borderRadius: "6px",
-                    }}>🗑</button>
+                      color: mutedColor, fontSize: "14px", padding: "4px", borderRadius: "6px",
+                      transition: "color 0.15s",
+                    }}
+                      onMouseEnter={e => e.currentTarget.style.color = "#ff6b9d"}
+                      onMouseLeave={e => e.currentTarget.style.color = mutedColor}
+                    >🗑</button>
                     <button onClick={() => setOpen(false)} style={{
                       background: "none", border: "none", cursor: "pointer",
-                      color: mutedColor, fontSize: "14px", padding: "4px",
-                      borderRadius: "6px",
-                    }}>✕</button>
+                      color: mutedColor, fontSize: "14px", padding: "4px", borderRadius: "6px",
+                      transition: "color 0.15s",
+                    }}
+                      onMouseEnter={e => e.currentTarget.style.color = textColor}
+                      onMouseLeave={e => e.currentTarget.style.color = mutedColor}
+                    >✕</button>
                   </div>
                 </div>
 
-                {/* Messages */}
+                {/* ── Messages ── */}
                 <div style={{ flex: 1, overflowY: "auto", padding: "14px", display: "flex", flexDirection: "column" }}>
                   {messages.map((msg, i) => (
                     <Message key={i} msg={msg} isDark={isDark} />
@@ -390,13 +356,18 @@ ${pending.slice(0,8).map(t=>`- [${t.priority}] ${t.title}${t.dueDate?" (due "+t.
                     }}>
                       <span>⚠️</span>
                       <span style={{ flex: 1 }}>{error}</span>
-                      <button onClick={() => setError(null)} style={{ background: "none", border: "none", color: "#f43f5e", cursor: "pointer", fontSize: "12px" }}>✕</button>
+                      <button onClick={() => setError(null)} style={{
+                        background: "none", border: "none", color: "#f43f5e", cursor: "pointer", fontSize: "12px",
+                      }}>✕</button>
                     </div>
                   )}
 
                   {messages.length <= 1 && !loading && (
                     <div style={{ marginTop: "8px" }}>
-                      <div style={{ fontSize: "11px", color: mutedColor, marginBottom: "8px", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em" }}>
+                      <div style={{
+                        fontSize: "11px", color: mutedColor, marginBottom: "8px",
+                        fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em",
+                      }}>
                         Quick prompts
                       </div>
                       <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
@@ -410,9 +381,10 @@ ${pending.slice(0,8).map(t=>`- [${t.priority}] ${t.title}${t.dueDate?" (due "+t.
                               background: isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.04)",
                               color: textColor, cursor: "pointer",
                               fontSize: "11px", fontFamily: "inherit",
-                              transition: "all 0.15s",
-                              textAlign: "left",
+                              transition: "all 0.15s", textAlign: "left",
                             }}
+                            onMouseEnter={e => { e.currentTarget.style.borderColor = "#ff6b9d"; e.currentTarget.style.color = "#ff6b9d"; }}
+                            onMouseLeave={e => { e.currentTarget.style.borderColor = border; e.currentTarget.style.color = textColor; }}
                           >
                             {qp.label}
                           </button>
@@ -424,16 +396,12 @@ ${pending.slice(0,8).map(t=>`- [${t.priority}] ${t.title}${t.dueDate?" (due "+t.
                   <div ref={messagesEndRef} />
                 </div>
 
-                {/* Input */}
-                <div style={{
-                  padding: "10px 12px",
-                  borderTop: `1px solid ${border}`,
-                  flexShrink: 0,
-                }}>
+                {/* ── Input ── */}
+                <div style={{ padding: "10px 12px", borderTop: `1px solid ${border}`, flexShrink: 0 }}>
                   {tasks.length > 0 && (
                     <div style={{ fontSize: "10px", color: mutedColor, marginBottom: "6px", display: "flex", alignItems: "center", gap: "4px" }}>
                       <span style={{ color: "#10b981" }}>●</span>
-                      {tasks.length} tasks, {categories.length} categories loaded
+                      Context: {tasks.length} tasks, {categories.length} categories loaded
                     </div>
                   )}
                   <div style={{ display: "flex", gap: "8px", alignItems: "flex-end" }}>
@@ -442,23 +410,19 @@ ${pending.slice(0,8).map(t=>`- [${t.priority}] ${t.title}${t.dueDate?" (due "+t.
                       value={input}
                       onChange={e => setInput(e.target.value)}
                       onKeyDown={e => {
-                        if (e.key === "Enter" && !e.shiftKey) {
-                          e.preventDefault();
-                          sendMessage();
-                        }
+                        if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(); }
                       }}
                       placeholder="Ask anything… (Enter to send)"
                       rows={1}
                       disabled={loading}
                       style={{
-                        flex: 1, padding: "9px 12px",
-                        borderRadius: "12px",
+                        flex: 1, padding: "9px 12px", borderRadius: "12px",
                         border: `1px solid ${border}`,
                         background: inputBg, color: textColor,
                         fontSize: "13px", fontFamily: "inherit",
                         outline: "none", resize: "none",
-                        maxHeight: "80px", overflowY: "auto",
-                        lineHeight: "1.5",
+                        maxHeight: "80px", overflowY: "auto", lineHeight: "1.5",
+                        transition: "border-color 0.15s",
                       }}
                       onFocus={e => e.target.style.borderColor = "#ff6b9d"}
                       onBlur={e => e.target.style.borderColor = border}
@@ -473,20 +437,22 @@ ${pending.slice(0,8).map(t=>`- [${t.priority}] ${t.title}${t.dueDate?" (due "+t.
                         background: loading || !input.trim()
                           ? (isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.06)")
                           : "linear-gradient(135deg,#ff6b9d,#ff99cc)",
-                        border: "none", cursor: loading || !input.trim() ? "not-allowed" : "pointer",
+                        border: "none",
+                        cursor: loading || !input.trim() ? "not-allowed" : "pointer",
                         color: loading || !input.trim() ? mutedColor : "white",
                         fontSize: "16px", flexShrink: 0,
                         display: "flex", alignItems: "center", justifyContent: "center",
+                        transition: "all 0.15s",
                       }}
                     >
-                      {loading ? (
-                        <motion.span
-                          animate={{ rotate: 360 }}
-                          transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-                          style={{ fontSize: "14px" }}
-                        >⟳</motion.span>
-                      ) : "↑"}
+                      {loading
+                        ? <motion.span animate={{ rotate: 360 }} transition={{ duration: 1, repeat: Infinity, ease: "linear" }} style={{ fontSize: "14px" }}>⟳</motion.span>
+                        : "↑"
+                      }
                     </motion.button>
+                  </div>
+                  <div style={{ fontSize: "10px", color: mutedColor, marginTop: "6px", textAlign: "center" }}>
+                    Shift+Enter for new line · Powered by Groq
                   </div>
                 </div>
               </motion.div>
@@ -494,13 +460,6 @@ ${pending.slice(0,8).map(t=>`- [${t.priority}] ${t.title}${t.dueDate?" (due "+t.
           )}
         </AnimatePresence>
       </Portal>
-
-      <style>{`
-        @keyframes pulse-dot {
-          0%, 100% { opacity: 1; }
-          50% { opacity: 0.4; }
-        }
-      `}</style>
     </>
   );
 }

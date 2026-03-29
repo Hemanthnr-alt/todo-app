@@ -15,7 +15,6 @@ import { useTasks } from "./hooks/useTasks";
 function AppContent() {
   const [page, setPage] = useState("today");
   const { loading } = useAuth();
-  // Load tasks at app level so AI assistant gets live context
   const { tasks, categories } = useTasks();
 
   if (loading) {
@@ -47,15 +46,34 @@ function AppContent() {
       <AnimatedBackground />
       <div style={{ position: "relative", zIndex: 1 }}>
         <Navbar activePage={page} onPageChange={setPage} />
-        {page === "today"      && <Today onGoToTasks={() => setPage("tasks")} />}
-        {page === "tasks"      && <Tasks />}
-        {page === "calendar"   && <Calendar />}
-        {page === "habits"     && <Habits />}
-        {page === "categories" && <Categories />}
+
+        {/* Page content wrapper — adds bottom padding on mobile for bottom nav */}
+        <div className="mobile-page-content">
+          {page === "today"      && <Today onGoToTasks={() => setPage("tasks")} />}
+          {page === "tasks"      && <Tasks />}
+          {page === "calendar"   && <Calendar />}
+          {page === "habits"     && <Habits />}
+          {page === "categories" && <Categories />}
+        </div>
       </div>
 
-      {/* AI Assistant FAB — always visible */}
+      {/* AI Assistant FAB */}
       <AIAssistant tasks={tasks} categories={categories} />
+
+      <style>{`
+        /* Move AI FAB above mobile bottom nav */
+        @media (max-width: 768px) {
+          /* AI FAB positioning */
+          .ai-fab-wrapper {
+            bottom: calc(72px + 16px) !important;
+          }
+          /* AI panel positioning */
+          .ai-panel-wrapper {
+            bottom: calc(72px + 16px) !important;
+            height: min(500px, calc(100dvh - 200px)) !important;
+          }
+        }
+      `}</style>
     </div>
   );
 }
@@ -75,7 +93,7 @@ export default function App() {
               borderRadius: "12px",
               fontSize: "13px",
               fontFamily: "'DM Sans', sans-serif",
-              marginBottom: "80px", // above AI FAB
+              marginBottom: "80px",
             },
             success: { iconTheme: { primary: "#ff6b9d", secondary: "#0f172a" } },
           }}
