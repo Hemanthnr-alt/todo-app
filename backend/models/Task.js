@@ -56,17 +56,32 @@ const Task = sequelize.define("Task", {
     type: DataTypes.BOOLEAN,
     defaultValue: false,
   },
+  // ✅ Recurring task fields
+  isRecurring: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: false,
+  },
+  recurringFrequency: {
+    type: DataTypes.STRING, // daily, weekly, monthly
+    allowNull: true,
+  },
+  recurringDays: {
+    type: DataTypes.ARRAY(DataTypes.INTEGER), // [0,1,2,3,4,5,6] = days of week
+    defaultValue: [],
+  },
+  completedDates: {
+    type: DataTypes.ARRAY(DataTypes.STRING), // dates completed for recurring
+    defaultValue: [],
+  },
   userId: {
     type: DataTypes.UUID,
     allowNull: false,
-    // ✅ FIX: Match exact table name Sequelize creates ("Task" → "User" not "Users")
     references: { model: "User", key: "id" },
     onDelete: "CASCADE",
   },
   categoryId: {
     type: DataTypes.UUID,
     allowNull: true,
-    // ✅ FIX: Match exact table name ("Category" not "Categories")
     references: { model: "Category", key: "id" },
     onDelete: "SET NULL",
   },

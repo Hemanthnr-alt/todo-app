@@ -9,12 +9,11 @@ import toast from "react-hot-toast";
 
 const NAV_ITEMS = [
   { id: "today",      label: "Today",      icon: "✦" },
-  { id: "tasks",      label: "Tasks",      icon: "▣" },
-  { id: "calendar",   label: "Calendar",   icon: "◫" },
   { id: "habits",     label: "Habits",     icon: "⟳" },
+  { id: "tasks",      label: "Tasks",      icon: "▣" },
   { id: "categories", label: "Categories", icon: "◈" },
+  { id: "timer",      label: "Timer",      icon: "⏱" },
 ];
-
 // ── Notifications bottom sheet ────────────────────────────────────────────────
 function MobileNotifPanel({ onClose, isDark, border, textColor, mutedColor }) {
   const [notifs, setNotifs] = useState(() => {

@@ -1,17 +1,11 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useTheme } from "../context/ThemeContext";
 import { useAuth } from "../context/AuthContext";
-import api from "../services/api";
-import toast from "react-hot-toast";
+import { useTasks } from "../hooks/useTasks";
+import { useHabits } from "../hooks/useHabits";
 
-const TICK_SPRING = { type: "spring", stiffness: 380, damping: 30, mass: 0.85 };
-
-const PRIORITY_META = {
-  high:   { color: "#f43f5e", bg: "rgba(244,63,94,0.1)",  label: "High",   dot: "🔴" },
-  medium: { color: "#f59e0b", bg: "rgba(245,158,11,0.1)", label: "Medium", dot: "🟡" },
-  low:    { color: "#10b981", bg: "rgba(16,185,129,0.1)", label: "Low",    dot: "🟢" },
-};
+const fmtDate = (d) => d.toISOString().split("T")[0];
 
 function getGreeting() {
   const h = new Date().getHours();
@@ -20,97 +14,79 @@ function getGreeting() {
   return "Good evening";
 }
 
-function formatTime(time) {
-  if (!time) return null;
-  const [h, m] = time.split(":").map(Number);
-  const ampm = h >= 12 ? "PM" : "AM";
-  return `${h % 12 || 12}:${String(m).padStart(2, "0")} ${ampm}`;
+// Build a 14-day window centred around today
+function buildDateStrip() {
+  const days = [];
+  const now  = new Date();
+  for (let i = -3; i <= 10; i++) {
+    const d = new Date(now);
+    d.setDate(now.getDate() + i);
+    days.push(d);
+  }
+  return days;
 }
 
-export default function Today({ onGoToTasks }) {
+const DAY_LABELS = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+const PRIORITY_COLOR = { high: "#f43f5e", medium: "#f59e0b", low: "#10b981" };
+
+export default function Today({ onGoToTasks, onGoToHabits }) {
   const { isDark } = useTheme();
   const { user, isAuthenticated } = useAuth();
-  const [tasks, setTasks]           = useState([]);
-  const [categories, setCategories] = useState([]);
-  const [loading, setLoading]       = useState(true);
-  const [now, setNow]               = useState(new Date());
+  const { tasks, categories, updateTask, deleteTask, addTask } = useTasks();
+  const { habits, toggleHabit } = useHabits();
 
-  // Live clock tick every minute
+  const todayStr   = fmtDate(new Date());
+  const [selected, setSelected] = useState(todayStr);
+  const stripRef   = useRef(null);
+  const dates      = buildDateStrip();
+
+  // Scroll selected date into view
   useEffect(() => {
-    const iv = setInterval(() => setNow(new Date()), 60000);
-    return () => clearInterval(iv);
+    if (!stripRef.current) return;
+    const idx  = dates.findIndex(d => fmtDate(d) === selected);
+    const item = stripRef.current.children[idx];
+    if (item) item.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
+  }, [selected]);
+
+  // Scroll to today on mount
+  useEffect(() => {
+    setTimeout(() => {
+      if (!stripRef.current) return;
+      const idx  = dates.findIndex(d => fmtDate(d) === todayStr);
+      const item = stripRef.current.children[idx];
+      if (item) item.scrollIntoView({ behavior: "auto", inline: "center", block: "nearest" });
+    }, 100);
   }, []);
 
-  const loadData = useCallback(async () => {
-    if (!isAuthenticated) { setLoading(false); return; }
-    try {
-      const [tasksRes, catsRes] = await Promise.all([
-        api.get("/tasks"),
-        api.get("/categories"),
-      ]);
-      const todayStr = new Date().toISOString().split("T")[0];
-      const todayTasks = tasksRes.data.filter(
-        (t) => t.dueDate === todayStr ||
-               new Date(t.createdAt).toISOString().split("T")[0] === todayStr
-      );
-      setTasks(todayTasks);
-      setCategories(catsRes.data);
-    } catch {
-      if (isAuthenticated) toast.error("Failed to load today's tasks");
-    } finally {
-      setLoading(false);
-    }
-  }, [isAuthenticated]);
-
-  useEffect(() => { loadData(); }, [loadData]);
-
-  const toggleComplete = async (task) => {
-    if (!isAuthenticated) return;
-    try {
-      const res = await api.put(`/tasks/${task.id}`, { completed: !task.completed });
-      setTasks((prev) => prev.map((t) => t.id === task.id ? res.data : t));
-      if (res.data.completed) toast.success("Task completed! 🎊");
-    } catch { toast.error("Failed to update task"); }
-  };
-
-  const deleteTask = async (id) => {
-    if (!isAuthenticated) return;
-    try {
-      await api.delete(`/tasks/${id}`);
-      setTasks((prev) => prev.filter((t) => t.id !== id));
-      toast.success("Task deleted");
-    } catch { toast.error("Failed to delete task"); }
-  };
-
-  const completed = tasks.filter(t => t.completed).length;
-  const pending   = tasks.filter(t => !t.completed).length;
-  const high      = tasks.filter(t => t.priority === "high" && !t.completed).length;
-  const completionPct = tasks.length > 0 ? Math.round((completed / tasks.length) * 100) : 0;
-
-  const todayLabel = now.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" });
-
-  const textColor  = isDark ? "#f1f5f9" : "#0f172a";
+  const textColor  = isDark ? "#f1f5f9"                : "#0f172a";
   const mutedColor = isDark ? "rgba(241,245,249,0.45)" : "rgba(15,23,42,0.45)";
-  const cardBg     = isDark ? "rgba(15,23,42,0.6)"     : "rgba(255,255,255,0.85)";
+  const cardBg     = isDark ? "rgba(15,23,42,0.55)"    : "rgba(255,255,255,0.85)";
   const border     = isDark ? "rgba(255,107,157,0.1)"  : "rgba(255,107,157,0.15)";
+  const pageBg     = isDark ? "rgba(8,6,16,0.0)"       : "rgba(245,240,255,0.0)";
 
-  // ── Not logged in state ──
+  // Tasks for selected date — only exact dueDate match
+  const dayTasks = tasks.filter(t => t.dueDate === selected);
+
+  // Habits for selected date — all habits (daily ones always show)
+  const dayHabits = habits.filter(h => {
+    if (h.frequency === "daily") return true;
+    if (h.frequency === "weekly") {
+      const day = new Date(selected + "T00:00:00").getDay();
+      return (h.recurringDays || []).includes(day);
+    }
+    return true;
+  });
+
+  const totalItems     = dayTasks.length + dayHabits.length;
+  const completedItems = dayTasks.filter(t => t.completed).length +
+    dayHabits.filter(h => (h.completedDates||[]).includes(selected)).length;
+  const pct = totalItems > 0 ? Math.round((completedItems / totalItems) * 100) : 0;
+
   if (!isAuthenticated) {
     return (
-      <div style={{
-        maxWidth: "680px", margin: "0 auto", padding: "60px 20px",
-        fontFamily: "'DM Sans', sans-serif", color: textColor, textAlign: "center",
-      }}>
-        <motion.div
-          initial={{ opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ delay: 0.1 }}
-          style={{
-            padding: "52px 32px",
-            background: cardBg, backdropFilter: "blur(12px)",
-            borderRadius: "28px", border: `1px solid ${border}`,
-          }}
-        >
+      <div style={{ maxWidth: "480px", margin: "0 auto", padding: "60px 20px", textAlign: "center", fontFamily: "'DM Sans',sans-serif", color: textColor }}>
+        <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
+          style={{ padding: "48px 28px", background: cardBg, backdropFilter: "blur(12px)", borderRadius: "28px", border: `1px solid ${border}` }}>
           <div style={{
             width: "64px", height: "64px", borderRadius: "18px",
             background: "linear-gradient(135deg,#ff6b9d,#ff99cc)",
@@ -118,20 +94,15 @@ export default function Today({ onGoToTasks }) {
             fontSize: "24px", fontWeight: 900, color: "white",
             margin: "0 auto 20px", boxShadow: "0 8px 28px rgba(255,107,157,0.35)",
           }}>30</div>
-          <h2 style={{ fontSize: "26px", fontWeight: 800, margin: "0 0 10px", letterSpacing: "-0.03em", color: textColor }}>
-            Welcome to <span style={{ background: "linear-gradient(135deg,#ff6b9d,#ff99cc)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>30</span>
+          <h2 style={{ fontSize: "24px", fontWeight: 800, margin: "0 0 10px", color: textColor }}>
+            Welcome to <span style={{ color: "#ff6b9d" }}>30</span>
           </h2>
-          <p style={{ fontSize: "15px", color: mutedColor, margin: "0 0 28px", lineHeight: 1.6, maxWidth: "360px", marginLeft: "auto", marginRight: "auto" }}>
+          <p style={{ fontSize: "14px", color: mutedColor, margin: "0 0 24px", lineHeight: 1.6 }}>
             Your personal task manager. Sign in to start tracking your tasks, habits, and goals.
           </p>
-          <div style={{ display: "flex", gap: "10px", justifyContent: "center", flexWrap: "wrap" }}>
-            {["Tasks","Calendar","Habits","Categories"].map(f => (
-              <span key={f} style={{
-                padding: "6px 14px", borderRadius: "20px",
-                background: "rgba(255,107,157,0.1)", color: "#ff6b9d",
-                fontSize: "12px", fontWeight: 600,
-                border: "1px solid rgba(255,107,157,0.2)",
-              }}>{f}</span>
+          <div style={{ display: "flex", gap: "8px", justifyContent: "center", flexWrap: "wrap" }}>
+            {["Tasks","Calendar","Habits","Categories","Timer"].map(f => (
+              <span key={f} style={{ padding: "5px 12px", borderRadius: "20px", background: "rgba(255,107,157,0.1)", color: "#ff6b9d", fontSize: "12px", fontWeight: 600, border: "1px solid rgba(255,107,157,0.2)" }}>{f}</span>
             ))}
           </div>
         </motion.div>
@@ -140,281 +111,263 @@ export default function Today({ onGoToTasks }) {
   }
 
   return (
-    <div style={{
-      maxWidth: "760px", margin: "0 auto", padding: "32px 20px",
-      fontFamily: "'DM Sans', sans-serif", color: textColor,
-    }}>
-      {/* Hero header */}
-      <motion.div
-        initial={{ opacity: 0, y: -16 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.45 }}
-        style={{ marginBottom: "32px" }}
-      >
-        <p style={{ fontSize: "13px", color: mutedColor, margin: "0 0 4px", fontWeight: 500 }}>
-          {todayLabel}
+    <div style={{ fontFamily: "'DM Sans',sans-serif", color: textColor, paddingBottom: "20px" }}>
+
+      {/* Greeting */}
+      <div style={{ padding: "20px 16px 12px" }}>
+        <p style={{ fontSize: "12px", color: mutedColor, margin: "0 0 2px" }}>
+          {new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })}
         </p>
-        <h1 style={{
-          fontSize: "clamp(26px, 5vw, 38px)", fontWeight: 800,
-          margin: "0 0 6px", letterSpacing: "-0.04em", lineHeight: 1.1,
-          color: textColor,
-        }}>
-          {getGreeting()}, <span style={{ background: "linear-gradient(135deg,#ff6b9d,#ff99cc)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>
+        <h1 style={{ fontSize: "clamp(22px,5vw,30px)", fontWeight: 800, margin: "0 0 2px", letterSpacing: "-0.03em" }}>
+          {getGreeting()},{" "}
+          <span style={{ background: "linear-gradient(135deg,#ff6b9d,#ff99cc)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>
             {user?.name?.split(" ")[0] || "there"}
           </span> 👋
         </h1>
-        <p style={{ fontSize: "15px", color: mutedColor, margin: 0 }}>
-          {pending === 0 && tasks.length > 0
-            ? "You've completed everything today 🎉"
-            : pending > 0
-            ? `You have ${pending} task${pending > 1 ? "s" : ""} left for today`
-            : "No tasks yet — enjoy the calm or add something"}
-        </p>
-      </motion.div>
-
-      {/* Stats cards */}
-      <motion.div
-        initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.1 }}
-        style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: "12px", marginBottom: "24px" }}
-      >
-        {[
-          { label: "Total",   value: tasks.length, color: "#ff6b9d" },
-          { label: "Done",    value: completed,     color: "#10b981" },
-          { label: "Left",    value: pending,       color: "#f59e0b" },
-          { label: "🔥 High", value: high,          color: "#f43f5e" },
-        ].map(s => (
-          <div key={s.label} style={{
-            padding: "14px 16px", borderRadius: "14px",
-            background: cardBg, backdropFilter: "blur(10px)", border: `1px solid ${border}`,
-          }}>
-            <div style={{ fontSize: "22px", fontWeight: 800, color: s.color }}>{s.value}</div>
-            <div style={{ fontSize: "11px", color: mutedColor, marginTop: "2px" }}>{s.label}</div>
-          </div>
-        ))}
-      </motion.div>
+        {totalItems > 0 && (
+          <p style={{ fontSize: "13px", color: mutedColor, margin: 0 }}>
+            {completedItems}/{totalItems} done today · {pct}%
+          </p>
+        )}
+      </div>
 
       {/* Progress bar */}
-      {tasks.length > 0 && (
-        <motion.div
-          initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.15 }}
-          style={{
-            padding: "16px 20px", borderRadius: "14px",
-            background: cardBg, backdropFilter: "blur(10px)",
-            border: `1px solid ${border}`, marginBottom: "28px",
-          }}
-        >
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "10px" }}>
-            <span style={{ fontSize: "13px", fontWeight: 600, color: textColor }}>Today's progress</span>
-            <span style={{ fontSize: "13px", fontWeight: 700, color: "#ff6b9d" }}>{completionPct}%</span>
-          </div>
-          <div style={{ height: "6px", background: isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.07)", borderRadius: "3px", overflow: "hidden" }}>
+      {totalItems > 0 && (
+        <div style={{ padding: "0 16px 14px" }}>
+          <div style={{ height: "4px", background: isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.07)", borderRadius: "2px", overflow: "hidden" }}>
             <motion.div
-              initial={{ width: 0 }}
-              animate={{ width: `${completionPct}%` }}
-              transition={{ duration: 0.6, ease: "easeOut", delay: 0.2 }}
-              style={{ height: "100%", background: "linear-gradient(90deg,#ff6b9d,#ff99cc)", borderRadius: "3px" }}
+              animate={{ width: `${pct}%` }}
+              transition={{ duration: 0.5 }}
+              style={{ height: "100%", background: "linear-gradient(90deg,#ff6b9d,#ff99cc)", borderRadius: "2px" }}
             />
           </div>
-        </motion.div>
-      )}
-
-      {/* Task list */}
-      {loading ? (
-        <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-          {[0,1,2].map(i => (
-            <div key={i} style={{
-              height: "80px", borderRadius: "16px",
-              background: isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.04)",
-              animation: "pulse 1.4s ease-in-out infinite",
-              animationDelay: `${i * 0.15}s`,
-            }} />
-          ))}
-          <style>{`@keyframes pulse { 0%,100%{opacity:.5} 50%{opacity:1} }`}</style>
-        </div>
-      ) : tasks.length === 0 ? (
-        <motion.div
-          initial={{ opacity: 0, scale: 0.97 }} animate={{ opacity: 1, scale: 1 }}
-          style={{
-            textAlign: "center", padding: "56px 28px",
-            background: cardBg, backdropFilter: "blur(12px)",
-            borderRadius: "24px", border: `1px solid ${border}`,
-          }}
-        >
-          <div style={{ fontSize: "52px", marginBottom: "14px" }}>✨</div>
-          <h3 style={{ fontSize: "18px", fontWeight: 700, margin: "0 0 8px", color: textColor }}>You're all clear</h3>
-          <p style={{ fontSize: "14px", color: mutedColor, margin: "0 0 24px", lineHeight: 1.6, maxWidth: "320px", marginLeft: "auto", marginRight: "auto" }}>
-            No tasks due today. Add something or enjoy the peace!
-          </p>
-          <motion.button
-            whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.97 }}
-            onClick={onGoToTasks}
-            style={{
-              padding: "11px 28px",
-              background: "linear-gradient(135deg,#ff6b9d,#ff99cc)",
-              border: "none", borderRadius: "999px",
-              color: "white", cursor: "pointer",
-              fontSize: "14px", fontWeight: 700,
-              boxShadow: "0 4px 16px rgba(255,107,157,0.35)",
-              fontFamily: "inherit",
-            }}
-          >
-            Go to all tasks →
-          </motion.button>
-        </motion.div>
-      ) : (
-        <div>
-          {/* Pending */}
-          {tasks.filter(t => !t.completed).length > 0 && (
-            <div style={{ marginBottom: "24px" }}>
-              <h2 style={{ fontSize: "12px", fontWeight: 700, color: mutedColor, textTransform: "uppercase", letterSpacing: "0.08em", margin: "0 0 12px" }}>
-                Pending · {tasks.filter(t => !t.completed).length}
-              </h2>
-              <AnimatePresence>
-                {tasks.filter(t => !t.completed).map((task, i) => (
-                  <TaskRow
-                    key={task.id} task={task} index={i}
-                    categories={categories}
-                    onToggle={toggleComplete} onDelete={deleteTask}
-                    isDark={isDark} textColor={textColor}
-                    mutedColor={mutedColor} cardBg={cardBg} border={border}
-                  />
-                ))}
-              </AnimatePresence>
-            </div>
-          )}
-
-          {/* Completed */}
-          {tasks.filter(t => t.completed).length > 0 && (
-            <div>
-              <h2 style={{ fontSize: "12px", fontWeight: 700, color: mutedColor, textTransform: "uppercase", letterSpacing: "0.08em", margin: "0 0 12px" }}>
-                Completed · {tasks.filter(t => t.completed).length}
-              </h2>
-              <AnimatePresence>
-                {tasks.filter(t => t.completed).map((task, i) => (
-                  <TaskRow
-                    key={task.id} task={task} index={i}
-                    categories={categories}
-                    onToggle={toggleComplete} onDelete={deleteTask}
-                    isDark={isDark} textColor={textColor}
-                    mutedColor={mutedColor} cardBg={cardBg} border={border}
-                  />
-                ))}
-              </AnimatePresence>
-            </div>
-          )}
         </div>
       )}
 
-      {/* Quick nav */}
-      {tasks.length > 0 && (
-        <motion.div
-          initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.4 }}
-          style={{ textAlign: "center", marginTop: "32px" }}
-        >
-          <button
-            onClick={onGoToTasks}
-            style={{ background: "none", border: "none", color: "#ff6b9d", cursor: "pointer", fontSize: "13px", fontWeight: 600, fontFamily: "inherit" }}
-          >
-            View all tasks →
-          </button>
-        </motion.div>
-      )}
-    </div>
-  );
-}
-
-// ─── TaskRow sub-component ────────────────────────────────────────────────────
-function TaskRow({ task, index, categories, onToggle, onDelete, isDark, textColor, mutedColor, cardBg, border }) {
-  const pm  = PRIORITY_META[task.priority] || PRIORITY_META.medium;
-  const cat = categories.find(c => c.id === task.categoryId);
-  const today  = new Date().toISOString().split("T")[0];
-  const overdue = task.dueDate && task.dueDate < today && !task.completed;
-
-  return (
-    <motion.div
-      layout
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -8, scale: 0.97 }}
-      transition={{ delay: index * 0.05 }}
-      style={{
-        display: "flex", alignItems: "flex-start", gap: "14px",
-        padding: "16px 18px", borderRadius: "16px",
-        background: task.completed
-          ? (isDark ? "rgba(15,23,42,0.3)" : "rgba(255,255,255,0.5)")
-          : cardBg,
-        backdropFilter: "blur(10px)",
-        border: `1px solid ${overdue ? "rgba(244,63,94,0.25)" : border}`,
-        borderLeft: `3px solid ${task.completed ? (isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.07)") : pm.color}`,
-        marginBottom: "10px",
-        opacity: task.completed ? 0.65 : 1,
-        transition: "opacity 0.2s",
-      }}
-    >
-      {/* Checkbox */}
-      <motion.div
-        whileTap={{ scale: 0.88 }}
-        transition={TICK_SPRING}
-        onClick={() => onToggle(task)}
-        style={{
-          width: "22px", height: "22px", borderRadius: "7px", flexShrink: 0, marginTop: "1px",
-          border: `2px solid ${task.completed ? "#10b981" : (isDark ? "rgba(255,255,255,0.22)" : "rgba(0,0,0,0.18)")}`,
-          background: task.completed ? "linear-gradient(135deg,#10b981,#34d399)" : "transparent",
-          cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
-          transition: "all 0.15s",
-        }}
-      >
-        {task.completed && (
-          <motion.span
-            initial={{ scale: 0 }} animate={{ scale: 1 }} transition={TICK_SPRING}
-            style={{ color: "white", fontSize: "12px", fontWeight: 800 }}
-          >✓</motion.span>
-        )}
-      </motion.div>
-
-      {/* Content */}
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <span style={{
-          fontSize: "15px", fontWeight: 600, color: textColor,
-          textDecoration: task.completed ? "line-through" : "none",
-          display: "block", marginBottom: "6px",
+      {/* ── Date strip ── */}
+      <div style={{ overflowX: "auto", paddingBottom: "4px", marginBottom: "16px" }}
+        className="hide-scrollbar">
+        <div ref={stripRef} style={{
+          display: "flex", gap: "8px",
+          padding: "4px 16px",
+          width: "max-content",
         }}>
-          {task.title}
-        </span>
-        <div style={{ display: "flex", flexWrap: "wrap", gap: "6px", alignItems: "center" }}>
-          <span style={{ fontSize: "10px", fontWeight: 600, padding: "2px 8px", borderRadius: "20px", background: pm.bg, color: pm.color }}>
-            {pm.dot} {pm.label}
-          </span>
-          {cat && (
-            <span style={{ fontSize: "10px", fontWeight: 600, padding: "2px 8px", borderRadius: "20px", background: `${cat.color}18`, color: cat.color }}>
-              {cat.icon} {cat.name}
-            </span>
-          )}
-          {task.startTime && (
-            <span style={{ fontSize: "10px", color: mutedColor }}>
-              ⏰ {formatTime(task.startTime)}{task.endTime ? ` – ${formatTime(task.endTime)}` : ""}
-            </span>
-          )}
-          {overdue && (
-            <span style={{ fontSize: "10px", fontWeight: 600, padding: "2px 8px", borderRadius: "20px", background: "rgba(244,63,94,0.1)", color: "#f43f5e" }}>
-              ⚠️ Overdue
-            </span>
-          )}
+          {dates.map((d) => {
+            const ds      = fmtDate(d);
+            const isToday = ds === todayStr;
+            const isSel   = ds === selected;
+            const hasItems = tasks.filter(t => t.dueDate === ds).length +
+              habits.filter(h => (h.completedDates||[]).includes(ds)).length > 0;
+
+            return (
+              <motion.button
+                key={ds}
+                whileTap={{ scale: 0.92 }}
+                onClick={() => setSelected(ds)}
+                style={{
+                  display: "flex", flexDirection: "column", alignItems: "center",
+                  gap: "4px", padding: "10px 14px",
+                  borderRadius: "16px", border: "none", cursor: "pointer",
+                  background: isSel
+                    ? "linear-gradient(135deg,#ff6b9d,#ff99cc)"
+                    : isToday
+                    ? (isDark ? "rgba(255,107,157,0.15)" : "rgba(255,107,157,0.1)")
+                    : (isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.04)"),
+                  minWidth: "56px",
+                  boxShadow: isSel ? "0 4px 16px rgba(255,107,157,0.35)" : "none",
+                  transition: "all 0.15s",
+                }}
+              >
+                <span style={{
+                  fontSize: "10px", fontWeight: 600, letterSpacing: "0.05em",
+                  color: isSel ? "rgba(255,255,255,0.8)" : mutedColor,
+                  textTransform: "uppercase",
+                }}>
+                  {DAY_LABELS[d.getDay()]}
+                </span>
+                <span style={{
+                  fontSize: "18px", fontWeight: 800,
+                  color: isSel ? "white" : isToday ? "#ff6b9d" : textColor,
+                }}>
+                  {d.getDate()}
+                </span>
+                {/* Dot if has activity */}
+                <div style={{
+                  width: "4px", height: "4px", borderRadius: "50%",
+                  background: isSel ? "rgba(255,255,255,0.6)" : hasItems ? "#ff6b9d" : "transparent",
+                }} />
+              </motion.button>
+            );
+          })}
         </div>
       </div>
 
-      {/* Delete */}
-      <motion.button
-        whileTap={{ scale: 0.9 }}
-        onClick={() => onDelete(task.id)}
-        style={{
-          width: "28px", height: "28px", flexShrink: 0, borderRadius: "8px",
-          background: isDark ? "rgba(244,63,94,0.1)" : "rgba(244,63,94,0.07)",
-          border: "none", cursor: "pointer", color: "#f43f5e", fontSize: "12px",
-          display: "flex", alignItems: "center", justifyContent: "center",
-        }}
-      >✕</motion.button>
-    </motion.div>
+      {/* ── Content for selected day ── */}
+      <div style={{ padding: "0 12px" }}>
+
+        {/* Empty state */}
+        {dayTasks.length === 0 && dayHabits.length === 0 && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+            style={{
+              textAlign: "center", padding: "48px 20px",
+              background: cardBg, backdropFilter: "blur(12px)",
+              borderRadius: "20px", border: `1px solid ${border}`,
+            }}
+          >
+            <div style={{ fontSize: "44px", marginBottom: "12px" }}>✨</div>
+            <h3 style={{ fontSize: "17px", fontWeight: 700, margin: "0 0 6px", color: textColor }}>
+              {selected === todayStr ? "Nothing scheduled" : "Nothing on this day"}
+            </h3>
+            <p style={{ fontSize: "13px", color: mutedColor, margin: "0 0 20px" }}>
+              {selected === todayStr ? "Add a task or habit to get started" : "Tap + to add something"}
+            </p>
+            <motion.button whileTap={{ scale: 0.97 }} onClick={onGoToTasks}
+              style={{
+                padding: "10px 24px", borderRadius: "99px",
+                background: "linear-gradient(135deg,#ff6b9d,#ff99cc)",
+                border: "none", color: "white", cursor: "pointer",
+                fontSize: "13px", fontWeight: 700, fontFamily: "inherit",
+              }}>
+              Go to Tasks →
+            </motion.button>
+          </motion.div>
+        )}
+
+        {/* Habits section */}
+        {dayHabits.length > 0 && (
+          <div style={{ marginBottom: "16px" }}>
+            <div style={{ fontSize: "11px", fontWeight: 700, color: mutedColor, textTransform: "uppercase", letterSpacing: "0.08em", margin: "0 4px 10px" }}>
+              Habits · {dayHabits.filter(h => (h.completedDates||[]).includes(selected)).length}/{dayHabits.length}
+            </div>
+            <AnimatePresence>
+              {dayHabits.map((h, i) => {
+                const done = (h.completedDates || []).includes(selected);
+                return (
+                  <motion.div key={h.id}
+                    initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: i * 0.03 }}
+                    style={{
+                      display: "flex", alignItems: "center", gap: "14px",
+                      padding: "14px 16px", borderRadius: "16px", marginBottom: "8px",
+                      background: done
+                        ? (isDark ? "rgba(16,185,129,0.1)" : "rgba(16,185,129,0.06)")
+                        : cardBg,
+                      backdropFilter: "blur(10px)",
+                      border: `1px solid ${done ? "rgba(16,185,129,0.25)" : border}`,
+                      transition: "all 0.2s",
+                    }}
+                  >
+                    <div style={{
+                      width: "42px", height: "42px", borderRadius: "14px",
+                      background: `${h.color}22`, flexShrink: 0,
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                      fontSize: "20px",
+                    }}>{h.icon}</div>
+
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{
+                        fontSize: "15px", fontWeight: 600, color: textColor,
+                        textDecoration: done ? "line-through" : "none",
+                        opacity: done ? 0.6 : 1,
+                      }}>{h.name}</div>
+                      <div style={{ fontSize: "11px", color: mutedColor, marginTop: "2px", display: "flex", gap: "8px" }}>
+                        <span style={{ color: "#ff6b9d", fontSize: "10px", fontWeight: 600, padding: "1px 6px", borderRadius: "4px", background: "rgba(255,107,157,0.1)" }}>Habit</span>
+                        {h.streak > 0 && <span style={{ color: "#f59e0b" }}>🔥 {h.streak} streak</span>}
+                      </div>
+                    </div>
+
+                    <motion.button
+                      whileTap={{ scale: 0.85 }}
+                      onClick={() => toggleHabit(h.id, selected)}
+                      style={{
+                        width: "32px", height: "32px", borderRadius: "50%", flexShrink: 0,
+                        border: `2px solid ${done ? "#10b981" : (isDark ? "rgba(255,255,255,0.2)" : "rgba(0,0,0,0.15)")}`,
+                        background: done ? "linear-gradient(135deg,#10b981,#34d399)" : "transparent",
+                        cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
+                        transition: "all 0.15s",
+                      }}
+                    >
+                      {done && <span style={{ color: "white", fontSize: "14px", fontWeight: 800 }}>✓</span>}
+                    </motion.button>
+                  </motion.div>
+                );
+              })}
+            </AnimatePresence>
+          </div>
+        )}
+
+        {/* Tasks section */}
+        {dayTasks.length > 0 && (
+          <div>
+            <div style={{ fontSize: "11px", fontWeight: 700, color: mutedColor, textTransform: "uppercase", letterSpacing: "0.08em", margin: "0 4px 10px" }}>
+              Tasks · {dayTasks.filter(t => t.completed).length}/{dayTasks.length}
+            </div>
+            <AnimatePresence>
+              {dayTasks.map((task, i) => {
+                const cat = categories.find(c => c.id === task.categoryId);
+                const pm  = PRIORITY_COLOR[task.priority] || PRIORITY_COLOR.medium;
+                return (
+                  <motion.div key={task.id}
+                    initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, scale: 0.95 }}
+                    transition={{ delay: i * 0.03 }}
+                    style={{
+                      display: "flex", alignItems: "center", gap: "14px",
+                      padding: "14px 16px", borderRadius: "16px", marginBottom: "8px",
+                      background: task.completed
+                        ? (isDark ? "rgba(15,23,42,0.3)" : "rgba(255,255,255,0.5)")
+                        : cardBg,
+                      backdropFilter: "blur(10px)",
+                      border: `1px solid ${border}`,
+                      borderLeft: `3px solid ${pm}`,
+                      opacity: task.completed ? 0.65 : 1,
+                      transition: "all 0.2s",
+                    }}
+                  >
+                    <motion.div whileTap={{ scale: 0.85 }}
+                      onClick={() => updateTask(task.id, { completed: !task.completed })}
+                      style={{
+                        width: "22px", height: "22px", borderRadius: "7px", flexShrink: 0,
+                        border: `2px solid ${task.completed ? "#10b981" : (isDark ? "rgba(255,255,255,0.22)" : "rgba(0,0,0,0.18)")}`,
+                        background: task.completed ? "linear-gradient(135deg,#10b981,#34d399)" : "transparent",
+                        cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
+                        transition: "all 0.15s",
+                      }}
+                    >
+                      {task.completed && <span style={{ color: "white", fontSize: "12px", fontWeight: 800 }}>✓</span>}
+                    </motion.div>
+
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{
+                        fontSize: "15px", fontWeight: 600, color: textColor,
+                        textDecoration: task.completed ? "line-through" : "none",
+                        marginBottom: "4px",
+                      }}>{task.title}</div>
+                      <div style={{ display: "flex", gap: "6px", flexWrap: "wrap", alignItems: "center" }}>
+                        {cat && (
+                          <span style={{ fontSize: "10px", fontWeight: 600, padding: "1px 7px", borderRadius: "4px", background: `${cat.color}18`, color: cat.color }}>
+                            {cat.icon} {cat.name}
+                          </span>
+                        )}
+                        <span style={{ fontSize: "10px", fontWeight: 600, padding: "1px 7px", borderRadius: "4px", background: `${pm}15`, color: pm }}>
+                          {task.priority}
+                        </span>
+                      </div>
+                    </div>
+
+                    <motion.button whileTap={{ scale: 0.9 }} onClick={() => deleteTask(task.id)}
+                      style={{ width: "28px", height: "28px", borderRadius: "8px", background: "rgba(244,63,94,0.08)", border: "none", cursor: "pointer", color: "#f43f5e", fontSize: "13px", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                      ✕
+                    </motion.button>
+                  </motion.div>
+                );
+              })}
+            </AnimatePresence>
+          </div>
+        )}
+      </div>
+
+      <style>{`.hide-scrollbar::-webkit-scrollbar{display:none}.hide-scrollbar{-ms-overflow-style:none;scrollbar-width:none}`}</style>
+    </div>
   );
 }
