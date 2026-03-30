@@ -1,6 +1,6 @@
 @import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,800;1,9..40,400&display=swap');
 
-* {
+*, *::before, *::after {
   margin: 0;
   padding: 0;
   box-sizing: border-box;
@@ -11,7 +11,9 @@
   --accent-glow:       rgba(255, 107, 157, 0.35);
   --bg-dark:           #0e0618;
   --bg-light:          #f5f0ff;
-  --mobile-nav-height: 72px;
+  --mobile-nav-height: 64px;
+  --safe-top:          env(safe-area-inset-top, 0px);
+  --safe-bottom:       env(safe-area-inset-bottom, 0px);
 }
 
 body {
@@ -92,13 +94,32 @@ body {
   }
 }
 
-/* ── Mobile page content ── */
+/* ── Page content ── */
 .mobile-page-content {
   padding-bottom: 0;
 }
 
 @media (max-width: 768px) {
   .mobile-page-content {
-    padding-bottom: calc(var(--mobile-nav-height) + 20px);
+    padding-bottom: calc(var(--mobile-nav-height) + max(var(--safe-bottom), 8px) + 16px);
+  }
+}
+
+/* ── APK / PWA safe area ── */
+#root {
+  /* Push content below phone status bar in APK */
+  padding-top: env(safe-area-inset-top, 0px);
+}
+
+/* ── Mobile bottom nav safe area ── */
+.mobile-bottom-nav {
+  padding-bottom: max(env(safe-area-inset-bottom, 0px), 8px) !important;
+}
+
+/* ── Clean top nav on mobile — no overflow ── */
+@media (max-width: 768px) {
+  nav {
+    /* Ensure nav doesn't go under status bar */
+    padding-top: env(safe-area-inset-top, 0px);
   }
 }

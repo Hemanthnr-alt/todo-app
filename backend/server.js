@@ -16,31 +16,29 @@ const { startNotificationScheduler } = require("./services/notificationScheduler
 
 const app = express();
 
-// ✅ CORS (UPDATED)
+// ✅ CORS — covers browser, APK, Vercel previews
 const allowedOrigins = [
   "http://localhost:5173",
   "https://todo-app-five-chi-14.vercel.app",
-
-  // ✅ Allow all vercel preview deployments
-  /^https:\/\/todo-app.*\.vercel\.app$/,
-
-  // ✅ Allow capacitor/native app
   "capacitor://localhost",
   "http://localhost",
+  "https://localhost",
   "ionic://localhost",
+  /^https:\/\/todo-app.*\.vercel\.app$/,
 ];
 
 app.use(cors({
   origin: (origin, callback) => {
-    if (!origin) return callback(null, true); // allow mobile apps / Postman
+    // Allow requests with no origin (mobile apps, Postman, curl)
+    if (!origin) return callback(null, true);
 
     const allowed = allowedOrigins.some(o =>
       typeof o === "string" ? o === origin : o.test(origin)
     );
 
-    if (allowed) {
-      callback(null, true);
-    } else {
+    if (allowed) callback(null, true);
+    else {
+      console.warn(`CORS blocked: ${origin}`);
       callback(new Error(`CORS blocked: ${origin}`));
     }
   },
@@ -54,7 +52,7 @@ app.use(express.urlencoded({ extended: true }));
 // ✅ Static files
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
-// ── Routes ─────────────────────────────────────
+// ── Routes ──────────────────────────────────────────────
 
 app.use("/api/auth",       authRoutes);
 app.use("/api/tasks",      protect, taskRoutes);
@@ -65,7 +63,6 @@ app.use("/api/ai",         protect, aiRoutes);
 app.put("/api/user/notifications", protect, async (req, res) => {
   try {
     const { emailReminders, dueDateReminders, reminderTime, dailySummary } = req.body;
-
     const user = await User.findByPk(req.user.id);
     if (!user) return res.status(404).json({ error: "User not found" });
 
@@ -89,7 +86,7 @@ app.get("/api/health", (req, res) => {
   res.json({ status: "healthy", time: new Date().toISOString() });
 });
 
-// ✅ Debug route (optional — remove later)
+// ✅ Debug — remove after confirming fix
 app.get("/api/debug/tables", async (req, res) => {
   try {
     const { sequelize } = require("./db");

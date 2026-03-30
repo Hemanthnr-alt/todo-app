@@ -1,24 +1,23 @@
 import axios from "axios";
 
+// ✅ Hardcode as fallback for APK builds where env vars may not load
+const BASE_URL = import.meta.env.VITE_API_URL || "https://todo-app-91pe.onrender.com/api";
+
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || "https://todo-app-91pe.onrender.com/api",
-  timeout: 15000, // ✅ increase timeout — Render free tier cold starts
-  headers: {
-    "Content-Type": "application/json",
-  },
-  withCredentials: false, // ✅ must be false for cross-origin on mobile
+  baseURL: BASE_URL,
+  timeout: 60000,
+  headers: { "Content-Type": "application/json" },
+  withCredentials: false,
 });
 
-// Attach JWT token to every request
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem("token");
   if (token) config.headers.Authorization = `Bearer ${token}`;
   return config;
 });
 
-// Handle auth errors globally
 api.interceptors.response.use(
-  (response) => response,
+  (res) => res,
   (error) => {
     if (error.response?.status === 401) {
       localStorage.removeItem("token");
