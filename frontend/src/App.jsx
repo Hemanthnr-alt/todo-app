@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { ThemeProvider } from "./context/ThemeContext";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import { Toaster } from "react-hot-toast";
@@ -16,6 +16,22 @@ function AppContent() {
   const [page, setPage] = useState("today");
   const { loading } = useAuth();
   const { tasks, categories } = useTasks();
+
+  // ✅ OFFLINE DETECTION
+  const [isOffline, setIsOffline] = useState(!navigator.onLine);
+
+  useEffect(() => {
+    const go  = () => setIsOffline(false);
+    const off = () => setIsOffline(true);
+
+    window.addEventListener("online", go);
+    window.addEventListener("offline", off);
+
+    return () => {
+      window.removeEventListener("online", go);
+      window.removeEventListener("offline", off);
+    };
+  }, []);
 
   if (loading) {
     return (
@@ -35,7 +51,9 @@ function AppContent() {
             margin: "0 auto 20px",
             boxShadow: "0 8px 28px rgba(255,107,157,0.35)",
           }}>30</div>
-          <p style={{ color: "rgba(255,255,255,0.4)", fontSize: "14px", margin: 0 }}>Loading workspace…</p>
+          <p style={{ color: "rgba(255,255,255,0.4)", fontSize: "14px", margin: 0 }}>
+            Loading workspace…
+          </p>
         </div>
       </div>
     );
@@ -44,10 +62,31 @@ function AppContent() {
   return (
     <div style={{ position: "relative", minHeight: "100vh" }}>
       <AnimatedBackground />
+
+      {/* ✅ NEW OFFLINE BANNER */}
+      {isOffline && (
+        <div style={{
+          position: "fixed",
+          top: 60,
+          left: 0,
+          right: 0,
+          zIndex: 9999,
+          background: "rgba(245,158,11,0.95)",
+          backdropFilter: "blur(8px)",
+          padding: "10px 16px",
+          textAlign: "center",
+          fontSize: "13px",
+          fontWeight: 600,
+          color: "white",
+          fontFamily: "'DM Sans', sans-serif",
+        }}>
+          ⚠️ You're offline — showing cached data
+        </div>
+      )}
+
       <div style={{ position: "relative", zIndex: 1 }}>
         <Navbar activePage={page} onPageChange={setPage} />
 
-        {/* Page content wrapper — adds bottom padding on mobile for bottom nav */}
         <div className="mobile-page-content">
           {page === "today"      && <Today onGoToTasks={() => setPage("tasks")} />}
           {page === "tasks"      && <Tasks />}
@@ -57,17 +96,14 @@ function AppContent() {
         </div>
       </div>
 
-      {/* AI Assistant FAB */}
+      {/* AI Assistant */}
       <AIAssistant tasks={tasks} categories={categories} />
 
       <style>{`
-        /* Move AI FAB above mobile bottom nav */
         @media (max-width: 768px) {
-          /* AI FAB positioning */
           .ai-fab-wrapper {
             bottom: calc(72px + 16px) !important;
           }
-          /* AI panel positioning */
           .ai-panel-wrapper {
             bottom: calc(72px + 16px) !important;
             height: min(500px, calc(100dvh - 200px)) !important;

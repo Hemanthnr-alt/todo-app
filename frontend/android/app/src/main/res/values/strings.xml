@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">30</string>
+    <string name="title_activity_main">30</string>
+    <string name="package_name">com.thirty.taskmanager</string>
+    <string name="custom_url_scheme">com.thirty.taskmanager</string>
+</resources>

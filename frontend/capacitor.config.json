@@ -1,0 +1,12 @@
+{
+  "appId": "com.thirty.taskmanager",
+  "appName": "30",
+  "webDir": "dist",
+  "server": {
+    "androidScheme": "https",
+    "cleartext": true
+  },
+  "android": {
+    "allowMixedContent": true
+  }
+}

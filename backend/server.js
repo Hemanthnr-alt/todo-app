@@ -16,18 +16,32 @@ const { startNotificationScheduler } = require("./services/notificationScheduler
 
 const app = express();
 
-// ✅ CORS
+// ✅ CORS (UPDATED)
 const allowedOrigins = [
   "http://localhost:5173",
   "https://todo-app-five-chi-14.vercel.app",
+
+  // ✅ Allow all vercel preview deployments
+  /^https:\/\/todo-app.*\.vercel\.app$/,
+
+  // ✅ Allow capacitor/native app
+  "capacitor://localhost",
+  "http://localhost",
+  "ionic://localhost",
 ];
 
 app.use(cors({
   origin: (origin, callback) => {
-    if (!origin || allowedOrigins.includes(origin)) {
+    if (!origin) return callback(null, true); // allow mobile apps / Postman
+
+    const allowed = allowedOrigins.some(o =>
+      typeof o === "string" ? o === origin : o.test(origin)
+    );
+
+    if (allowed) {
       callback(null, true);
     } else {
-      callback(new Error(`CORS blocked for origin: ${origin}`));
+      callback(new Error(`CORS blocked: ${origin}`));
     }
   },
   credentials: true,
@@ -75,7 +89,7 @@ app.get("/api/health", (req, res) => {
   res.json({ status: "healthy", time: new Date().toISOString() });
 });
 
-// ✅ Debug route — visit to confirm tables exist (remove after fix confirmed)
+// ✅ Debug route (optional — remove later)
 app.get("/api/debug/tables", async (req, res) => {
   try {
     const { sequelize } = require("./db");

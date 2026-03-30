@@ -3,6 +3,10 @@ import react from '@vitejs/plugin-react'
 
 export default defineConfig({
   plugins: [react()],
+
+  // ✅ REQUIRED for Capacitor (very important)
+  base: './',
+
   server: {
     port: 5173,
     proxy: {
@@ -16,6 +20,7 @@ export default defineConfig({
       },
     },
   },
+
   build: {
     outDir: 'dist',
     sourcemap: false,
