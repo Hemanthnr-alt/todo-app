@@ -1,7 +1,7 @@
 import axios from "axios";
 
-// ✅ Hardcode as fallback for APK builds where env vars may not load
-const BASE_URL = import.meta.env.VITE_API_URL || "https://todo-app-91pe.onrender.com/api";
+const BASE_URL = import.meta.env.VITE_API_URL ||
+  "https://todo-app-91pe.onrender.com/api";
 
 const api = axios.create({
   baseURL: BASE_URL,
@@ -24,6 +24,17 @@ api.interceptors.response.use(
       localStorage.removeItem("user");
       window.location.reload();
     }
+
+    // ✅ Clean offline error message
+    if (!error.response && (
+      error.code === "ERR_NETWORK" ||
+      error.code === "ECONNABORTED" ||
+      error.message?.includes("Network Error") ||
+      error.message?.includes("offline")
+    )) {
+      error.message = "You're offline — please reconnect to add or update tasks";
+    }
+
     return Promise.reject(error);
   }
 );

@@ -25,7 +25,6 @@ function AppContent() {
   const [page, setPage]       = useState("today");
   const { loading }           = useAuth();
   const { tasks, categories } = useTasks();
-
   const [isOffline, setIsOffline] = useState(false);
   const [isWaking,  setIsWaking]  = useState(false);
 
@@ -33,31 +32,25 @@ function AppContent() {
     let wakeTimer = null;
 
     const checkBackend = async () => {
-      // Only show waking/offline if browser says we're online
       if (!navigator.onLine) {
         setIsOffline(true);
         setIsWaking(false);
         return;
       }
-
       try {
         setIsWaking(true);
         setIsOffline(false);
-
         const controller = new AbortController();
         wakeTimer = setTimeout(() => controller.abort(), 60000);
-
         await fetch("https://todo-app-91pe.onrender.com/api/health", {
           signal: controller.signal,
         });
-
         clearTimeout(wakeTimer);
         setIsWaking(false);
         setIsOffline(false);
-      } catch (err) {
+      } catch {
         clearTimeout(wakeTimer);
         setIsWaking(false);
-        // Only show offline if browser also says offline
         setIsOffline(!navigator.onLine);
       }
     };
@@ -66,7 +59,6 @@ function AppContent() {
 
     const goOnline  = () => { setIsOffline(false); checkBackend(); };
     const goOffline = () => { setIsOffline(true); setIsWaking(false); };
-
     window.addEventListener("online",  goOnline);
     window.addEventListener("offline", goOffline);
 
@@ -107,33 +99,43 @@ function AppContent() {
     <div style={{ position: "relative", minHeight: "100vh" }}>
       <AnimatedBackground />
 
-      {/* Waking up Render banner */}
-      {isWaking && !isOffline && (
+      {/* ── Clean status bar ── */}
+      {(isWaking || isOffline) && (
         <div style={{
-          position: "fixed", top: 60, left: 0, right: 0, zIndex: 9999,
-          background: "rgba(59,130,246,0.95)",
-          backdropFilter: "blur(8px)",
-          padding: "10px 16px", textAlign: "center",
-          fontSize: "13px", fontWeight: 600, color: "white",
-          fontFamily: "'DM Sans', sans-serif",
+          position: "fixed",
+          // sits right below the navbar
+          top: "56px",
+          left: 0, right: 0,
+          zIndex: 9999,
           display: "flex", alignItems: "center", justifyContent: "center", gap: "8px",
-        }}>
-          <span style={{ animation: "spin 1s linear infinite", display: "inline-block" }}>⟳</span>
-          Connecting to server — please wait a moment...
-        </div>
-      )}
-
-      {/* Offline banner */}
-      {isOffline && (
-        <div style={{
-          position: "fixed", top: 60, left: 0, right: 0, zIndex: 9999,
-          background: "rgba(245,158,11,0.95)",
-          backdropFilter: "blur(8px)",
-          padding: "10px 16px", textAlign: "center",
-          fontSize: "13px", fontWeight: 600, color: "white",
+          padding: "7px 16px",
+          // subtle pill style instead of full-width block
+          background: isOffline
+            ? "rgba(30,20,10,0.92)"
+            : "rgba(10,20,40,0.92)",
+          backdropFilter: "blur(12px)",
+          borderBottom: `1px solid ${isOffline ? "rgba(245,158,11,0.2)" : "rgba(59,130,246,0.2)"}`,
+          fontSize: "12px", fontWeight: 600,
+          color: isOffline ? "#f59e0b" : "#60a5fa",
           fontFamily: "'DM Sans', sans-serif",
+          letterSpacing: "0.01em",
         }}>
-          ⚠️ You're offline — showing cached data
+          {isWaking && !isOffline ? (
+            <>
+              <span style={{ animation: "spin 1s linear infinite", display: "inline-block", fontSize: "13px" }}>⟳</span>
+              Waking server up — just a moment
+            </>
+          ) : (
+            <>
+              <span style={{
+                width: "6px", height: "6px", borderRadius: "50%",
+                background: "#f59e0b",
+                display: "inline-block",
+                animation: "pulse-dot 1.5s ease-in-out infinite",
+              }} />
+              Offline — cached data shown
+            </>
+          )}
         </div>
       )}
 
@@ -153,6 +155,10 @@ function AppContent() {
 
       <style>{`
         @keyframes spin { to { transform: rotate(360deg); } }
+        @keyframes pulse-dot {
+          0%,100% { opacity: 1; transform: scale(1); }
+          50%      { opacity: 0.4; transform: scale(0.7); }
+        }
         @media (max-width: 768px) {
           .ai-fab-wrapper   { bottom: calc(72px + 16px) !important; }
           .ai-panel-wrapper { bottom: calc(72px + 16px) !important; height: min(500px, calc(100dvh - 200px)) !important; }
@@ -168,7 +174,7 @@ export default function App() {
       <AuthProvider>
         <AppContent />
         <Toaster
-          position="bottom-right"
+          position="bottom-center"
           toastOptions={{
             style: {
               background: "#0f172a",
@@ -180,6 +186,12 @@ export default function App() {
               marginBottom: "80px",
             },
             success: { iconTheme: { primary: "#ff6b9d", secondary: "#0f172a" } },
+            error: {
+              style: {
+                background: "#1a0a0a",
+                border: "1px solid rgba(244,63,94,0.25)",
+              },
+            },
           }}
         />
       </AuthProvider>

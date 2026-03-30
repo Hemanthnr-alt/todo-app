@@ -1,52 +1,61 @@
-import { Capacitor } from "@capacitor/core";
+// Safe import — works in both browser and Capacitor APK
+const isNative = () => {
+  try {
+    return window?.Capacitor?.isNativePlatform?.() === true;
+  } catch { return false; }
+};
 
-const isNative = Capacitor.isNativePlatform();
-
-let LocalNotifications = null;
-
-// Lazy load only on native
 const getLocalNotifications = async () => {
-  if (isNative && !LocalNotifications) {
-    const mod = await import("@capacitor/local-notifications");
-    LocalNotifications = mod.LocalNotifications;
-  }
-  return LocalNotifications;
+  if (!isNative()) return null;
+  try {
+    const { LocalNotifications } = await import("@capacitor/local-notifications");
+    return LocalNotifications;
+  } catch { return null; }
 };
 
 export const requestNotificationPermission = async () => {
-  if (isNative) {
+  const ln = await getLocalNotifications();
+
+  if (ln) {
+    // ✅ Native APK
     try {
-      const ln = await getLocalNotifications();
       const { display } = await ln.requestPermissions();
       return display === "granted";
     } catch { return false; }
   }
+
+  // ✅ Browser
   if (!("Notification" in window)) return false;
-  const result = await Notification.requestPermission();
-  return result === "granted";
+  try {
+    const result = await Notification.requestPermission();
+    return result === "granted";
+  } catch { return false; }
 };
 
 export const checkPermissionStatus = async () => {
-  if (isNative) {
+  const ln = await getLocalNotifications();
+
+  if (ln) {
     try {
-      const ln = await getLocalNotifications();
       const { display } = await ln.checkPermissions();
       return display === "granted";
     } catch { return false; }
   }
+
   if (!("Notification" in window)) return false;
   return Notification.permission === "granted";
 };
 
 export const sendNotification = async ({ title, body, id = Date.now() }) => {
-  if (isNative) {
+  const ln = await getLocalNotifications();
+
+  if (ln) {
     try {
-      const ln = await getLocalNotifications();
       await ln.schedule({
         notifications: [{
           title,
           body,
-          id: Math.abs(Math.floor(id % 2147483647)),
+          id: Math.abs(Math.floor(id % 2147483647)) || 1,
           schedule: { at: new Date(Date.now() + 300) },
           sound: null,
           attachments: null,
@@ -57,13 +66,11 @@ export const sendNotification = async ({ title, body, id = Date.now() }) => {
     } catch (err) {
       console.warn("Native notification failed:", err);
     }
-  } else {
-    if (typeof Notification !== "undefined" && Notification.permission === "granted") {
-      try { new Notification(title, { body }); } catch {}
-    }
+  } else if (typeof Notification !== "undefined" && Notification.permission === "granted") {
+    try { new Notification(title, { body }); } catch {}
   }
 
-  // Always save to notification history
+  // Save to history
   try {
     const existing = JSON.parse(localStorage.getItem("notifs") || "[]");
     const updated = [{
