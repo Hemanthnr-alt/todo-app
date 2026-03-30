@@ -4,21 +4,26 @@ import { useTheme } from "../context/ThemeContext";
 import { useAuth } from "../context/AuthContext";
 import api from "../services/api";
 import toast from "react-hot-toast";
+import {
+  requestNotificationPermission,
+  checkPermissionStatus,
+  sendNotification,
+} from "../services/notifications";
 
 const DEFAULTS = {
   notifications: {
-    browser: false,
+    browser:      false,
     dueReminders: true,
     dailySummary: true,
     reminderTime: "1hour",
   },
   appearance: {
-    compactView: false,
-    showCompleted: true,
-    animationsEnabled: true,
+    compactView:        false,
+    showCompleted:      true,
+    animationsEnabled:  true,
   },
   privacy: {
-    showEmail: false,
+    showEmail:    false,
     showActivity: true,
   },
 };
@@ -29,8 +34,8 @@ function loadSettings() {
     if (!s) return structuredClone(DEFAULTS);
     return {
       notifications: { ...DEFAULTS.notifications, ...s.notifications },
-      appearance: { ...DEFAULTS.appearance, ...s.appearance },
-      privacy: { ...DEFAULTS.privacy, ...s.privacy },
+      appearance:    { ...DEFAULTS.appearance,    ...s.appearance    },
+      privacy:       { ...DEFAULTS.privacy,       ...s.privacy       },
     };
   } catch {
     return structuredClone(DEFAULTS);
@@ -38,9 +43,8 @@ function loadSettings() {
 }
 
 function Toggle({ label, desc, value, onChange, isDark, accentColor = "#ff6b9d" }) {
-  const textColor = isDark ? "#f1f5f9" : "#0f172a";
+  const textColor  = isDark ? "#f1f5f9"                : "#0f172a";
   const mutedColor = isDark ? "rgba(241,245,249,0.42)" : "rgba(15,23,42,0.42)";
-
   return (
     <div style={{
       display: "flex", justifyContent: "space-between", alignItems: "center",
@@ -53,10 +57,11 @@ function Toggle({ label, desc, value, onChange, isDark, accentColor = "#ff6b9d" 
       </div>
       <button
         onClick={() => onChange(!value)}
-        aria-label={`Toggle ${label}`}
         style={{
           width: "44px", height: "24px", borderRadius: "12px", cursor: "pointer",
-          background: value ? `linear-gradient(135deg, ${accentColor}, ${accentColor}cc)` : (isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)"),
+          background: value
+            ? `linear-gradient(135deg,${accentColor},${accentColor}cc)`
+            : (isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)"),
           position: "relative", transition: "background 0.22s", flexShrink: 0,
           border: "none", outline: "none",
           boxShadow: value ? `0 2px 10px ${accentColor}55` : "none",
@@ -76,47 +81,47 @@ function Toggle({ label, desc, value, onChange, isDark, accentColor = "#ff6b9d" 
 }
 
 export default function AppSettings({ isOpen, onClose }) {
-  const { isDark, toggleTheme } = useTheme();
-  const { user, isAuthenticated } = useAuth();
-  const [settings, setSettings] = useState(loadSettings);
-  const [saving, setSaving] = useState(false);
-  const [activeTab, setActiveTab] = useState("appearance");
-  const [notifPermission, setNotifPermission] = useState("default");
+  const { isDark, toggleTheme }    = useTheme();
+  const { user, isAuthenticated }  = useAuth();
+  const [settings,    setSettings]    = useState(loadSettings);
+  const [saving,      setSaving]      = useState(false);
+  const [activeTab,   setActiveTab]   = useState("appearance");
+  const [notifGranted, setNotifGranted] = useState(false);
 
+  // Check permission on open
   useEffect(() => {
-    if ("Notification" in window) {
-      setNotifPermission(Notification.permission);
-    }
+    if (!isOpen) return;
+    checkPermissionStatus().then(setNotifGranted);
   }, [isOpen]);
 
   const upd = (cat, key, val) => {
     setSettings(prev => ({ ...prev, [cat]: { ...prev[cat], [key]: val } }));
-    // Live-apply theme changes
     if (cat === "appearance" && key === "theme") {
-      const wantDark = val === "dark";
-      if (wantDark !== isDark) toggleTheme();
+      if ((val === "dark") !== isDark) toggleTheme();
     }
   };
 
-  const requestBrowserNotifications = async () => {
-    if (!("Notification" in window)) {
-      toast.error("Browser notifications not supported");
-      return;
-    }
-    const perm = await Notification.requestPermission();
-    setNotifPermission(perm);
-    if (perm === "granted") {
+  // ✅ Works on both APK (Capacitor) and browser
+  const handleEnableNotifications = async () => {
+    const granted = await requestNotificationPermission();
+    setNotifGranted(granted);
+    if (granted) {
       upd("notifications", "browser", true);
-      toast.success("Browser notifications enabled! 🔔");
+      toast.success("Notifications enabled! 🔔");
+      // Send test notification
+      await sendNotification({
+        title: "30 — Notifications enabled",
+        body:  "You'll now receive task reminders.",
+      });
     } else {
       upd("notifications", "browser", false);
-      toast.error("Notification permission denied");
+      toast.error("Permission denied. Enable in your device Settings.");
     }
   };
 
-  const handleToggleBrowserNotif = (val) => {
-    if (val && notifPermission !== "granted") {
-      requestBrowserNotifications();
+  const handleToggleBrowserNotif = async (val) => {
+    if (val && !notifGranted) {
+      await handleEnableNotifications();
     } else {
       upd("notifications", "browser", val);
     }
@@ -127,25 +132,21 @@ export default function AppSettings({ isOpen, onClose }) {
     try {
       localStorage.setItem("tp_settings", JSON.stringify(settings));
 
-      // Apply appearance settings
       if (settings.appearance.animationsEnabled === false) {
         document.documentElement.style.setProperty("--motion-duration", "0s");
       } else {
         document.documentElement.style.removeProperty("--motion-duration");
       }
 
-      // Sync notification prefs to backend if logged in
       if (isAuthenticated) {
         try {
           await api.put("/user/notifications", {
             dueDateReminders: settings.notifications.dueReminders,
-            dailySummary: settings.notifications.dailySummary,
-            reminderTime: settings.notifications.reminderTime,
-            emailReminders: settings.notifications.dueReminders,
+            dailySummary:     settings.notifications.dailySummary,
+            reminderTime:     settings.notifications.reminderTime,
+            emailReminders:   settings.notifications.dueReminders,
           });
-        } catch (err) {
-          // non-critical
-        }
+        } catch {}
       }
 
       toast.success("Settings saved! ✓");
@@ -156,42 +157,40 @@ export default function AppSettings({ isOpen, onClose }) {
   };
 
   const reset = () => {
-    const fresh = structuredClone(DEFAULTS);
-    setSettings(fresh);
+    setSettings(structuredClone(DEFAULTS));
     localStorage.removeItem("tp_settings");
     toast("Settings reset to defaults");
   };
 
-  const bg = isDark ? "rgba(8,11,20,0.98)" : "rgba(250,251,253,0.98)";
-  const border = isDark ? "rgba(255,107,157,0.1)" : "rgba(255,107,157,0.14)";
-  const textColor = isDark ? "#f1f5f9" : "#0f172a";
-  const mutedColor = isDark ? "rgba(241,245,249,0.42)" : "rgba(15,23,42,0.42)";
-  const cardBg = isDark ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.03)";
+  const bg         = isDark ? "rgba(8,11,20,0.98)"        : "rgba(250,251,253,0.98)";
+  const border     = isDark ? "rgba(255,107,157,0.1)"     : "rgba(255,107,157,0.14)";
+  const textColor  = isDark ? "#f1f5f9"                   : "#0f172a";
+  const mutedColor = isDark ? "rgba(241,245,249,0.42)"    : "rgba(15,23,42,0.42)";
+  const cardBg     = isDark ? "rgba(255,255,255,0.04)"    : "rgba(0,0,0,0.03)";
 
   const TABS = [
-    { id: "appearance", label: "Appearance", icon: "🎨" },
+    { id: "appearance",    label: "Appearance",    icon: "🎨" },
     { id: "notifications", label: "Notifications", icon: "🔔" },
-    { id: "account", label: "Account", icon: "👤" },
-    { id: "privacy", label: "Privacy", icon: "🔒" },
+    { id: "account",       label: "Account",       icon: "👤" },
+    { id: "privacy",       label: "Privacy",       icon: "🔒" },
   ];
 
   return (
     <AnimatePresence>
       {isOpen && (
         <>
-          {/* Backdrop */}
           <motion.div
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
             onClick={onClose}
             style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.35)", zIndex: 1000 }}
           />
 
-          {/* Drawer */}
           <motion.div
             initial={{ x: "100%" }} animate={{ x: 0 }} exit={{ x: "100%" }}
             transition={{ type: "spring", damping: 30, stiffness: 280 }}
             style={{
-              position: "fixed", top: 0, right: 0, height: "100dvh", width: "min(420px, 100vw)",
+              position: "fixed", top: 0, right: 0,
+              height: "100dvh", width: "min(420px,100vw)",
               background: bg, backdropFilter: "blur(24px)",
               borderLeft: `1px solid ${border}`,
               boxShadow: "-8px 0 48px rgba(0,0,0,0.16)",
@@ -212,22 +211,19 @@ export default function AppSettings({ isOpen, onClose }) {
                     width: "26px", height: "26px", borderRadius: "7px",
                     background: "linear-gradient(135deg,#ff6b9d,#ff99cc)",
                     display: "flex", alignItems: "center", justifyContent: "center",
-                    fontSize: "11px", fontWeight: 900, color: "white", flexShrink: 0,
+                    fontSize: "11px", fontWeight: 900, color: "white",
                   }}>30</div>
                   <h2 style={{ fontSize: "18px", fontWeight: 800, margin: 0, color: textColor, letterSpacing: "-0.03em" }}>Settings</h2>
                 </div>
                 <p style={{ fontSize: "12px", color: mutedColor, margin: 0 }}>Customise your 30 experience</p>
               </div>
-              <button
-                onClick={onClose}
-                style={{
-                  width: "32px", height: "32px", borderRadius: "9px",
-                  background: isDark ? "rgba(255,255,255,0.07)" : "rgba(0,0,0,0.06)",
-                  border: `1px solid ${border}`, cursor: "pointer",
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                  color: mutedColor, fontSize: "14px",
-                }}
-              >✕</button>
+              <button onClick={onClose} style={{
+                width: "32px", height: "32px", borderRadius: "9px",
+                background: isDark ? "rgba(255,255,255,0.07)" : "rgba(0,0,0,0.06)",
+                border: `1px solid ${border}`, cursor: "pointer",
+                display: "flex", alignItems: "center", justifyContent: "center",
+                color: mutedColor, fontSize: "14px",
+              }}>✕</button>
             </div>
 
             {/* Tabs */}
@@ -237,21 +233,17 @@ export default function AppSettings({ isOpen, onClose }) {
               overflowX: "auto",
             }}>
               {TABS.map(tab => (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
-                  style={{
-                    padding: "7px 12px", borderRadius: "8px 8px 0 0",
-                    border: `1px solid ${activeTab === tab.id ? border : "transparent"}`,
-                    borderBottom: activeTab === tab.id ? `2px solid #ff6b9d` : "2px solid transparent",
-                    background: activeTab === tab.id ? (isDark ? "rgba(255,107,157,0.08)" : "rgba(255,107,157,0.06)") : "transparent",
-                    color: activeTab === tab.id ? "#ff6b9d" : mutedColor,
-                    cursor: "pointer", fontSize: "12px", fontWeight: activeTab === tab.id ? 700 : 500,
-                    fontFamily: "inherit", whiteSpace: "nowrap",
-                    display: "flex", alignItems: "center", gap: "5px",
-                    transition: "all 0.15s",
-                  }}
-                >
+                <button key={tab.id} onClick={() => setActiveTab(tab.id)} style={{
+                  padding: "7px 12px", borderRadius: "8px 8px 0 0",
+                  border: `1px solid ${activeTab === tab.id ? border : "transparent"}`,
+                  borderBottom: activeTab === tab.id ? "2px solid #ff6b9d" : "2px solid transparent",
+                  background: activeTab === tab.id ? (isDark ? "rgba(255,107,157,0.08)" : "rgba(255,107,157,0.06)") : "transparent",
+                  color: activeTab === tab.id ? "#ff6b9d" : mutedColor,
+                  cursor: "pointer", fontSize: "12px", fontWeight: activeTab === tab.id ? 700 : 500,
+                  fontFamily: "inherit", whiteSpace: "nowrap",
+                  display: "flex", alignItems: "center", gap: "5px",
+                  transition: "all 0.15s",
+                }}>
                   <span style={{ fontSize: "13px" }}>{tab.icon}</span>
                   {tab.label}
                 </button>
@@ -269,87 +261,81 @@ export default function AppSettings({ isOpen, onClose }) {
                   transition={{ duration: 0.15 }}
                 >
 
-                  {/* ── APPEARANCE TAB ── */}
+                  {/* ── APPEARANCE ── */}
                   {activeTab === "appearance" && (
                     <div>
-                      {/* Theme */}
-                      <div style={{ marginBottom: "20px" }}>
-                        <label style={{ fontSize: "11px", fontWeight: 700, color: mutedColor, textTransform: "uppercase", letterSpacing: "0.07em", display: "block", marginBottom: "10px" }}>
-                          Theme
-                        </label>
-                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
-                          {[
-                            { value: "dark",  label: "🌙 Dark",  desc: "Easy on the eyes" },
-                            { value: "light", label: "☀️ Light", desc: "Bright & clean" },
-                          ].map(opt => {
-                            const active = (isDark ? "dark" : "light") === opt.value;
-                            return (
-                              <button
-                                key={opt.value}
-                                onClick={() => {
-                                  if (!active) toggleTheme();
-                                }}
-                                style={{
-                                  padding: "12px", borderRadius: "12px",
-                                  border: `1.5px solid ${active ? "#ff6b9d" : border}`,
-                                  background: active ? "rgba(255,107,157,0.1)" : cardBg,
-                                  color: active ? "#ff6b9d" : textColor,
-                                  cursor: "pointer", textAlign: "left",
-                                  fontFamily: "inherit",
-                                  transition: "all 0.18s",
-                                }}
-                              >
-                                <div style={{ fontSize: "14px", fontWeight: 700, marginBottom: "2px" }}>{opt.label}</div>
-                                <div style={{ fontSize: "11px", color: active ? "#ff6b9d" : mutedColor }}>{opt.desc}</div>
-                              </button>
-                            );
-                          })}
-                        </div>
+                      <label style={{ fontSize: "11px", fontWeight: 700, color: mutedColor, textTransform: "uppercase", letterSpacing: "0.07em", display: "block", marginBottom: "10px" }}>
+                        Theme
+                      </label>
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px", marginBottom: "20px" }}>
+                        {[
+                          { value: "dark",  label: "🌙 Dark",  desc: "Easy on the eyes" },
+                          { value: "light", label: "☀️ Light", desc: "Bright & clean"    },
+                        ].map(opt => {
+                          const active = (isDark ? "dark" : "light") === opt.value;
+                          return (
+                            <button key={opt.value} onClick={() => { if (!active) toggleTheme(); }}
+                              style={{
+                                padding: "12px", borderRadius: "12px",
+                                border: `1.5px solid ${active ? "#ff6b9d" : border}`,
+                                background: active ? "rgba(255,107,157,0.1)" : cardBg,
+                                color: active ? "#ff6b9d" : textColor,
+                                cursor: "pointer", textAlign: "left",
+                                fontFamily: "inherit", transition: "all 0.18s",
+                              }}
+                            >
+                              <div style={{ fontSize: "14px", fontWeight: 700, marginBottom: "2px" }}>{opt.label}</div>
+                              <div style={{ fontSize: "11px", color: active ? "#ff6b9d" : mutedColor }}>{opt.desc}</div>
+                            </button>
+                          );
+                        })}
                       </div>
 
-                      {/* Toggles */}
                       <div style={{ background: cardBg, borderRadius: "12px", padding: "0 14px", border: `1px solid ${border}` }}>
-                        <Toggle label="Compact View" desc="Reduce spacing between items" value={settings.appearance.compactView} onChange={v => upd("appearance", "compactView", v)} isDark={isDark} />
-                        <Toggle label="Show Completed Tasks" desc="Keep completed tasks visible" value={settings.appearance.showCompleted} onChange={v => upd("appearance", "showCompleted", v)} isDark={isDark} />
-                        <Toggle label="Enable Animations" desc="Smooth transitions and effects" value={settings.appearance.animationsEnabled} onChange={v => upd("appearance", "animationsEnabled", v)} isDark={isDark} />
+                        <Toggle label="Compact View"          desc="Reduce spacing between items"   value={settings.appearance.compactView}       onChange={v => upd("appearance","compactView",v)}      isDark={isDark} />
+                        <Toggle label="Show Completed Tasks"  desc="Keep completed tasks visible"   value={settings.appearance.showCompleted}     onChange={v => upd("appearance","showCompleted",v)}    isDark={isDark} />
+                        <Toggle label="Enable Animations"     desc="Smooth transitions and effects" value={settings.appearance.animationsEnabled} onChange={v => upd("appearance","animationsEnabled",v)} isDark={isDark} />
                       </div>
                     </div>
                   )}
 
-                  {/* ── NOTIFICATIONS TAB ── */}
+                  {/* ── NOTIFICATIONS ── */}
                   {activeTab === "notifications" && (
                     <div>
-                      {/* Browser notif status */}
+                      {/* Permission status card */}
                       <div style={{
-                        padding: "12px 14px", borderRadius: "12px",
-                        background: notifPermission === "granted" ? "rgba(16,185,129,0.08)" : "rgba(245,158,11,0.08)",
-                        border: `1px solid ${notifPermission === "granted" ? "rgba(16,185,129,0.2)" : "rgba(245,158,11,0.2)"}`,
+                        padding: "14px 16px", borderRadius: "14px",
+                        background: notifGranted ? "rgba(16,185,129,0.08)" : "rgba(245,158,11,0.08)",
+                        border: `1px solid ${notifGranted ? "rgba(16,185,129,0.25)" : "rgba(245,158,11,0.25)"}`,
                         marginBottom: "16px",
-                        display: "flex", justifyContent: "space-between", alignItems: "center",
+                        display: "flex", justifyContent: "space-between", alignItems: "center", gap: "12px",
                       }}>
                         <div>
-                          <div style={{ fontSize: "12px", fontWeight: 700, color: notifPermission === "granted" ? "#10b981" : "#f59e0b" }}>
-                            {notifPermission === "granted" ? "✓ Notifications allowed" : "⚠ Notifications blocked"}
+                          <div style={{ fontSize: "13px", fontWeight: 700, color: notifGranted ? "#10b981" : "#f59e0b" }}>
+                            {notifGranted ? "✓ Notifications enabled" : "⚠ Notifications blocked"}
                           </div>
-                          <div style={{ fontSize: "11px", color: mutedColor, marginTop: "2px" }}>
-                            {notifPermission === "granted" ? "Browser can show alerts" : "Click to enable browser alerts"}
+                          <div style={{ fontSize: "11px", color: mutedColor, marginTop: "3px" }}>
+                            {notifGranted
+                              ? "You'll receive task reminders"
+                              : "Tap Enable to allow notifications"}
                           </div>
                         </div>
-                        {notifPermission !== "granted" && (
-                          <button onClick={requestBrowserNotifications} style={{
-                            padding: "6px 12px", borderRadius: "8px",
+                        {!notifGranted && (
+                          <button onClick={handleEnableNotifications} style={{
+                            padding: "8px 14px", borderRadius: "10px",
                             background: "linear-gradient(135deg,#f59e0b,#f97316)",
                             border: "none", color: "white", cursor: "pointer",
-                            fontSize: "11px", fontWeight: 700, fontFamily: "inherit",
+                            fontSize: "12px", fontWeight: 700, fontFamily: "inherit",
+                            flexShrink: 0,
                           }}>Enable</button>
                         )}
                       </div>
 
                       <div style={{ background: cardBg, borderRadius: "12px", padding: "0 14px", border: `1px solid ${border}`, marginBottom: "16px" }}>
                         <Toggle
-                          label="Browser Notifications"
-                          desc="Pop-up alerts when tasks are due"
-                          value={settings.notifications.browser && notifPermission === "granted"}
+                          label="Push Notifications"
+                          desc="Alerts when tasks are due"
+                          value={settings.notifications.browser && notifGranted}
                           onChange={handleToggleBrowserNotif}
                           isDark={isDark}
                         />
@@ -357,37 +343,38 @@ export default function AppSettings({ isOpen, onClose }) {
                           label="Due Date Reminders"
                           desc="Alert before tasks are due"
                           value={settings.notifications.dueReminders}
-                          onChange={v => upd("notifications", "dueReminders", v)}
+                          onChange={v => upd("notifications","dueReminders",v)}
                           isDark={isDark}
                         />
                         <Toggle
                           label="Daily Summary Email"
                           desc="End-of-day digest in your inbox"
                           value={settings.notifications.dailySummary}
-                          onChange={v => upd("notifications", "dailySummary", v)}
+                          onChange={v => upd("notifications","dailySummary",v)}
                           isDark={isDark}
                         />
                       </div>
 
                       {settings.notifications.dueReminders && (
                         <div style={{ background: cardBg, borderRadius: "12px", padding: "14px", border: `1px solid ${border}` }}>
-                          <label style={{ fontSize: "11px", fontWeight: 700, color: mutedColor, textTransform: "uppercase", letterSpacing: "0.07em", display: "block", marginBottom: "8px" }}>
+                          <label style={{ fontSize: "11px", fontWeight: 700, color: mutedColor, textTransform: "uppercase", letterSpacing: "0.07em", display: "block", marginBottom: "10px" }}>
                             Reminder Lead Time
                           </label>
-                          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "6px" }}>
+                          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
                             {[
                               { value: "15min", label: "15 min" },
                               { value: "30min", label: "30 min" },
                               { value: "1hour", label: "1 hour" },
-                              { value: "1day",  label: "1 day" },
+                              { value: "1day",  label: "1 day"  },
                             ].map(opt => (
-                              <button key={opt.value} onClick={() => upd("notifications", "reminderTime", opt.value)}
+                              <button key={opt.value}
+                                onClick={() => upd("notifications","reminderTime",opt.value)}
                                 style={{
-                                  padding: "9px", borderRadius: "9px",
+                                  padding: "10px", borderRadius: "10px",
                                   border: `1.5px solid ${settings.notifications.reminderTime === opt.value ? "#ff6b9d" : border}`,
                                   background: settings.notifications.reminderTime === opt.value ? "rgba(255,107,157,0.1)" : "transparent",
                                   color: settings.notifications.reminderTime === opt.value ? "#ff6b9d" : textColor,
-                                  cursor: "pointer", fontSize: "12px", fontWeight: 600,
+                                  cursor: "pointer", fontSize: "13px", fontWeight: 600,
                                   fontFamily: "inherit", transition: "all 0.15s",
                                 }}
                               >{opt.label}</button>
@@ -398,12 +385,11 @@ export default function AppSettings({ isOpen, onClose }) {
                     </div>
                   )}
 
-                  {/* ── ACCOUNT TAB ── */}
+                  {/* ── ACCOUNT ── */}
                   {activeTab === "account" && (
                     <div>
                       {isAuthenticated ? (
                         <>
-                          {/* Profile card */}
                           <div style={{
                             padding: "16px", borderRadius: "14px",
                             background: "rgba(255,107,157,0.07)",
@@ -425,17 +411,15 @@ export default function AppSettings({ isOpen, onClose }) {
                               <div style={{
                                 marginTop: "6px", display: "inline-flex", alignItems: "center", gap: "4px",
                                 padding: "2px 8px", borderRadius: "6px",
-                                background: "rgba(16,185,129,0.12)", color: "#10b981", fontSize: "10px", fontWeight: 700,
-                              }}>
-                                ✓ Active account
-                              </div>
+                                background: "rgba(16,185,129,0.12)", color: "#10b981",
+                                fontSize: "10px", fontWeight: 700,
+                              }}>✓ Active account</div>
                             </div>
                           </div>
 
-                          {/* Account info rows */}
                           <div style={{ background: cardBg, borderRadius: "12px", border: `1px solid ${border}`, overflow: "hidden", marginBottom: "16px" }}>
                             {[
-                              { label: "Name", value: user?.name, icon: "👤" },
+                              { label: "Name",  value: user?.name,  icon: "👤" },
                               { label: "Email", value: user?.email, icon: "✉️" },
                             ].map((row, i) => (
                               <div key={row.label} style={{
@@ -456,16 +440,19 @@ export default function AppSettings({ isOpen, onClose }) {
                             <div style={{ fontSize: "12px", fontWeight: 700, color: "#f43f5e", marginBottom: "4px" }}>⚠ Danger Zone</div>
                             <div style={{ fontSize: "11px", color: mutedColor, marginBottom: "10px" }}>These actions cannot be undone.</div>
                             <button
-                              onClick={() => { if (window.confirm("Clear all data from this browser? Your account and tasks are safe.")) { localStorage.clear(); toast("Local data cleared"); } }}
+                              onClick={() => {
+                                if (window.confirm("Clear all local data? Your account and tasks are safe.")) {
+                                  localStorage.clear();
+                                  toast("Local data cleared");
+                                }
+                              }}
                               style={{
                                 padding: "8px 14px", borderRadius: "8px",
                                 background: "rgba(244,63,94,0.1)", border: "1px solid rgba(244,63,94,0.2)",
                                 color: "#f43f5e", cursor: "pointer", fontSize: "12px", fontWeight: 600,
                                 fontFamily: "inherit",
                               }}
-                            >
-                              Clear local data
-                            </button>
+                            >Clear local data</button>
                           </div>
                         </>
                       ) : (
@@ -478,19 +465,14 @@ export default function AppSettings({ isOpen, onClose }) {
                     </div>
                   )}
 
-                  {/* ── PRIVACY TAB ── */}
+                  {/* ── PRIVACY ── */}
                   {activeTab === "privacy" && (
                     <div>
                       <div style={{ background: cardBg, borderRadius: "12px", padding: "0 14px", border: `1px solid ${border}`, marginBottom: "16px" }}>
-                        <Toggle label="Show Email on Profile" value={settings.privacy.showEmail} onChange={v => upd("privacy", "showEmail", v)} isDark={isDark} />
-                        <Toggle label="Show Activity Status" value={settings.privacy.showActivity} onChange={v => upd("privacy", "showActivity", v)} isDark={isDark} />
+                        <Toggle label="Show Email on Profile"  value={settings.privacy.showEmail}    onChange={v => upd("privacy","showEmail",v)}    isDark={isDark} />
+                        <Toggle label="Show Activity Status"   value={settings.privacy.showActivity} onChange={v => upd("privacy","showActivity",v)} isDark={isDark} />
                       </div>
-
-                      <div style={{
-                        padding: "14px", borderRadius: "12px",
-                        background: "rgba(59,130,246,0.06)",
-                        border: "1px solid rgba(59,130,246,0.15)",
-                      }}>
+                      <div style={{ padding: "14px", borderRadius: "12px", background: "rgba(59,130,246,0.06)", border: "1px solid rgba(59,130,246,0.15)" }}>
                         <div style={{ fontSize: "12px", fontWeight: 700, color: "#3b82f6", marginBottom: "6px" }}>ℹ Data & Privacy</div>
                         <div style={{ fontSize: "11px", color: mutedColor, lineHeight: 1.6 }}>
                           Your tasks are stored securely on our servers. We never sell your data. Local settings are stored only in your browser.
@@ -507,34 +489,27 @@ export default function AppSettings({ isOpen, onClose }) {
             <div style={{
               padding: "14px 22px",
               borderTop: `1px solid ${border}`,
-              display: "flex", gap: "8px",
-              flexShrink: 0,
+              display: "flex", gap: "8px", flexShrink: 0,
               background: isDark ? "rgba(0,0,0,0.2)" : "rgba(255,255,255,0.4)",
             }}>
-              <button
-                onClick={reset}
-                style={{
-                  flex: 1, padding: "10px", borderRadius: "10px",
-                  border: `1px solid ${border}`, background: "transparent",
-                  color: mutedColor, cursor: "pointer", fontSize: "12px", fontWeight: 600,
-                  fontFamily: "inherit", transition: "all 0.15s",
-                }}
+              <button onClick={reset} style={{
+                flex: 1, padding: "10px", borderRadius: "10px",
+                border: `1px solid ${border}`, background: "transparent",
+                color: mutedColor, cursor: "pointer", fontSize: "12px", fontWeight: 600,
+                fontFamily: "inherit", transition: "all 0.15s",
+              }}
                 onMouseEnter={e => e.currentTarget.style.color = textColor}
                 onMouseLeave={e => e.currentTarget.style.color = mutedColor}
               >Reset</button>
-              <button
-                onClick={save}
-                disabled={saving}
-                style={{
-                  flex: 2, padding: "10px", borderRadius: "10px",
-                  background: "linear-gradient(135deg,#ff6b9d,#ff99cc)",
-                  border: "none", color: "white", cursor: saving ? "not-allowed" : "pointer",
-                  fontSize: "13px", fontWeight: 700, fontFamily: "inherit",
-                  boxShadow: "0 4px 14px rgba(255,107,157,0.3)",
-                  opacity: saving ? 0.75 : 1,
-                  transition: "opacity 0.2s",
-                }}
-              >{saving ? "Saving…" : "Save Changes"}</button>
+              <button onClick={save} disabled={saving} style={{
+                flex: 2, padding: "10px", borderRadius: "10px",
+                background: "linear-gradient(135deg,#ff6b9d,#ff99cc)",
+                border: "none", color: "white",
+                cursor: saving ? "not-allowed" : "pointer",
+                fontSize: "13px", fontWeight: 700, fontFamily: "inherit",
+                boxShadow: "0 4px 14px rgba(255,107,157,0.3)",
+                opacity: saving ? 0.75 : 1, transition: "opacity 0.2s",
+              }}>{saving ? "Saving…" : "Save Changes"}</button>
             </div>
           </motion.div>
         </>

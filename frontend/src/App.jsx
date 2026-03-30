@@ -12,24 +12,68 @@ import Categories from "./pages/Categories";
 import AIAssistant from "./components/AIAssistant";
 import { useTasks } from "./hooks/useTasks";
 
+// Register service worker
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("/sw.js")
+      .then(() => console.log("✅ SW registered"))
+      .catch(err => console.warn("SW failed:", err));
+  });
+}
+
 function AppContent() {
-  const [page, setPage] = useState("today");
-  const { loading } = useAuth();
+  const [page, setPage]       = useState("today");
+  const { loading }           = useAuth();
   const { tasks, categories } = useTasks();
 
-  // ✅ OFFLINE DETECTION
-  const [isOffline, setIsOffline] = useState(!navigator.onLine);
+  const [isOffline, setIsOffline] = useState(false);
+  const [isWaking,  setIsWaking]  = useState(false);
 
   useEffect(() => {
-    const go  = () => setIsOffline(false);
-    const off = () => setIsOffline(true);
+    let wakeTimer = null;
 
-    window.addEventListener("online", go);
-    window.addEventListener("offline", off);
+    const checkBackend = async () => {
+      // Only show waking/offline if browser says we're online
+      if (!navigator.onLine) {
+        setIsOffline(true);
+        setIsWaking(false);
+        return;
+      }
+
+      try {
+        setIsWaking(true);
+        setIsOffline(false);
+
+        const controller = new AbortController();
+        wakeTimer = setTimeout(() => controller.abort(), 60000);
+
+        await fetch("https://todo-app-91pe.onrender.com/api/health", {
+          signal: controller.signal,
+        });
+
+        clearTimeout(wakeTimer);
+        setIsWaking(false);
+        setIsOffline(false);
+      } catch (err) {
+        clearTimeout(wakeTimer);
+        setIsWaking(false);
+        // Only show offline if browser also says offline
+        setIsOffline(!navigator.onLine);
+      }
+    };
+
+    checkBackend();
+
+    const goOnline  = () => { setIsOffline(false); checkBackend(); };
+    const goOffline = () => { setIsOffline(true); setIsWaking(false); };
+
+    window.addEventListener("online",  goOnline);
+    window.addEventListener("offline", goOffline);
 
     return () => {
-      window.removeEventListener("online", go);
-      window.removeEventListener("offline", off);
+      clearTimeout(wakeTimer);
+      window.removeEventListener("online",  goOnline);
+      window.removeEventListener("offline", goOffline);
     };
   }, []);
 
@@ -38,7 +82,7 @@ function AppContent() {
       <div style={{
         display: "flex", justifyContent: "center", alignItems: "center",
         minHeight: "100vh",
-        background: "linear-gradient(135deg, #080b14 0%, #0f172a 100%)",
+        background: "linear-gradient(135deg,#080b14 0%,#0f172a 100%)",
         fontFamily: "'DM Sans', sans-serif",
       }}>
         <div style={{ textAlign: "center" }}>
@@ -63,21 +107,30 @@ function AppContent() {
     <div style={{ position: "relative", minHeight: "100vh" }}>
       <AnimatedBackground />
 
-      {/* ✅ NEW OFFLINE BANNER */}
+      {/* Waking up Render banner */}
+      {isWaking && !isOffline && (
+        <div style={{
+          position: "fixed", top: 60, left: 0, right: 0, zIndex: 9999,
+          background: "rgba(59,130,246,0.95)",
+          backdropFilter: "blur(8px)",
+          padding: "10px 16px", textAlign: "center",
+          fontSize: "13px", fontWeight: 600, color: "white",
+          fontFamily: "'DM Sans', sans-serif",
+          display: "flex", alignItems: "center", justifyContent: "center", gap: "8px",
+        }}>
+          <span style={{ animation: "spin 1s linear infinite", display: "inline-block" }}>⟳</span>
+          Connecting to server — please wait a moment...
+        </div>
+      )}
+
+      {/* Offline banner */}
       {isOffline && (
         <div style={{
-          position: "fixed",
-          top: 60,
-          left: 0,
-          right: 0,
-          zIndex: 9999,
+          position: "fixed", top: 60, left: 0, right: 0, zIndex: 9999,
           background: "rgba(245,158,11,0.95)",
           backdropFilter: "blur(8px)",
-          padding: "10px 16px",
-          textAlign: "center",
-          fontSize: "13px",
-          fontWeight: 600,
-          color: "white",
+          padding: "10px 16px", textAlign: "center",
+          fontSize: "13px", fontWeight: 600, color: "white",
           fontFamily: "'DM Sans', sans-serif",
         }}>
           ⚠️ You're offline — showing cached data
@@ -96,18 +149,13 @@ function AppContent() {
         </div>
       </div>
 
-      {/* AI Assistant */}
       <AIAssistant tasks={tasks} categories={categories} />
 
       <style>{`
+        @keyframes spin { to { transform: rotate(360deg); } }
         @media (max-width: 768px) {
-          .ai-fab-wrapper {
-            bottom: calc(72px + 16px) !important;
-          }
-          .ai-panel-wrapper {
-            bottom: calc(72px + 16px) !important;
-            height: min(500px, calc(100dvh - 200px)) !important;
-          }
+          .ai-fab-wrapper   { bottom: calc(72px + 16px) !important; }
+          .ai-panel-wrapper { bottom: calc(72px + 16px) !important; height: min(500px, calc(100dvh - 200px)) !important; }
         }
       `}</style>
     </div>
