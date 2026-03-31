@@ -99,4 +99,34 @@ router.get("/verify", async (req, res) => {
   }
 });
 
+// ── PUT /api/auth/change-password ────────────────────────────────────────────
+router.put("/change-password", async (req, res) => {
+  try {
+    const authHeader = req.headers.authorization;
+    if (!authHeader?.startsWith("Bearer ")) {
+      return res.status(401).json({ error: "Not authorized" });
+    }
+    const token   = authHeader.split(" ")[1];
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const user    = await User.findByPk(decoded.id);
+    if (!user) return res.status(404).json({ error: "User not found" });
+
+    const { currentPassword, newPassword } = req.body;
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({ error: "Both passwords required" });
+    }
+    if (newPassword.length < 6) {
+      return res.status(400).json({ error: "New password must be at least 6 characters" });
+    }
+
+    const isMatch = await user.comparePassword(currentPassword);
+    if (!isMatch) return res.status(401).json({ error: "Current password is incorrect" });
+
+    await user.update({ password: newPassword });
+    res.json({ success: true, message: "Password changed successfully" });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 module.exports = router;
