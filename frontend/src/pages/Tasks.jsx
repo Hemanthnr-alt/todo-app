@@ -393,70 +393,94 @@ export default function Tasks() {
       </div>
 
       {/* ── ORGANISED FILTER BAR ── */}
-      <div style={{
-        background: cardBg,
-        backdropFilter:"blur(12px)",
-        border:`1px solid ${border}`,
-        borderRadius:"14px",
-        padding:"12px 14px",
-        marginBottom:"18px",
-        display:"flex",
-        flexDirection:"column",
-        gap:"10px",
-      }}>
-        {/* Row 1: Due date */}
-        <div style={{display:"flex",alignItems:"center",gap:"8px",flexWrap:"wrap"}}>
-          <FilterLabel>When</FilterLabel>
-          <Pill active={fDue==="all"}      onClick={()=>setFDue("all")}>All ({tasks.length})</Pill>
-          <Pill active={fDue==="today"}    onClick={()=>setFDue("today")}>📅 Today ({dueCounts.today})</Pill>
-          <Pill active={fDue==="overdue"}  color="#f43f5e" onClick={()=>setFDue("overdue")}>⚠️ Overdue ({dueCounts.overdue})</Pill>
-          <Pill active={fDue==="thisWeek"} color="#10b981" onClick={()=>setFDue("thisWeek")}>📆 This Week ({dueCounts.week})</Pill>
-        </div>
+     {/* ── CLEAN FILTER BAR ── */}
+<div style={{
+  background: cardBg, backdropFilter:"blur(12px)",
+  border:`1px solid ${border}`, borderRadius:"16px",
+  padding:"14px", marginBottom:"18px",
+}}>
 
-        {/* Divider */}
-        <div style={{height:"1px",background:isDark?"rgba(255,255,255,0.05)":"rgba(0,0,0,0.05)"}}/>
+  {/* Quick filters - single scrollable row on mobile */}
+  <div style={{ overflowX:"auto", marginBottom:"12px" }} className="hide-scrollbar">
+    <div style={{ display:"flex", gap:"6px", width:"max-content" }}>
+      {[
+        { label:`All (${tasks.length})`,           val:"all",     key:"due",       color:"#ff6b9d" },
+        { label:`📅 Today (${dueCounts.today})`,   val:"today",   key:"due",       color:"#3b82f6" },
+        { label:`⚠ Overdue (${dueCounts.overdue})`,val:"overdue", key:"due",       color:"#f43f5e" },
+        { label:`📆 This Week (${dueCounts.week})`, val:"thisWeek",key:"due",       color:"#10b981" },
+      ].map(f => (
+        <button key={f.val} onClick={()=>setFDue(f.val)} style={{
+          padding:"6px 14px", borderRadius:"99px", whiteSpace:"nowrap",
+          border:`1.5px solid ${fDue===f.val ? f.color : (isDark?"rgba(255,255,255,0.1)":"rgba(0,0,0,0.1)")}`,
+          background: fDue===f.val ? `${f.color}18` : "transparent",
+          color: fDue===f.val ? f.color : mutedColor,
+          cursor:"pointer", fontSize:"12px", fontWeight: fDue===f.val?700:400,
+          fontFamily:"inherit", transition:"all 0.13s",
+        }}>{f.label}</button>
+      ))}
+    </div>
+  </div>
 
-        {/* Row 2: Priority + Status in one row */}
-        <div style={{display:"flex",alignItems:"center",gap:"8px",flexWrap:"wrap"}}>
-          <FilterLabel>Priority</FilterLabel>
-          <Pill active={fPriority==="all"}    onClick={()=>setFPriority("all")}>All</Pill>
-          <Pill active={fPriority==="high"}   color="#f43f5e" onClick={()=>setFPriority("high")}>🔴 High</Pill>
-          <Pill active={fPriority==="medium"} color="#f59e0b" onClick={()=>setFPriority("medium")}>🟡 Medium</Pill>
-          <Pill active={fPriority==="low"}    color="#10b981" onClick={()=>setFPriority("low")}>🟢 Low</Pill>
+  <div style={{ height:"1px", background:isDark?"rgba(255,255,255,0.05)":"rgba(0,0,0,0.05)", marginBottom:"12px" }}/>
 
-          {/* Separator dot */}
-          <span style={{color:mutedColor,fontSize:"12px",opacity:.4}}>·</span>
+  {/* Priority + Status — compact */}
+  <div style={{ display:"flex", gap:"8px", flexWrap:"wrap", alignItems:"center", marginBottom:"10px" }}>
+    <span style={{ fontSize:"10px", fontWeight:700, color:mutedColor, textTransform:"uppercase", letterSpacing:"0.07em" }}>Priority</span>
+    {[["all","All","#ff6b9d"],["high","🔴","#f43f5e"],["medium","🟡","#f59e0b"],["low","🟢","#10b981"]].map(([v,l,c])=>(
+      <button key={v} onClick={()=>setFPriority(v)} style={{
+        padding:"4px 10px", borderRadius:"99px",
+        border:`1.5px solid ${fPriority===v?c:isDark?"rgba(255,255,255,0.1)":"rgba(0,0,0,0.1)"}`,
+        background: fPriority===v?`${c}18`:"transparent",
+        color: fPriority===v?c:mutedColor,
+        cursor:"pointer", fontSize:"12px", fontWeight:fPriority===v?700:400,
+        fontFamily:"inherit", transition:"all 0.13s",
+      }}>{l}</button>
+    ))}
 
-          <FilterLabel>Status</FilterLabel>
-          <Pill active={fCompleted==="all"}       onClick={()=>setFCompleted("all")}>All</Pill>
-          <Pill active={fCompleted==="pending"}   color="#f59e0b" onClick={()=>setFCompleted("pending")}>⏳ Pending</Pill>
-          <Pill active={fCompleted==="completed"} color="#10b981" onClick={()=>setFCompleted("completed")}>✅ Done</Pill>
-        </div>
+    <div style={{ width:"1px", height:"16px", background:isDark?"rgba(255,255,255,0.1)":"rgba(0,0,0,0.1)" }}/>
 
-        {/* Divider */}
-        <div style={{height:"1px",background:isDark?"rgba(255,255,255,0.05)":"rgba(0,0,0,0.05)"}}/>
+    <span style={{ fontSize:"10px", fontWeight:700, color:mutedColor, textTransform:"uppercase", letterSpacing:"0.07em" }}>Status</span>
+    {[["all","All","#ff6b9d"],["pending","⏳","#f59e0b"],["completed","✅","#10b981"]].map(([v,l,c])=>(
+      <button key={v} onClick={()=>setFCompleted(v)} style={{
+        padding:"4px 10px", borderRadius:"99px",
+        border:`1.5px solid ${fCompleted===v?c:isDark?"rgba(255,255,255,0.1)":"rgba(0,0,0,0.1)"}`,
+        background: fCompleted===v?`${c}18`:"transparent",
+        color: fCompleted===v?c:mutedColor,
+        cursor:"pointer", fontSize:"12px", fontWeight:fCompleted===v?700:400,
+        fontFamily:"inherit", transition:"all 0.13s",
+      }}>{l}</button>
+    ))}
+  </div>
 
-        {/* Row 3: Categories */}
-        <div style={{display:"flex",alignItems:"center",gap:"8px",flexWrap:"wrap"}}>
-          <FilterLabel>Category</FilterLabel>
-          <Pill active={fCategory==="all"} onClick={()=>setFCategory("all")}>All</Pill>
-          {categories.map(c=>(
-            <Pill key={c.id} active={fCategory===c.id} color={c.color} onClick={()=>setFCategory(c.id)}>
-              {c.icon} {c.name} ({tasks.filter(t=>t.categoryId===c.id).length})
-            </Pill>
-          ))}
-          <button onClick={()=>setShowCatModal(true)} style={{
-            padding:"4px 11px",borderRadius:"99px",
-            border:"1.5px dashed rgba(192,132,252,0.4)",
-            background:"transparent",color:"#c084fc",
-            cursor:"pointer",fontSize:"12px",fontFamily:"inherit",
-            transition:"all 0.13s",
-          }}
-            onMouseEnter={e=>{e.currentTarget.style.borderColor="#c084fc";e.currentTarget.style.background="rgba(192,132,252,0.08)";}}
-            onMouseLeave={e=>{e.currentTarget.style.borderColor="rgba(192,132,252,0.4)";e.currentTarget.style.background="transparent";}}
-          >+ Category</button>
-        </div>
-      </div>
+  <div style={{ height:"1px", background:isDark?"rgba(255,255,255,0.05)":"rgba(0,0,0,0.05)", marginBottom:"10px" }}/>
+
+  {/* Categories */}
+  <div style={{ display:"flex", gap:"6px", flexWrap:"wrap", alignItems:"center" }}>
+    <span style={{ fontSize:"10px", fontWeight:700, color:mutedColor, textTransform:"uppercase", letterSpacing:"0.07em" }}>Category</span>
+    <button onClick={()=>setFCategory("all")} style={{
+      padding:"4px 10px", borderRadius:"99px",
+      border:`1.5px solid ${fCategory==="all"?"#ff6b9d":isDark?"rgba(255,255,255,0.1)":"rgba(0,0,0,0.1)"}`,
+      background:fCategory==="all"?"rgba(255,107,157,0.12)":"transparent",
+      color:fCategory==="all"?"#ff6b9d":mutedColor,
+      cursor:"pointer", fontSize:"12px", fontWeight:fCategory==="all"?700:400, fontFamily:"inherit",
+    }}>All</button>
+    {categories.map(c=>(
+      <button key={c.id} onClick={()=>setFCategory(c.id)} style={{
+        padding:"4px 10px", borderRadius:"99px",
+        border:`1.5px solid ${fCategory===c.id?c.color:isDark?"rgba(255,255,255,0.1)":"rgba(0,0,0,0.1)"}`,
+        background:fCategory===c.id?`${c.color}18`:"transparent",
+        color:fCategory===c.id?c.color:mutedColor,
+        cursor:"pointer", fontSize:"12px", fontWeight:fCategory===c.id?700:400, fontFamily:"inherit",
+      }}>{c.icon} {c.name} ({tasks.filter(t=>t.categoryId===c.id).length})</button>
+    ))}
+    <button onClick={()=>setShowCatModal(true)} style={{
+      padding:"4px 10px", borderRadius:"99px",
+      border:"1.5px dashed rgba(192,132,252,0.4)",
+      background:"transparent", color:"#c084fc",
+      cursor:"pointer", fontSize:"12px", fontFamily:"inherit",
+    }}>+ Category</button>
+  </div>
+</div>
 
       {/* Task list */}
       {loading?(

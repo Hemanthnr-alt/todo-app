@@ -79,7 +79,83 @@ function Toggle({ label, desc, value, onChange, isDark, accentColor = "#ff6b9d" 
     </div>
   );
 }
+function ChangePassword({ isDark, textColor, mutedColor, border, cardBg, inputBg }) {
+  const [show,    setShow]    = useState(false);
+  const [current, setCurrent] = useState("");
+  const [newPw,   setNewPw]   = useState("");
+  const [confirm, setConfirm] = useState("");
+  const [saving,  setSaving]  = useState(false);
+  const [showPw,  setShowPw]  = useState(false);
 
+  const inputStyle = {
+    width:"100%", padding:"11px 14px", borderRadius:"10px",
+    border:`1px solid ${border}`, background:inputBg, color:textColor,
+    fontSize:"13px", fontFamily:"inherit", outline:"none", boxSizing:"border-box",
+  };
+
+  const handleChange = async () => {
+    if (!current || !newPw || !confirm) { toast.error("Fill all fields"); return; }
+    if (newPw !== confirm) { toast.error("Passwords don't match"); return; }
+    if (newPw.length < 6)  { toast.error("Min 6 characters"); return; }
+
+    setSaving(true);
+    try {
+      await api.put("/auth/change-password", { currentPassword:current, newPassword:newPw });
+      toast.success("Password changed! ✓");
+      setCurrent(""); setNewPw(""); setConfirm(""); setShow(false);
+    } catch (err) {
+      toast.error(err.response?.data?.error || "Failed to change password");
+    } finally { setSaving(false); }
+  };
+
+  return (
+    <div style={{ marginTop:"16px" }}>
+      <button onClick={()=>setShow(!show)} style={{
+        width:"100%", padding:"11px 14px", borderRadius:"12px",
+        border:`1px solid ${border}`, background: show ? "rgba(255,107,157,0.08)" : (isDark?"rgba(255,255,255,0.04)":"rgba(0,0,0,0.03)"),
+        color: show ? "#ff6b9d" : textColor,
+        cursor:"pointer", fontSize:"13px", fontWeight:600, fontFamily:"inherit",
+        display:"flex", justifyContent:"space-between", alignItems:"center",
+      }}>
+        <span>🔑 Change Password</span>
+        <span style={{ fontSize:"12px", color:mutedColor }}>{show?"▲":"▼"}</span>
+      </button>
+
+      <AnimatePresence>
+        {show && (
+          <motion.div initial={{height:0,opacity:0}} animate={{height:"auto",opacity:1}} exit={{height:0,opacity:0}} style={{overflow:"hidden"}}>
+            <div style={{ padding:"14px 0 0", display:"flex", flexDirection:"column", gap:"10px" }}>
+              {[
+                { label:"Current password", val:current, set:setCurrent },
+                { label:"New password",     val:newPw,   set:setNewPw   },
+                { label:"Confirm new",      val:confirm, set:setConfirm },
+              ].map(({ label, val, set }) => (
+                <div key={label} style={{ position:"relative" }}>
+                  <input
+                    type={showPw?"text":"password"}
+                    placeholder={label}
+                    value={val} onChange={e=>set(e.target.value)}
+                    style={inputStyle}
+                    onFocus={e=>e.target.style.borderColor="#ff6b9d"}
+                    onBlur={e=>e.target.style.borderColor=border}
+                  />
+                </div>
+              ))}
+              <div style={{ display:"flex", alignItems:"center", gap:"8px" }}>
+                <input type="checkbox" id="showpw" checked={showPw} onChange={e=>setShowPw(e.target.checked)} style={{ accentColor:"#ff6b9d", cursor:"pointer" }}/>
+                <label htmlFor="showpw" style={{ fontSize:"12px", color:mutedColor, cursor:"pointer" }}>Show passwords</label>
+              </div>
+              <motion.button whileTap={{scale:0.97}} onClick={handleChange} disabled={saving}
+                style={{ padding:"11px", borderRadius:"10px", background:"linear-gradient(135deg,#ff6b9d,#ff99cc)", border:"none", color:"white", cursor:saving?"not-allowed":"pointer", fontSize:"13px", fontWeight:700, fontFamily:"inherit", opacity:saving?0.75:1 }}>
+                {saving?"Saving…":"Update Password"}
+              </motion.button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
 export default function AppSettings({ isOpen, onClose }) {
   const { isDark, toggleTheme }    = useTheme();
   const { user, isAuthenticated }  = useAuth();
@@ -454,6 +530,8 @@ export default function AppSettings({ isOpen, onClose }) {
                               }}
                             >Clear local data</button>
                           </div>
+                          {/* Change Password */}
+<ChangePassword isDark={isDark} textColor={textColor} mutedColor={mutedColor} border={border} cardBg={cardBg} inputBg={isDark?"rgba(255,255,255,0.06)":"#f8fafc"} />
                         </>
                       ) : (
                         <div style={{ textAlign: "center", padding: "40px 20px" }}>
