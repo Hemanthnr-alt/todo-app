@@ -1,7 +1,7 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useTheme } from "../context/ThemeContext";
-import { useAuth } from "../context/AuthContext";
+import { useAuth }  from "../context/AuthContext";
 import { useTasks } from "../hooks/useTasks";
 import { useHabits } from "../hooks/useHabits";
 
@@ -14,95 +14,101 @@ function getGreeting() {
   return "Good evening";
 }
 
-// Build a 14-day window centred around today
 function buildDateStrip() {
-  const days = [];
-  const now  = new Date();
+  const days = [], now = new Date();
   for (let i = -3; i <= 10; i++) {
-    const d = new Date(now);
-    d.setDate(now.getDate() + i);
-    days.push(d);
+    const d = new Date(now); d.setDate(now.getDate()+i); days.push(d);
   }
   return days;
 }
 
-const DAY_LABELS = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
-const PRIORITY_COLOR = { high: "#f43f5e", medium: "#f59e0b", low: "#10b981" };
+const DAY_LABELS   = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+const PRIORITY_CLR = { high:"#f43f5e", medium:"#f59e0b", low:"#10b981" };
 
-export default function Today({ onGoToTasks, onGoToHabits }) {
-  const { isDark } = useTheme();
+// Missed dates storage helpers
+const MISSED_KEY = "thirty_missed_habits";
+const getMissed  = () => { try { return JSON.parse(localStorage.getItem(MISSED_KEY)||"{}"); } catch { return {}; } };
+const setMissed  = (m) => localStorage.setItem(MISSED_KEY, JSON.stringify(m));
+
+export default function Today({ onGoToTasks, onGoToHabits, onGoToCalendar }) {
+  const { isDark, accent } = useTheme();
   const { user, isAuthenticated } = useAuth();
-  const { tasks, categories, updateTask, deleteTask, addTask } = useTasks();
+  const { tasks, categories, updateTask, deleteTask } = useTasks();
   const { habits, toggleHabit } = useHabits();
 
   const todayStr   = fmtDate(new Date());
   const [selected, setSelected] = useState(todayStr);
+  const [missed,   setMissedState] = useState(getMissed);
   const stripRef   = useRef(null);
   const dates      = buildDateStrip();
 
-  // Scroll selected date into view
   useEffect(() => {
     if (!stripRef.current) return;
     const idx  = dates.findIndex(d => fmtDate(d) === selected);
     const item = stripRef.current.children[idx];
-    if (item) item.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
+    if (item) item.scrollIntoView({ behavior:"smooth", inline:"center", block:"nearest" });
   }, [selected]);
 
-  // Scroll to today on mount
   useEffect(() => {
     setTimeout(() => {
       if (!stripRef.current) return;
       const idx  = dates.findIndex(d => fmtDate(d) === todayStr);
       const item = stripRef.current.children[idx];
-      if (item) item.scrollIntoView({ behavior: "auto", inline: "center", block: "nearest" });
+      if (item) item.scrollIntoView({ behavior:"auto", inline:"center", block:"nearest" });
     }, 100);
   }, []);
 
+  const ac = accent || "#ff6b9d";
+
   const textColor  = isDark ? "#f1f5f9"                : "#0f172a";
   const mutedColor = isDark ? "rgba(241,245,249,0.45)" : "rgba(15,23,42,0.45)";
-  const cardBg     = isDark ? "rgba(15,23,42,0.55)"    : "rgba(255,255,255,0.85)";
-  const border     = isDark ? "rgba(255,107,157,0.1)"  : "rgba(255,107,157,0.15)";
-  const pageBg     = isDark ? "rgba(8,6,16,0.0)"       : "rgba(245,240,255,0.0)";
+  const cardBg     = isDark ? "rgba(15,23,42,0.6)"     : "rgba(255,255,255,0.88)";
+  const border     = isDark ? "rgba(255,255,255,0.07)"  : "rgba(0,0,0,0.07)";
 
-  // Tasks for selected date — only exact dueDate match
   const dayTasks = tasks.filter(t => t.dueDate === selected);
-
-  // Habits for selected date — all habits (daily ones always show)
   const dayHabits = habits.filter(h => {
     if (h.frequency === "daily") return true;
-    if (h.frequency === "weekly") {
-      const day = new Date(selected + "T00:00:00").getDay();
-      return (h.recurringDays || []).includes(day);
-    }
+    if (h.frequency === "weekly") return (h.recurringDays||[]).includes(new Date(selected+"T00:00:00").getDay());
     return true;
   });
 
+  const completedItems = dayTasks.filter(t => t.completed).length + dayHabits.filter(h => (h.completedDates||[]).includes(selected)).length;
   const totalItems     = dayTasks.length + dayHabits.length;
-  const completedItems = dayTasks.filter(t => t.completed).length +
-    dayHabits.filter(h => (h.completedDates||[]).includes(selected)).length;
+  const missedItems    = dayHabits.filter(h => missed[`${h.id}_${selected}`]).length;
   const pct = totalItems > 0 ? Math.round((completedItems / totalItems) * 100) : 0;
+
+  const toggleMissed = (habitId, date) => {
+    const key = `${habitId}_${date}`;
+    const current = getMissed();
+    if (current[key]) {
+      delete current[key];
+    } else {
+      current[key] = true;
+      // Un-toggle if it was completed
+      const h = habits.find(x => x.id === habitId);
+      if (h && (h.completedDates||[]).includes(date)) toggleHabit(habitId, date);
+    }
+    setMissed(current);
+    setMissedState({...current});
+  };
 
   if (!isAuthenticated) {
     return (
-      <div style={{ maxWidth: "480px", margin: "0 auto", padding: "60px 20px", textAlign: "center", fontFamily: "'DM Sans',sans-serif", color: textColor }}>
-        <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
-          style={{ padding: "48px 28px", background: cardBg, backdropFilter: "blur(12px)", borderRadius: "28px", border: `1px solid ${border}` }}>
-          <div style={{
-            width: "64px", height: "64px", borderRadius: "18px",
-            background: "linear-gradient(135deg,#ff6b9d,#ff99cc)",
-            display: "flex", alignItems: "center", justifyContent: "center",
-            fontSize: "24px", fontWeight: 900, color: "white",
-            margin: "0 auto 20px", boxShadow: "0 8px 28px rgba(255,107,157,0.35)",
-          }}>30</div>
-          <h2 style={{ fontSize: "24px", fontWeight: 800, margin: "0 0 10px", color: textColor }}>
-            Welcome to <span style={{ color: "#ff6b9d" }}>30</span>
+      <div style={{ maxWidth:"480px", margin:"0 auto", padding:"60px 20px", textAlign:"center", fontFamily:"'DM Sans',sans-serif", color:textColor }}>
+        <motion.div initial={{opacity:0,scale:0.95}} animate={{opacity:1,scale:1}}
+          style={{ padding:"52px 28px", background:cardBg, backdropFilter:"blur(16px)", borderRadius:"28px", border:`1px solid ${border}` }}>
+          <div style={{ width:"68px", height:"68px", borderRadius:"20px", background:`linear-gradient(135deg,${ac},${ac}cc)`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:"14px", fontWeight:900, color:"white", margin:"0 auto 20px", boxShadow:`0 8px 28px ${ac}44`, letterSpacing:"-0.04em" }}>
+            Thirty
+          </div>
+          <h2 style={{ fontSize:"22px", fontWeight:800, margin:"0 0 10px", color:textColor, letterSpacing:"-0.03em" }}>
+            Welcome to <span style={{ color:ac }}>Thirty</span>
           </h2>
-          <p style={{ fontSize: "14px", color: mutedColor, margin: "0 0 24px", lineHeight: 1.6 }}>
-            Your personal task manager. Sign in to start tracking your tasks, habits, and goals.
+          <p style={{ fontSize:"14px", color:mutedColor, margin:"0 0 24px", lineHeight:1.6 }}>
+            Your premium personal productivity app. Sign in to get started.
           </p>
-          <div style={{ display: "flex", gap: "8px", justifyContent: "center", flexWrap: "wrap" }}>
-            {["Tasks","Calendar","Habits","Categories","Timer"].map(f => (
-              <span key={f} style={{ padding: "5px 12px", borderRadius: "20px", background: "rgba(255,107,157,0.1)", color: "#ff6b9d", fontSize: "12px", fontWeight: 600, border: "1px solid rgba(255,107,157,0.2)" }}>{f}</span>
+          <div style={{ display:"flex", gap:"8px", justifyContent:"center", flexWrap:"wrap" }}>
+            {["Tasks","Habits","Calendar","Timer"].map(f => (
+              <span key={f} style={{ padding:"5px 13px", borderRadius:"20px", background:`${ac}15`, color:ac, fontSize:"12px", fontWeight:600, border:`1px solid ${ac}30` }}>{f}</span>
             ))}
           </div>
         </motion.div>
@@ -111,184 +117,138 @@ export default function Today({ onGoToTasks, onGoToHabits }) {
   }
 
   return (
-    <div style={{ fontFamily: "'DM Sans',sans-serif", color: textColor, paddingBottom: "20px" }}>
+    <div style={{ fontFamily:"'DM Sans',sans-serif", color:textColor, paddingBottom:"20px" }}>
 
-      {/* Greeting */}
-      <div style={{ padding: "20px 16px 12px" }}>
-        <p style={{ fontSize: "12px", color: mutedColor, margin: "0 0 2px" }}>
-          {new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })}
-        </p>
-        <h1 style={{ fontSize: "clamp(22px,5vw,30px)", fontWeight: 800, margin: "0 0 2px", letterSpacing: "-0.03em" }}>
-          {getGreeting()},{" "}
-          <span style={{ background: "linear-gradient(135deg,#ff6b9d,#ff99cc)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>
-            {user?.name?.split(" ")[0] || "there"}
-          </span> 👋
-        </h1>
-        {totalItems > 0 && (
-          <p style={{ fontSize: "13px", color: mutedColor, margin: 0 }}>
-            {completedItems}/{totalItems} done today · {pct}%
+      {/* Header */}
+      <div style={{ padding:"20px 16px 10px", display:"flex", justifyContent:"space-between", alignItems:"flex-start" }}>
+        <div>
+          <p style={{ fontSize:"12px", color:mutedColor, margin:"0 0 2px", letterSpacing:"0.02em" }}>
+            {new Date().toLocaleDateString("en-US",{ weekday:"long", month:"long", day:"numeric" })}
           </p>
-        )}
+          <h1 style={{ fontSize:"clamp(22px,5vw,28px)", fontWeight:800, margin:"0 0 2px", letterSpacing:"-0.03em" }}>
+            {getGreeting()},{" "}
+            <span style={{ background:`linear-gradient(135deg,${ac},${ac}aa)`, WebkitBackgroundClip:"text", WebkitTextFillColor:"transparent" }}>
+              {user?.name?.split(" ")[0] || "there"}
+            </span> 👋
+          </h1>
+          {totalItems > 0 && (
+            <p style={{ fontSize:"12px", color:mutedColor, margin:0 }}>
+              {completedItems}/{totalItems} done
+              {missedItems > 0 && <span style={{ color:"#f43f5e" }}> · {missedItems} missed</span>}
+              {" · "}{pct}%
+            </p>
+          )}
+        </div>
+        {/* Calendar icon */}
+        <motion.button whileTap={{scale:0.9}} onClick={onGoToCalendar}
+          style={{ width:"40px", height:"40px", borderRadius:"12px", border:`1px solid ${border}`, background:isDark?"rgba(255,255,255,0.06)":"rgba(0,0,0,0.04)", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, color:textColor, marginTop:"4px" }}>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+            <rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
+          </svg>
+        </motion.button>
       </div>
 
       {/* Progress bar */}
       {totalItems > 0 && (
-        <div style={{ padding: "0 16px 14px" }}>
-          <div style={{ height: "4px", background: isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.07)", borderRadius: "2px", overflow: "hidden" }}>
-            <motion.div
-              animate={{ width: `${pct}%` }}
-              transition={{ duration: 0.5 }}
-              style={{ height: "100%", background: "linear-gradient(90deg,#ff6b9d,#ff99cc)", borderRadius: "2px" }}
-            />
+        <div style={{ padding:"0 16px 14px" }}>
+          <div style={{ height:"3px", background:isDark?"rgba(255,255,255,0.07)":"rgba(0,0,0,0.07)", borderRadius:"2px", overflow:"hidden" }}>
+            <motion.div animate={{ width:`${pct}%` }} transition={{ duration:0.5 }}
+              style={{ height:"100%", background:`linear-gradient(90deg,${ac},${ac}aa)`, borderRadius:"2px" }}/>
           </div>
         </div>
       )}
 
-      {/* ── Date strip ── */}
-      <div style={{ overflowX: "auto", paddingBottom: "4px", marginBottom: "16px" }}
-        className="hide-scrollbar">
-        <div ref={stripRef} style={{
-          display: "flex", gap: "8px",
-          padding: "4px 16px",
-          width: "max-content",
-        }}>
-          {dates.map((d) => {
+      {/* Date strip */}
+      <div style={{ overflowX:"auto", paddingBottom:"4px", marginBottom:"16px" }} className="hide-scrollbar">
+        <div ref={stripRef} style={{ display:"flex", gap:"7px", padding:"4px 16px", width:"max-content" }}>
+          {dates.map(d => {
             const ds      = fmtDate(d);
             const isToday = ds === todayStr;
             const isSel   = ds === selected;
-            const hasItems = tasks.filter(t => t.dueDate === ds).length +
-              habits.filter(h => (h.completedDates||[]).includes(ds)).length > 0;
+            const hasItems = tasks.filter(t => t.dueDate === ds).length + habits.filter(h => (h.completedDates||[]).includes(ds)).length > 0;
 
             return (
-              <motion.button
-                key={ds}
-                whileTap={{ scale: 0.92 }}
-                onClick={() => setSelected(ds)}
-                style={{
-                  display: "flex", flexDirection: "column", alignItems: "center",
-                  gap: "4px", padding: "10px 14px",
-                  borderRadius: "16px", border: "none", cursor: "pointer",
-                  background: isSel
-                    ? "linear-gradient(135deg,#ff6b9d,#ff99cc)"
-                    : isToday
-                    ? (isDark ? "rgba(255,107,157,0.15)" : "rgba(255,107,157,0.1)")
-                    : (isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.04)"),
-                  minWidth: "56px",
-                  boxShadow: isSel ? "0 4px 16px rgba(255,107,157,0.35)" : "none",
-                  transition: "all 0.15s",
-                }}
-              >
-                <span style={{
-                  fontSize: "10px", fontWeight: 600, letterSpacing: "0.05em",
-                  color: isSel ? "rgba(255,255,255,0.8)" : mutedColor,
-                  textTransform: "uppercase",
-                }}>
+              <motion.button key={ds} whileTap={{scale:0.92}} onClick={() => setSelected(ds)}
+                style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:"4px", padding:"10px 12px", borderRadius:"16px", border:"none", cursor:"pointer", minWidth:"54px",
+                  background: isSel ? `linear-gradient(135deg,${ac},${ac}cc)` : isToday ? `${ac}18` : isDark?"rgba(255,255,255,0.05)":"rgba(0,0,0,0.04)",
+                  boxShadow: isSel ? `0 4px 18px ${ac}44` : "none", transition:"all 0.15s" }}>
+                <span style={{ fontSize:"9px", fontWeight:600, letterSpacing:"0.05em", color:isSel?"rgba(255,255,255,0.8)":mutedColor, textTransform:"uppercase" }}>
                   {DAY_LABELS[d.getDay()]}
                 </span>
-                <span style={{
-                  fontSize: "18px", fontWeight: 800,
-                  color: isSel ? "white" : isToday ? "#ff6b9d" : textColor,
-                }}>
+                <span style={{ fontSize:"18px", fontWeight:800, color:isSel?"white":isToday?ac:textColor }}>
                   {d.getDate()}
                 </span>
-                {/* Dot if has activity */}
-                <div style={{
-                  width: "4px", height: "4px", borderRadius: "50%",
-                  background: isSel ? "rgba(255,255,255,0.6)" : hasItems ? "#ff6b9d" : "transparent",
-                }} />
+                <div style={{ width:"4px", height:"4px", borderRadius:"50%", background:isSel?"rgba(255,255,255,0.6)":hasItems?ac:"transparent" }}/>
               </motion.button>
             );
           })}
         </div>
       </div>
 
-      {/* ── Content for selected day ── */}
-      <div style={{ padding: "0 12px" }}>
+      {/* Content */}
+      <div style={{ padding:"0 12px" }}>
 
-        {/* Empty state */}
         {dayTasks.length === 0 && dayHabits.length === 0 && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}
-            style={{
-              textAlign: "center", padding: "48px 20px",
-              background: cardBg, backdropFilter: "blur(12px)",
-              borderRadius: "20px", border: `1px solid ${border}`,
-            }}
-          >
-            <div style={{ fontSize: "44px", marginBottom: "12px" }}>✨</div>
-            <h3 style={{ fontSize: "17px", fontWeight: 700, margin: "0 0 6px", color: textColor }}>
+          <motion.div initial={{opacity:0}} animate={{opacity:1}}
+            style={{ textAlign:"center", padding:"52px 20px", background:cardBg, backdropFilter:"blur(14px)", borderRadius:"22px", border:`1px solid ${border}` }}>
+            <div style={{ fontSize:"42px", marginBottom:"12px" }}>✨</div>
+            <h3 style={{ fontSize:"16px", fontWeight:700, margin:"0 0 6px", color:textColor }}>
               {selected === todayStr ? "Nothing scheduled" : "Nothing on this day"}
             </h3>
-            <p style={{ fontSize: "13px", color: mutedColor, margin: "0 0 20px" }}>
-              {selected === todayStr ? "Add a task or habit to get started" : "Tap + to add something"}
+            <p style={{ fontSize:"13px", color:mutedColor, margin:"0 0 20px" }}>
+              {selected === todayStr ? "Add a task or build a habit" : "Tap + to add something"}
             </p>
-            <motion.button whileTap={{ scale: 0.97 }} onClick={onGoToTasks}
-              style={{
-                padding: "10px 24px", borderRadius: "99px",
-                background: "linear-gradient(135deg,#ff6b9d,#ff99cc)",
-                border: "none", color: "white", cursor: "pointer",
-                fontSize: "13px", fontWeight: 700, fontFamily: "inherit",
-              }}>
+            <motion.button whileTap={{scale:0.97}} onClick={onGoToTasks}
+              style={{ padding:"10px 24px", borderRadius:"99px", background:`linear-gradient(135deg,${ac},${ac}cc)`, border:"none", color:"white", cursor:"pointer", fontSize:"13px", fontWeight:700, fontFamily:"inherit", boxShadow:`0 4px 14px ${ac}44` }}>
               Go to Tasks →
             </motion.button>
           </motion.div>
         )}
 
-        {/* Habits section */}
+        {/* Habits */}
         {dayHabits.length > 0 && (
-          <div style={{ marginBottom: "16px" }}>
-            <div style={{ fontSize: "11px", fontWeight: 700, color: mutedColor, textTransform: "uppercase", letterSpacing: "0.08em", margin: "0 4px 10px" }}>
+          <div style={{ marginBottom:"16px" }}>
+            <div style={{ fontSize:"10px", fontWeight:700, color:mutedColor, textTransform:"uppercase", letterSpacing:"0.08em", margin:"0 4px 10px" }}>
               Habits · {dayHabits.filter(h => (h.completedDates||[]).includes(selected)).length}/{dayHabits.length}
             </div>
             <AnimatePresence>
-              {dayHabits.map((h, i) => {
-                const done = (h.completedDates || []).includes(selected);
-                return (
-                  <motion.div key={h.id}
-                    initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: i * 0.03 }}
-                    style={{
-                      display: "flex", alignItems: "center", gap: "14px",
-                      padding: "14px 16px", borderRadius: "16px", marginBottom: "8px",
-                      background: done
-                        ? (isDark ? "rgba(16,185,129,0.1)" : "rgba(16,185,129,0.06)")
-                        : cardBg,
-                      backdropFilter: "blur(10px)",
-                      border: `1px solid ${done ? "rgba(16,185,129,0.25)" : border}`,
-                      transition: "all 0.2s",
-                    }}
-                  >
-                    <div style={{
-                      width: "42px", height: "42px", borderRadius: "14px",
-                      background: `${h.color}22`, flexShrink: 0,
-                      display: "flex", alignItems: "center", justifyContent: "center",
-                      fontSize: "20px",
-                    }}>{h.icon}</div>
+              {dayHabits.map((h,i) => {
+                const done    = (h.completedDates||[]).includes(selected);
+                const isMissed = !!missed[`${h.id}_${selected}`];
 
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{
-                        fontSize: "15px", fontWeight: 600, color: textColor,
-                        textDecoration: done ? "line-through" : "none",
-                        opacity: done ? 0.6 : 1,
-                      }}>{h.name}</div>
-                      <div style={{ fontSize: "11px", color: mutedColor, marginTop: "2px", display: "flex", gap: "8px" }}>
-                        <span style={{ color: "#ff6b9d", fontSize: "10px", fontWeight: 600, padding: "1px 6px", borderRadius: "4px", background: "rgba(255,107,157,0.1)" }}>Habit</span>
-                        {h.streak > 0 && <span style={{ color: "#f59e0b" }}>🔥 {h.streak} streak</span>}
+                let bgColor = cardBg;
+                let bdrColor = border;
+                if (done)    { bgColor = isDark?"rgba(16,185,129,0.1)":"rgba(16,185,129,0.06)"; bdrColor = "rgba(16,185,129,0.25)"; }
+                if (isMissed){ bgColor = isDark?"rgba(244,63,94,0.08)":"rgba(244,63,94,0.05)";  bdrColor = "rgba(244,63,94,0.22)"; }
+
+                return (
+                  <motion.div key={h.id} initial={{opacity:0,y:6}} animate={{opacity:1,y:0}} transition={{delay:i*0.03}}
+                    style={{ display:"flex", alignItems:"center", gap:"12px", padding:"13px 14px", borderRadius:"16px", marginBottom:"8px", background:bgColor, backdropFilter:"blur(10px)", border:`1px solid ${bdrColor}`, transition:"all 0.2s" }}>
+
+                    <div style={{ width:"40px", height:"40px", borderRadius:"12px", background:`${h.color}22`, flexShrink:0, display:"flex", alignItems:"center", justifyContent:"center", fontSize:"19px" }}>{h.icon}</div>
+
+                    <div style={{ flex:1, minWidth:0 }}>
+                      <div style={{ fontSize:"14px", fontWeight:600, color:textColor, textDecoration:(done||isMissed)?"line-through":"none", opacity:(done||isMissed)?0.6:1 }}>{h.name}</div>
+                      <div style={{ fontSize:"10px", color:mutedColor, marginTop:"2px", display:"flex", gap:"6px", alignItems:"center" }}>
+                        <span style={{ color:h.color, fontSize:"10px", fontWeight:600, padding:"1px 6px", borderRadius:"4px", background:`${h.color}18` }}>
+                          {isMissed ? "Missed" : done ? "Done" : "Habit"}
+                        </span>
+                        {h.streak > 0 && !isMissed && <span style={{ color:"#f59e0b" }}>🔥 {h.streak}</span>}
                       </div>
                     </div>
 
-                    <motion.button
-                      whileTap={{ scale: 0.85 }}
-                      onClick={() => toggleHabit(h.id, selected)}
-                      style={{
-                        width: "32px", height: "32px", borderRadius: "50%", flexShrink: 0,
-                        border: `2px solid ${done ? "#10b981" : (isDark ? "rgba(255,255,255,0.2)" : "rgba(0,0,0,0.15)")}`,
-                        background: done ? "linear-gradient(135deg,#10b981,#34d399)" : "transparent",
-                        cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
-                        transition: "all 0.15s",
-                      }}
-                    >
-                      {done && <span style={{ color: "white", fontSize: "14px", fontWeight: 800 }}>✓</span>}
-                    </motion.button>
+                    <div style={{ display:"flex", gap:"6px", flexShrink:0 }}>
+                      {/* Miss button */}
+                      <motion.button whileTap={{scale:0.85}} onClick={() => toggleMissed(h.id, selected)}
+                        style={{ width:"30px", height:"30px", borderRadius:"50%", border:`2px solid ${isMissed?"#f43f5e":"rgba(244,63,94,0.25)"}`, background:isMissed?"linear-gradient(135deg,#f43f5e,#f97316)":"transparent", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", transition:"all 0.15s", color:isMissed?"white":"#f43f5e", fontSize:"12px", fontWeight:800 }}>
+                        {isMissed ? "✓" : "✕"}
+                      </motion.button>
+                      {/* Done button */}
+                      <motion.button whileTap={{scale:0.85}} onClick={() => { if (isMissed) return; toggleHabit(h.id, selected); }}
+                        style={{ width:"30px", height:"30px", borderRadius:"50%", border:`2px solid ${done?"#10b981":isMissed?"rgba(255,255,255,0.1)":"rgba(255,255,255,0.2)"}`, background:done?"linear-gradient(135deg,#10b981,#34d399)":"transparent", cursor:isMissed?"default":"pointer", display:"flex", alignItems:"center", justifyContent:"center", transition:"all 0.15s", opacity:isMissed?0.3:1 }}>
+                        {done && <span style={{ color:"white", fontSize:"13px", fontWeight:800 }}>✓</span>}
+                      </motion.button>
+                    </div>
                   </motion.div>
                 );
               })}
@@ -296,69 +256,32 @@ export default function Today({ onGoToTasks, onGoToHabits }) {
           </div>
         )}
 
-        {/* Tasks section */}
+        {/* Tasks */}
         {dayTasks.length > 0 && (
           <div>
-            <div style={{ fontSize: "11px", fontWeight: 700, color: mutedColor, textTransform: "uppercase", letterSpacing: "0.08em", margin: "0 4px 10px" }}>
+            <div style={{ fontSize:"10px", fontWeight:700, color:mutedColor, textTransform:"uppercase", letterSpacing:"0.08em", margin:"0 4px 10px" }}>
               Tasks · {dayTasks.filter(t => t.completed).length}/{dayTasks.length}
             </div>
             <AnimatePresence>
-              {dayTasks.map((task, i) => {
+              {dayTasks.map((task,i) => {
                 const cat = categories.find(c => c.id === task.categoryId);
-                const pm  = PRIORITY_COLOR[task.priority] || PRIORITY_COLOR.medium;
+                const pm  = PRIORITY_CLR[task.priority] || PRIORITY_CLR.medium;
                 return (
-                  <motion.div key={task.id}
-                    initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, scale: 0.95 }}
-                    transition={{ delay: i * 0.03 }}
-                    style={{
-                      display: "flex", alignItems: "center", gap: "14px",
-                      padding: "14px 16px", borderRadius: "16px", marginBottom: "8px",
-                      background: task.completed
-                        ? (isDark ? "rgba(15,23,42,0.3)" : "rgba(255,255,255,0.5)")
-                        : cardBg,
-                      backdropFilter: "blur(10px)",
-                      border: `1px solid ${border}`,
-                      borderLeft: `3px solid ${pm}`,
-                      opacity: task.completed ? 0.65 : 1,
-                      transition: "all 0.2s",
-                    }}
-                  >
-                    <motion.div whileTap={{ scale: 0.85 }}
-                      onClick={() => updateTask(task.id, { completed: !task.completed })}
-                      style={{
-                        width: "22px", height: "22px", borderRadius: "7px", flexShrink: 0,
-                        border: `2px solid ${task.completed ? "#10b981" : (isDark ? "rgba(255,255,255,0.22)" : "rgba(0,0,0,0.18)")}`,
-                        background: task.completed ? "linear-gradient(135deg,#10b981,#34d399)" : "transparent",
-                        cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
-                        transition: "all 0.15s",
-                      }}
-                    >
-                      {task.completed && <span style={{ color: "white", fontSize: "12px", fontWeight: 800 }}>✓</span>}
+                  <motion.div key={task.id} initial={{opacity:0,y:6}} animate={{opacity:1,y:0}} exit={{opacity:0,scale:0.95}} transition={{delay:i*0.03}}
+                    style={{ display:"flex", alignItems:"center", gap:"12px", padding:"13px 14px", borderRadius:"16px", marginBottom:"8px", background:task.completed?(isDark?"rgba(15,23,42,0.3)":"rgba(255,255,255,0.5)"):cardBg, backdropFilter:"blur(10px)", border:`1px solid ${border}`, borderLeft:`3px solid ${pm}`, opacity:task.completed?0.6:1, transition:"all 0.2s" }}>
+                    <motion.div whileTap={{scale:0.85}} onClick={() => updateTask(task.id,{completed:!task.completed})}
+                      style={{ width:"20px", height:"20px", borderRadius:"6px", flexShrink:0, border:`2px solid ${task.completed?"#10b981":isDark?"rgba(255,255,255,0.2)":"rgba(0,0,0,0.15)"}`, background:task.completed?"linear-gradient(135deg,#10b981,#34d399)":"transparent", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", transition:"all 0.15s" }}>
+                      {task.completed && <span style={{ color:"white", fontSize:"11px", fontWeight:800 }}>✓</span>}
                     </motion.div>
-
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{
-                        fontSize: "15px", fontWeight: 600, color: textColor,
-                        textDecoration: task.completed ? "line-through" : "none",
-                        marginBottom: "4px",
-                      }}>{task.title}</div>
-                      <div style={{ display: "flex", gap: "6px", flexWrap: "wrap", alignItems: "center" }}>
-                        {cat && (
-                          <span style={{ fontSize: "10px", fontWeight: 600, padding: "1px 7px", borderRadius: "4px", background: `${cat.color}18`, color: cat.color }}>
-                            {cat.icon} {cat.name}
-                          </span>
-                        )}
-                        <span style={{ fontSize: "10px", fontWeight: 600, padding: "1px 7px", borderRadius: "4px", background: `${pm}15`, color: pm }}>
-                          {task.priority}
-                        </span>
+                    <div style={{ flex:1, minWidth:0 }}>
+                      <div style={{ fontSize:"14px", fontWeight:600, color:textColor, textDecoration:task.completed?"line-through":"none", marginBottom:"3px" }}>{task.title}</div>
+                      <div style={{ display:"flex", gap:"5px", flexWrap:"wrap", alignItems:"center" }}>
+                        {cat && <span style={{ fontSize:"10px", fontWeight:600, padding:"1px 7px", borderRadius:"4px", background:`${cat.color}18`, color:cat.color }}>{cat.icon} {cat.name}</span>}
+                        <span style={{ fontSize:"10px", fontWeight:600, padding:"1px 7px", borderRadius:"4px", background:`${pm}15`, color:pm }}>{task.priority}</span>
                       </div>
                     </div>
-
-                    <motion.button whileTap={{ scale: 0.9 }} onClick={() => deleteTask(task.id)}
-                      style={{ width: "28px", height: "28px", borderRadius: "8px", background: "rgba(244,63,94,0.08)", border: "none", cursor: "pointer", color: "#f43f5e", fontSize: "13px", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                      ✕
-                    </motion.button>
+                    <motion.button whileTap={{scale:0.9}} onClick={() => deleteTask(task.id)}
+                      style={{ width:"26px", height:"26px", borderRadius:"8px", background:"rgba(244,63,94,0.08)", border:"none", cursor:"pointer", color:"#f43f5e", fontSize:"12px", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>✕</motion.button>
                   </motion.div>
                 );
               })}
