@@ -1,11 +1,11 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useTheme }  from "../context/ThemeContext";
 import { useAuth }   from "../context/AuthContext";
 import { useTasks }  from "../hooks/useTasks";
 import { useHabits } from "../hooks/useHabits";
 
-/* ── Helpers ─────────────────────────────────────────────────────────────────── */
+/* ── Helpers ──────────────────────────────────────────────────────────────── */
 const fmtDate = (d) => {
   const y  = d.getFullYear();
   const mo = String(d.getMonth()+1).padStart(2,"0");
@@ -13,14 +13,13 @@ const fmtDate = (d) => {
   return `${y}-${mo}-${dy}`;
 };
 
-function buildDateStrip() {
+// Build a window of dates: [start, end] offset from today
+function buildDates(startOffset, endOffset) {
+  const base = new Date();
+  const b    = new Date(base.getFullYear(), base.getMonth(), base.getDate());
   const days = [];
-  const now  = new Date();
-  const base = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  for (let i = -3; i <= 10; i++) {
-    const d = new Date(base);
-    d.setDate(base.getDate() + i);
-    days.push(d);
+  for (let i = startOffset; i <= endOffset; i++) {
+    const d = new Date(b); d.setDate(b.getDate()+i); days.push(d);
   }
   return days;
 }
@@ -33,49 +32,139 @@ function getGreeting() {
   return "Good night";
 }
 
-const DAY_LABELS    = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
-const PRIORITY_CLR  = { high:"#f43f5e", medium:"#f59e0b", low:"#10b981" };
-const MISSED_KEY    = "thirty_missed_habits";
+const DAY_LABELS   = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+const PRIORITY_CLR = { high:"#f43f5e", medium:"#f59e0b", low:"#10b981" };
+const MISSED_KEY   = "thirty_missed_habits";
+const getMissed    = () => { try { return JSON.parse(localStorage.getItem(MISSED_KEY)||"{}"); } catch { return {}; } };
+const saveMissed   = (m) => localStorage.setItem(MISSED_KEY, JSON.stringify(m));
 
-const getMissed     = () => { try { return JSON.parse(localStorage.getItem(MISSED_KEY)||"{}"); } catch { return {}; } };
-const saveMissed    = (m) => localStorage.setItem(MISSED_KEY, JSON.stringify(m));
-
-/* ── Component ───────────────────────────────────────────────────────────────── */
+/* ── Component ────────────────────────────────────────────────────────────── */
 export default function Today({ onGoToTasks, onGoToHabits, onGoToCalendar }) {
-  const { isDark, accent }           = useTheme();
-  const { user, isAuthenticated }    = useAuth();
+  const { isDark, accent }        = useTheme();
+  const { user, isAuthenticated } = useAuth();
   const { tasks, categories, updateTask, deleteTask } = useTasks();
-  const { habits, toggleHabit }      = useHabits();
+  const { habits, toggleHabit }   = useHabits();
 
   const todayStr = fmtDate(new Date());
-  const [selected,   setSelected]   = useState(todayStr);
-  const [missedMap,  setMissedMap]  = useState(getMissed);
-  const stripRef = useRef(null);
-  const dates    = buildDateStrip();
   const ac       = accent || "#ff6b9d";
 
-  /* ── Scroll strip ── */
-  useEffect(() => {
-    if (!stripRef.current) return;
-    const idx  = dates.findIndex(d => fmtDate(d) === selected);
-    const item = stripRef.current.children[idx];
-    if (item) item.scrollIntoView({ behavior:"smooth", inline:"center", block:"nearest" });
-  }, [selected]);
+  // Date strip state — window of dates, starts at -30 to +60
+  const [rangeStart, setRangeStart] = useState(-30);
+  const [rangeEnd,   setRangeEnd]   = useState(60);
+  const [dates,      setDates]      = useState(() => buildDates(-30, 60));
+  const [selected,   setSelected]   = useState(todayStr);
+  const [missedMap,  setMissedMap]  = useState(getMissed);
+  const [jumpInput,  setJumpInput]  = useState("");
+  const [showJump,   setShowJump]   = useState(false);
 
-  useEffect(() => {
-    setTimeout(() => {
-      if (!stripRef.current) return;
-      const idx  = dates.findIndex(d => fmtDate(d) === todayStr);
-      const item = stripRef.current.children[idx];
-      if (item) item.scrollIntoView({ behavior:"auto", inline:"center", block:"nearest" });
-    }, 100);
-  }, []);
+  const stripRef    = useRef(null);
+  const scrollTimer = useRef(null);
+  const isScrolling = useRef(false);
 
   /* ── Colours ── */
   const textColor  = isDark ? "#f1f5f9"                : "#0f172a";
   const mutedColor = isDark ? "rgba(241,245,249,0.45)" : "rgba(15,23,42,0.45)";
   const cardBg     = isDark ? "rgba(15,23,42,0.6)"     : "rgba(255,255,255,0.88)";
   const border     = isDark ? "rgba(255,255,255,0.07)" : "rgba(0,0,0,0.07)";
+  const stripBg    = isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.04)";
+  const stripSel   = `linear-gradient(135deg,${ac},${ac}cc)`;
+  const stripToday = `${ac}20`;
+
+  /* ── Scroll to a specific date ── */
+  const scrollToDate = useCallback((dateStr, behavior = "smooth") => {
+    if (!stripRef.current) return;
+    const idx  = dates.findIndex(d => fmtDate(d) === dateStr);
+    if (idx < 0) return;
+    const item = stripRef.current.children[idx];
+    if (item) item.scrollIntoView({ behavior, inline:"center", block:"nearest" });
+  }, [dates]);
+
+  // Scroll to today on mount
+  useEffect(() => {
+    setTimeout(() => scrollToDate(todayStr, "auto"), 150);
+  }, []);
+
+  // Scroll to selected when it changes
+  useEffect(() => {
+    scrollToDate(selected, "smooth");
+  }, [selected, scrollToDate]);
+
+  /* ── Infinite scroll: extend range when near edges ── */
+  const handleStripScroll = useCallback(() => {
+    if (!stripRef.current || isScrolling.current) return;
+    const { scrollLeft, scrollWidth, clientWidth } = stripRef.current;
+    const THRESHOLD = 400; // px from edge to trigger extension
+
+    // Near right edge → add more future dates
+    if (scrollLeft + clientWidth >= scrollWidth - THRESHOLD) {
+      setRangeEnd(prev => {
+        const newEnd = prev + 30;
+        setDates(buildDates(rangeStart, newEnd));
+        return newEnd;
+      });
+    }
+    // Near left edge → add more past dates
+    if (scrollLeft <= THRESHOLD) {
+      const EXTRA = 30;
+      setRangeStart(prev => {
+        const newStart = prev - EXTRA;
+        const newDates = buildDates(newStart, rangeEnd);
+        // Preserve scroll position after prepending
+        const prevScrollWidth = stripRef.current.scrollWidth;
+        setDates(newDates);
+        requestAnimationFrame(() => {
+          if (!stripRef.current) return;
+          const diff = stripRef.current.scrollWidth - prevScrollWidth;
+          stripRef.current.scrollLeft += diff;
+        });
+        return newStart;
+      });
+    }
+  }, [rangeStart, rangeEnd]);
+
+  useEffect(() => {
+    const el = stripRef.current;
+    if (!el) return;
+    el.addEventListener("scroll", handleStripScroll, { passive:true });
+    return () => el.removeEventListener("scroll", handleStripScroll);
+  }, [handleStripScroll]);
+
+  /* ── Jump to date ── */
+  const handleJump = () => {
+    if (!jumpInput) return;
+    const d = new Date(jumpInput + "T00:00:00");
+    if (isNaN(d.getTime())) { setShowJump(false); return; }
+    const targetStr = fmtDate(d);
+    const base      = new Date();
+    const baseLocal = new Date(base.getFullYear(), base.getMonth(), base.getDate());
+    const diff      = Math.round((d - baseLocal) / 86400000);
+
+    // Ensure target is in range
+    const newStart = Math.min(rangeStart, diff - 10);
+    const newEnd   = Math.max(rangeEnd,   diff + 10);
+    setRangeStart(newStart);
+    setRangeEnd(newEnd);
+    setDates(buildDates(newStart, newEnd));
+
+    setSelected(targetStr);
+    setShowJump(false);
+    setJumpInput("");
+    setTimeout(() => scrollToDate(targetStr, "smooth"), 100);
+  };
+
+  /* ── Missed toggle ── */
+  const toggleMissed = (habitId, date) => {
+    const key = `${habitId}_${date}`;
+    const cur = getMissed();
+    if (cur[key]) { delete cur[key]; }
+    else {
+      cur[key] = true;
+      const h = habits.find(x => x.id === habitId);
+      if (h && (h.completedDates||[]).includes(date)) toggleHabit(habitId, date);
+    }
+    saveMissed(cur);
+    setMissedMap({...cur});
+  };
 
   /* ── Filtered data ── */
   const dayTasks = tasks.filter(t => t.dueDate === selected);
@@ -86,44 +175,27 @@ export default function Today({ onGoToTasks, onGoToHabits, onGoToCalendar }) {
     return true;
   });
 
-  const completedItems = dayTasks.filter(t=>t.completed).length +
-    dayHabits.filter(h=>(h.completedDates||[]).includes(selected)).length;
+  const completedItems = dayTasks.filter(t=>t.completed).length
+    + dayHabits.filter(h=>(h.completedDates||[]).includes(selected)).length;
   const totalItems  = dayTasks.length + dayHabits.length;
   const missedItems = dayHabits.filter(h=>!!missedMap[`${h.id}_${selected}`]).length;
   const pct = totalItems > 0 ? Math.round((completedItems/totalItems)*100) : 0;
 
-  /* ── Missed toggle ── */
-  const toggleMissed = (habitId, date) => {
-    const key = `${habitId}_${date}`;
-    const cur = getMissed();
-    if (cur[key]) {
-      delete cur[key];
-    } else {
-      cur[key] = true;
-      const h = habits.find(x => x.id === habitId);
-      if (h && (h.completedDates||[]).includes(date)) toggleHabit(habitId, date);
-    }
-    saveMissed(cur);
-    setMissedMap({...cur});
-  };
-
-  /* ── Unauthenticated splash ── */
+  /* ── Unauthenticated ── */
   if (!isAuthenticated) {
     return (
-      <div style={{ maxWidth:"480px",margin:"0 auto",padding:"60px 20px",textAlign:"center",fontFamily:"'DM Sans',sans-serif",color:textColor }}>
+      <div style={{ maxWidth:"520px",margin:"0 auto",padding:"60px 20px",textAlign:"center",fontFamily:"'DM Sans',sans-serif",color:textColor }}>
         <motion.div initial={{opacity:0,scale:0.95}} animate={{opacity:1,scale:1}}
           style={{ padding:"52px 28px",background:cardBg,backdropFilter:"blur(16px)",borderRadius:"28px",border:`1px solid ${border}` }}>
-          <div style={{ width:"68px",height:"68px",borderRadius:"20px",background:`linear-gradient(135deg,${ac},${ac}cc)`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:"14px",fontWeight:900,color:"white",margin:"0 auto 20px",boxShadow:`0 8px 28px ${ac}44`,letterSpacing:"-0.04em" }}>
-            30
-          </div>
+          <div style={{ width:"68px",height:"68px",borderRadius:"20px",background:`linear-gradient(135deg,${ac},${ac}cc)`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:"15px",fontWeight:900,color:"white",margin:"0 auto 20px",boxShadow:`0 8px 28px ${ac}44`,letterSpacing:"-0.04em" }}>30</div>
           <h2 style={{ fontSize:"22px",fontWeight:800,margin:"0 0 10px",color:textColor,letterSpacing:"-0.03em" }}>
             Welcome to <span style={{ color:ac }}>Thirty</span>
           </h2>
           <p style={{ fontSize:"14px",color:mutedColor,margin:"0 0 24px",lineHeight:1.6 }}>
-            Your premium productivity app. Sign in to get started.
+            Your premium productivity companion. Sign in to get started.
           </p>
           <div style={{ display:"flex",gap:"8px",justifyContent:"center",flexWrap:"wrap" }}>
-            {["Tasks","Habits","Calendar","Timer","Rewards"].map(f => (
+            {["Tasks","Habits","Calendar","Timer","Rewards"].map(f=>(
               <span key={f} style={{ padding:"5px 13px",borderRadius:"20px",background:`${ac}15`,color:ac,fontSize:"12px",fontWeight:600,border:`1px solid ${ac}30` }}>{f}</span>
             ))}
           </div>
@@ -136,97 +208,184 @@ export default function Today({ onGoToTasks, onGoToHabits, onGoToCalendar }) {
     <div style={{ fontFamily:"'DM Sans',sans-serif",color:textColor,paddingBottom:"20px" }}>
 
       {/* ── Header ── */}
-      <div style={{ padding:"20px 16px 10px",display:"flex",justifyContent:"space-between",alignItems:"flex-start" }}>
+      <div style={{ padding:"20px 20px 10px",display:"flex",justifyContent:"space-between",alignItems:"flex-start" }}>
         <div style={{ minWidth:0,flex:1 }}>
           <p style={{ fontSize:"12px",color:mutedColor,margin:"0 0 2px",letterSpacing:"0.02em" }}>
-            {new Date().toLocaleDateString("en-US",{ weekday:"long",month:"long",day:"numeric" })}
+            {new Date().toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric"})}
           </p>
-          <h1 style={{ fontSize:"clamp(20px,5vw,28px)",fontWeight:800,margin:"0 0 2px",letterSpacing:"-0.03em",lineHeight:1.15 }}>
+          <h1 style={{ fontSize:"clamp(20px,5vw,30px)",fontWeight:800,margin:"0 0 2px",letterSpacing:"-0.03em",lineHeight:1.15 }}>
             {getGreeting()},{" "}
-            <span style={{ background:`linear-gradient(135deg,${ac},${ac}aa)`,WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent" }}>
-              {user?.name?.split(" ")[0] || "there"}
+            <span style={{ background:`linear-gradient(135deg,${ac},${ac}99)`,WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent" }}>
+              {user?.name?.split(" ")[0]||"there"}
             </span>{" "}👋
           </h1>
           {totalItems > 0 && (
             <p style={{ fontSize:"12px",color:mutedColor,margin:0 }}>
               {completedItems}/{totalItems} done
-              {missedItems > 0 && <span style={{ color:"#f43f5e" }}> · {missedItems} missed</span>}
+              {missedItems>0 && <span style={{ color:"#f43f5e" }}> · {missedItems} missed</span>}
               {" · "}{pct}%
             </p>
           )}
+          {totalItems === 0 && selected !== todayStr && (
+            <p style={{ fontSize:"12px",color:mutedColor,margin:0 }}>
+              Viewing {new Date(selected+"T00:00:00").toLocaleDateString("en-US",{month:"short",day:"numeric"})}
+            </p>
+          )}
         </div>
-        {/* Calendar button */}
-        <motion.button whileTap={{scale:0.9}} onClick={onGoToCalendar}
-          style={{ width:"40px",height:"40px",borderRadius:"12px",border:`1px solid ${border}`,background:isDark?"rgba(255,255,255,0.06)":"rgba(0,0,0,0.04)",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,color:textColor,marginTop:"4px",WebkitTapHighlightColor:"transparent",touchAction:"manipulation" }}>
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-            <rect x="3" y="4" width="18" height="18" rx="2"/>
-            <line x1="16" y1="2" x2="16" y2="6"/>
-            <line x1="8"  y1="2" x2="8"  y2="6"/>
-            <line x1="3"  y1="10" x2="21" y2="10"/>
-          </svg>
-        </motion.button>
+
+        {/* Right: calendar + jump */}
+        <div style={{ display:"flex",gap:"8px",alignItems:"center",flexShrink:0,marginTop:"4px" }}>
+          {/* Jump to today if not on today */}
+          {selected !== todayStr && (
+            <motion.button
+              initial={{opacity:0,scale:0.9}} animate={{opacity:1,scale:1}}
+              whileTap={{scale:0.9}} onClick={() => setSelected(todayStr)}
+              style={{ padding:"6px 12px",borderRadius:"10px",border:`1px solid ${ac}44`,background:`${ac}12`,cursor:"pointer",fontSize:"11px",fontWeight:700,color:ac,fontFamily:"inherit",WebkitTapHighlightColor:"transparent" }}>
+              Today
+            </motion.button>
+          )}
+          {/* Jump to date */}
+          <motion.button whileTap={{scale:0.9}} onClick={() => setShowJump(!showJump)}
+            style={{ width:"40px",height:"40px",borderRadius:"12px",border:`1px solid ${border}`,background:isDark?"rgba(255,255,255,0.06)":"rgba(0,0,0,0.04)",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",color:textColor,WebkitTapHighlightColor:"transparent",touchAction:"manipulation" }}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="3" y="4" width="18" height="18" rx="2"/>
+              <line x1="16" y1="2" x2="16" y2="6"/>
+              <line x1="8"  y1="2" x2="8"  y2="6"/>
+              <line x1="3"  y1="10" x2="21" y2="10"/>
+            </svg>
+          </motion.button>
+        </div>
       </div>
+
+      {/* Jump to date picker */}
+      <AnimatePresence>
+        {showJump && (
+          <motion.div initial={{height:0,opacity:0}} animate={{height:"auto",opacity:1}} exit={{height:0,opacity:0}}
+            style={{ overflow:"hidden",padding:"0 20px" }}>
+            <div style={{ padding:"10px 14px",background:cardBg,borderRadius:"12px",border:`1px solid ${border}`,marginBottom:"12px",display:"flex",gap:"8px",alignItems:"center" }}>
+              <input type="date" value={jumpInput} onChange={e=>setJumpInput(e.target.value)}
+                style={{ flex:1,padding:"7px 10px",borderRadius:"8px",border:`1px solid ${border}`,background:isDark?"rgba(255,255,255,0.07)":"#f8fafc",color:textColor,fontSize:"13px",fontFamily:"inherit",outline:"none" }}/>
+              <button onClick={handleJump}
+                style={{ padding:"7px 14px",borderRadius:"8px",background:`linear-gradient(135deg,${ac},${ac}cc)`,border:"none",color:"white",cursor:"pointer",fontSize:"12px",fontWeight:700,fontFamily:"inherit" }}>
+                Go
+              </button>
+              <button onClick={()=>setShowJump(false)}
+                style={{ padding:"7px 10px",borderRadius:"8px",border:`1px solid ${border}`,background:"transparent",color:mutedColor,cursor:"pointer",fontSize:"12px",fontFamily:"inherit" }}>
+                ✕
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* ── Progress bar ── */}
       {totalItems > 0 && (
-        <div style={{ padding:"0 16px 14px" }}>
+        <div style={{ padding:"0 20px 14px" }}>
           <div style={{ height:"3px",background:isDark?"rgba(255,255,255,0.07)":"rgba(0,0,0,0.07)",borderRadius:"2px",overflow:"hidden" }}>
-            <motion.div animate={{ width:`${pct}%` }} transition={{ duration:0.5 }}
+            <motion.div animate={{width:`${pct}%`}} transition={{duration:0.5}}
               style={{ height:"100%",background:`linear-gradient(90deg,${ac},${ac}aa)`,borderRadius:"2px" }}/>
           </div>
         </div>
       )}
 
-      {/* ── Date strip ── */}
-      <div style={{ overflowX:"auto",paddingBottom:"4px",marginBottom:"16px" }} className="hide-scrollbar">
-        <div ref={stripRef} style={{ display:"flex",gap:"7px",padding:"4px 16px",width:"max-content" }}>
-          {dates.map(d => {
-            const ds       = fmtDate(d);
-            const isToday  = ds === todayStr;
-            const isSel    = ds === selected;
-            const hasItems = tasks.filter(t=>t.dueDate===ds).length +
-              habits.filter(h=>(h.completedDates||[]).includes(ds)).length > 0;
+      {/* ── Date strip — infinite scroll ── */}
+      <div style={{ position:"relative",marginBottom:"20px" }}>
+        {/* Left fade */}
+        <div style={{ position:"absolute",left:0,top:0,bottom:0,width:"40px",background:isDark?"linear-gradient(90deg,#080610,transparent)":"linear-gradient(90deg,#f5f0ff,transparent)",zIndex:2,pointerEvents:"none" }}/>
+        {/* Right fade */}
+        <div style={{ position:"absolute",right:0,top:0,bottom:0,width:"40px",background:isDark?"linear-gradient(-90deg,#080610,transparent)":"linear-gradient(-90deg,#f5f0ff,transparent)",zIndex:2,pointerEvents:"none" }}/>
 
-            return (
-              <motion.button key={ds} whileTap={{scale:0.92}} onClick={() => setSelected(ds)}
-                style={{ display:"flex",flexDirection:"column",alignItems:"center",gap:"4px",padding:"10px 12px",borderRadius:"16px",border:"none",cursor:"pointer",minWidth:"54px",
-                  background:isSel?`linear-gradient(135deg,${ac},${ac}cc)`:isToday?`${ac}18`:isDark?"rgba(255,255,255,0.05)":"rgba(0,0,0,0.04)",
-                  boxShadow:isSel?`0 4px 18px ${ac}44`:"none",transition:"all 0.15s",WebkitTapHighlightColor:"transparent",touchAction:"manipulation" }}>
-                <span style={{ fontSize:"9px",fontWeight:600,letterSpacing:"0.05em",color:isSel?"rgba(255,255,255,0.8)":mutedColor,textTransform:"uppercase" }}>
-                  {DAY_LABELS[d.getDay()]}
-                </span>
-                <span style={{ fontSize:"18px",fontWeight:800,color:isSel?"white":isToday?ac:textColor }}>
-                  {d.getDate()}
-                </span>
-                <div style={{ width:"4px",height:"4px",borderRadius:"50%",background:isSel?"rgba(255,255,255,0.6)":hasItems?ac:"transparent" }}/>
-              </motion.button>
-            );
-          })}
+        <div ref={stripRef}
+          style={{ overflowX:"auto",padding:"6px 20px",WebkitOverflowScrolling:"touch" }}
+          className="hide-scrollbar">
+          <div style={{ display:"flex",gap:"6px",width:"max-content" }}>
+            {dates.map((d,idx) => {
+              const ds       = fmtDate(d);
+              const isToday  = ds === todayStr;
+              const isSel    = ds === selected;
+              const isWeekend= d.getDay()===0 || d.getDay()===6;
+              const hasTask  = tasks.filter(t=>t.dueDate===ds).length > 0;
+              const hasDone  = habits.filter(h=>(h.completedDates||[]).includes(ds)).length > 0;
+              const hasItems = hasTask || hasDone;
+
+              return (
+                <motion.button key={ds} whileTap={{scale:0.9}}
+                  onClick={() => setSelected(ds)}
+                  style={{
+                    display:"flex",flexDirection:"column",alignItems:"center",gap:"3px",
+                    padding:"10px 10px 8px",borderRadius:"14px",border:"none",cursor:"pointer",
+                    minWidth:"52px",
+                    background: isSel   ? stripSel
+                              : isToday ? stripToday
+                              : isDark  ? (isWeekend?"rgba(255,255,255,0.04)":"rgba(255,255,255,0.05)")
+                              :           (isWeekend?"rgba(0,0,0,0.03)"       :"rgba(0,0,0,0.04)"),
+                    boxShadow: isSel ? `0 4px 18px ${ac}44` : "none",
+                    transition:"background 0.15s,box-shadow 0.15s",
+                    WebkitTapHighlightColor:"transparent",touchAction:"manipulation",
+                    outline:"none",
+                    // Month boundary visual hint
+                    borderTop: d.getDate()===1 ? `2px solid ${ac}44` : "2px solid transparent",
+                  }}>
+
+                  {/* Month label on 1st of each month */}
+                  {d.getDate() === 1 && (
+                    <span style={{ fontSize:"7px",fontWeight:800,color:isSel?"rgba(255,255,255,0.7)":ac,letterSpacing:"0.06em",textTransform:"uppercase",lineHeight:1,marginBottom:"-1px" }}>
+                      {d.toLocaleDateString("en-US",{month:"short"})}
+                    </span>
+                  )}
+
+                  <span style={{ fontSize:"9px",fontWeight:600,letterSpacing:"0.05em",color:isSel?"rgba(255,255,255,0.75)":isWeekend?ac:mutedColor,textTransform:"uppercase" }}>
+                    {DAY_LABELS[d.getDay()].slice(0,3)}
+                  </span>
+
+                  <span style={{ fontSize:"17px",fontWeight:800,
+                    color:isSel?"white":isToday?ac:isWeekend?(isDark?"rgba(255,255,255,0.75)":"rgba(0,0,0,0.6)"):textColor,
+                    lineHeight:1,
+                  }}>
+                    {d.getDate()}
+                  </span>
+
+                  {/* Activity dot */}
+                  <div style={{ width:"4px",height:"4px",borderRadius:"50%",
+                    background:isSel?"rgba(255,255,255,0.6)":hasTask?ac:hasDone?"#10b981":"transparent",
+                    transition:"background 0.2s",
+                  }}/>
+                </motion.button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Month + year indicator */}
+        <div style={{ textAlign:"center",marginTop:"6px" }}>
+          <span style={{ fontSize:"10px",fontWeight:600,color:mutedColor,letterSpacing:"0.06em" }}>
+            {new Date(selected+"T00:00:00").toLocaleDateString("en-US",{month:"long",year:"numeric"})}
+          </span>
         </div>
       </div>
 
       {/* ── Content ── */}
-      <div style={{ padding:"0 12px" }}>
+      <div style={{ padding:"0 16px" }}>
 
         {/* Empty state */}
-        {dayTasks.length === 0 && dayHabits.length === 0 && (
+        {dayTasks.length===0 && dayHabits.length===0 && (
           <motion.div initial={{opacity:0}} animate={{opacity:1}}
-            style={{ textAlign:"center",padding:"52px 20px",background:cardBg,backdropFilter:"blur(14px)",borderRadius:"22px",border:`1px solid ${border}` }}>
-            <div style={{ fontSize:"42px",marginBottom:"12px" }}>✨</div>
+            style={{ textAlign:"center",padding:"56px 20px",background:cardBg,backdropFilter:"blur(14px)",borderRadius:"22px",border:`1px solid ${border}` }}>
+            <div style={{ fontSize:"40px",marginBottom:"12px" }}>✨</div>
             <h3 style={{ fontSize:"16px",fontWeight:700,margin:"0 0 6px",color:textColor }}>
-              {selected === todayStr ? "Nothing scheduled" : "Nothing on this day"}
+              {selected===todayStr ? "Nothing scheduled" : "Nothing on this day"}
             </h3>
             <p style={{ fontSize:"13px",color:mutedColor,margin:"0 0 20px" }}>
-              {selected === todayStr ? "Add a task or build a habit" : "Tap + in Tasks to add something"}
+              {selected===todayStr ? "Add a task or build a habit" : "Tap + in Tasks to add something"}
             </p>
             <motion.button whileTap={{scale:0.97}} onClick={onGoToTasks}
-              style={{ padding:"10px 24px",borderRadius:"99px",background:`linear-gradient(135deg,${ac},${ac}cc)`,border:"none",color:"white",cursor:"pointer",fontSize:"13px",fontWeight:700,fontFamily:"inherit",boxShadow:`0 4px 14px ${ac}44`,WebkitTapHighlightColor:"transparent",touchAction:"manipulation" }}>
+              style={{ padding:"10px 24px",borderRadius:"99px",background:`linear-gradient(135deg,${ac},${ac}cc)`,border:"none",color:"white",cursor:"pointer",fontSize:"13px",fontWeight:700,fontFamily:"inherit",boxShadow:`0 4px 14px ${ac}44`,WebkitTapHighlightColor:"transparent" }}>
               Go to Tasks →
             </motion.button>
           </motion.div>
         )}
 
-        {/* ── Habits ── */}
+        {/* ── Habits section ── */}
         {dayHabits.length > 0 && (
           <div style={{ marginBottom:"16px" }}>
             <div style={{ fontSize:"10px",fontWeight:700,color:mutedColor,textTransform:"uppercase",letterSpacing:"0.08em",margin:"0 4px 10px" }}>
@@ -237,10 +396,9 @@ export default function Today({ onGoToTasks, onGoToHabits, onGoToCalendar }) {
                 const done     = (h.completedDates||[]).includes(selected);
                 const isMissed = !!missedMap[`${h.id}_${selected}`];
 
-                let bg  = cardBg;
-                let bdr = border;
-                if (done)     { bg = isDark?"rgba(16,185,129,0.1)":"rgba(16,185,129,0.06)";  bdr = "rgba(16,185,129,0.25)"; }
-                if (isMissed) { bg = isDark?"rgba(244,63,94,0.08)":"rgba(244,63,94,0.04)";   bdr = "rgba(244,63,94,0.22)";  }
+                let bg  = cardBg, bdr = border;
+                if (done)     { bg=isDark?"rgba(16,185,129,0.1)":"rgba(16,185,129,0.06)"; bdr="rgba(16,185,129,0.25)"; }
+                if (isMissed) { bg=isDark?"rgba(244,63,94,0.08)":"rgba(244,63,94,0.04)";  bdr="rgba(244,63,94,0.22)";  }
 
                 return (
                   <motion.div key={h.id}
@@ -248,33 +406,25 @@ export default function Today({ onGoToTasks, onGoToHabits, onGoToCalendar }) {
                     transition={{delay:i*0.03}}
                     style={{ display:"flex",alignItems:"center",gap:"12px",padding:"13px 14px",borderRadius:"16px",marginBottom:"8px",background:bg,backdropFilter:"blur(10px)",border:`1px solid ${bdr}`,transition:"all 0.2s" }}>
 
-                    <div style={{ width:"40px",height:"40px",borderRadius:"12px",background:`${h.color}22`,flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center",fontSize:"19px" }}>
-                      {h.icon}
-                    </div>
+                    <div style={{ width:"40px",height:"40px",borderRadius:"12px",background:`${h.color}22`,flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center",fontSize:"19px" }}>{h.icon}</div>
 
                     <div style={{ flex:1,minWidth:0 }}>
-                      <div style={{ fontSize:"14px",fontWeight:600,color:textColor,textDecoration:(done||isMissed)?"line-through":"none",opacity:(done||isMissed)?0.6:1 }}>
-                        {h.name}
-                      </div>
+                      <div style={{ fontSize:"14px",fontWeight:600,color:textColor,textDecoration:(done||isMissed)?"line-through":"none",opacity:(done||isMissed)?0.6:1 }}>{h.name}</div>
                       <div style={{ fontSize:"10px",color:mutedColor,marginTop:"2px",display:"flex",gap:"6px",alignItems:"center" }}>
                         <span style={{ padding:"1px 6px",borderRadius:"4px",fontSize:"10px",fontWeight:600,background:isMissed?"rgba(244,63,94,0.15)":done?"rgba(16,185,129,0.15)":`${h.color}18`,color:isMissed?"#f43f5e":done?"#10b981":h.color }}>
-                          {isMissed ? "Missed" : done ? "Done" : "Habit"}
+                          {isMissed?"Missed":done?"Done":"Habit"}
                         </span>
-                        {h.streak > 0 && !isMissed && <span style={{ color:"#f59e0b" }}>🔥 {h.streak}</span>}
+                        {h.streak>0 && !isMissed && <span style={{ color:"#f59e0b" }}>🔥 {h.streak}</span>}
                       </div>
                     </div>
 
                     <div style={{ display:"flex",gap:"6px",flexShrink:0 }}>
-                      {/* Miss / un-miss */}
-                      <motion.button whileTap={{scale:0.85}}
-                        onClick={() => toggleMissed(h.id, selected)}
-                        style={{ width:"30px",height:"30px",borderRadius:"50%",border:`2px solid ${isMissed?"#f43f5e":"rgba(244,63,94,0.3)"}`,background:isMissed?"linear-gradient(135deg,#f43f5e,#f97316)":"transparent",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",transition:"all 0.15s",color:isMissed?"white":"#f43f5e",fontSize:"12px",fontWeight:800,WebkitTapHighlightColor:"transparent",touchAction:"manipulation" }}>
+                      <motion.button whileTap={{scale:0.85}} onClick={() => toggleMissed(h.id,selected)}
+                        style={{ width:"30px",height:"30px",borderRadius:"50%",border:`2px solid ${isMissed?"#f43f5e":"rgba(244,63,94,0.3)"}`,background:isMissed?"linear-gradient(135deg,#f43f5e,#f97316)":"transparent",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",transition:"all 0.15s",color:isMissed?"white":"#f43f5e",fontSize:"12px",fontWeight:800,WebkitTapHighlightColor:"transparent" }}>
                         ✕
                       </motion.button>
-                      {/* Done / un-done */}
-                      <motion.button whileTap={{scale:0.85}}
-                        onClick={() => { if (!isMissed) toggleHabit(h.id, selected); }}
-                        style={{ width:"30px",height:"30px",borderRadius:"50%",border:`2px solid ${done?"#10b981":isMissed?"rgba(255,255,255,0.08)":isDark?"rgba(255,255,255,0.2)":"rgba(0,0,0,0.15)"}`,background:done?"linear-gradient(135deg,#10b981,#34d399)":"transparent",cursor:isMissed?"default":"pointer",display:"flex",alignItems:"center",justifyContent:"center",transition:"all 0.15s",opacity:isMissed?0.3:1,WebkitTapHighlightColor:"transparent",touchAction:"manipulation" }}>
+                      <motion.button whileTap={{scale:0.85}} onClick={() => { if(!isMissed) toggleHabit(h.id,selected); }}
+                        style={{ width:"30px",height:"30px",borderRadius:"50%",border:`2px solid ${done?"#10b981":isMissed?"rgba(255,255,255,0.08)":isDark?"rgba(255,255,255,0.2)":"rgba(0,0,0,0.15)"}`,background:done?"linear-gradient(135deg,#10b981,#34d399)":"transparent",cursor:isMissed?"default":"pointer",display:"flex",alignItems:"center",justifyContent:"center",transition:"all 0.15s",opacity:isMissed?0.3:1,WebkitTapHighlightColor:"transparent" }}>
                         {done && <span style={{ color:"white",fontSize:"13px",fontWeight:800 }}>✓</span>}
                       </motion.button>
                     </div>
@@ -285,7 +435,7 @@ export default function Today({ onGoToTasks, onGoToHabits, onGoToCalendar }) {
           </div>
         )}
 
-        {/* ── Tasks ── */}
+        {/* ── Tasks section ── */}
         {dayTasks.length > 0 && (
           <div>
             <div style={{ fontSize:"10px",fontWeight:700,color:mutedColor,textTransform:"uppercase",letterSpacing:"0.08em",margin:"0 4px 10px" }}>
@@ -293,8 +443,8 @@ export default function Today({ onGoToTasks, onGoToHabits, onGoToCalendar }) {
             </div>
             <AnimatePresence>
               {dayTasks.map((task,i) => {
-                const cat = categories.find(c => c.id === task.categoryId);
-                const pm  = PRIORITY_CLR[task.priority] || PRIORITY_CLR.medium;
+                const cat = categories.find(c=>c.id===task.categoryId);
+                const pm  = PRIORITY_CLR[task.priority]||PRIORITY_CLR.medium;
                 return (
                   <motion.div key={task.id}
                     initial={{opacity:0,y:6}} animate={{opacity:1,y:0}} exit={{opacity:0,scale:0.95}}
@@ -303,29 +453,20 @@ export default function Today({ onGoToTasks, onGoToHabits, onGoToCalendar }) {
 
                     <motion.div whileTap={{scale:0.85}}
                       onClick={() => updateTask(task.id,{completed:!task.completed})}
-                      style={{ width:"20px",height:"20px",borderRadius:"6px",flexShrink:0,border:`2px solid ${task.completed?"#10b981":isDark?"rgba(255,255,255,0.2)":"rgba(0,0,0,0.15)"}`,background:task.completed?"linear-gradient(135deg,#10b981,#34d399)":"transparent",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",transition:"all 0.15s",WebkitTapHighlightColor:"transparent",touchAction:"manipulation" }}>
+                      style={{ width:"20px",height:"20px",borderRadius:"6px",flexShrink:0,border:`2px solid ${task.completed?ac:isDark?"rgba(255,255,255,0.2)":"rgba(0,0,0,0.15)"}`,background:task.completed?`linear-gradient(135deg,${ac},${ac}cc)`:"transparent",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",transition:"all 0.15s",WebkitTapHighlightColor:"transparent" }}>
                       {task.completed && <span style={{ color:"white",fontSize:"11px",fontWeight:800 }}>✓</span>}
                     </motion.div>
 
                     <div style={{ flex:1,minWidth:0 }}>
-                      <div style={{ fontSize:"14px",fontWeight:600,color:textColor,textDecoration:task.completed?"line-through":"none",marginBottom:"3px" }}>
-                        {task.title}
-                      </div>
+                      <div style={{ fontSize:"14px",fontWeight:600,color:textColor,textDecoration:task.completed?"line-through":"none",marginBottom:"3px" }}>{task.title}</div>
                       <div style={{ display:"flex",gap:"5px",flexWrap:"wrap",alignItems:"center" }}>
-                        {cat && (
-                          <span style={{ fontSize:"10px",fontWeight:600,padding:"1px 7px",borderRadius:"4px",background:`${cat.color}18`,color:cat.color }}>
-                            {cat.icon} {cat.name}
-                          </span>
-                        )}
-                        <span style={{ fontSize:"10px",fontWeight:600,padding:"1px 7px",borderRadius:"4px",background:`${pm}15`,color:pm }}>
-                          {task.priority}
-                        </span>
+                        {cat && <span style={{ fontSize:"10px",fontWeight:600,padding:"1px 7px",borderRadius:"4px",background:`${cat.color}18`,color:cat.color }}>{cat.icon} {cat.name}</span>}
+                        <span style={{ fontSize:"10px",fontWeight:600,padding:"1px 7px",borderRadius:"4px",background:`${pm}15`,color:pm }}>{task.priority}</span>
                       </div>
                     </div>
 
-                    <motion.button whileTap={{scale:0.9}}
-                      onClick={() => deleteTask(task.id)}
-                      style={{ width:"26px",height:"26px",borderRadius:"8px",background:"rgba(244,63,94,0.08)",border:"none",cursor:"pointer",color:"#f43f5e",fontSize:"12px",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,WebkitTapHighlightColor:"transparent",touchAction:"manipulation" }}>
+                    <motion.button whileTap={{scale:0.9}} onClick={() => deleteTask(task.id)}
+                      style={{ width:"26px",height:"26px",borderRadius:"8px",background:"rgba(244,63,94,0.08)",border:"none",cursor:"pointer",color:"#f43f5e",fontSize:"12px",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,WebkitTapHighlightColor:"transparent" }}>
                       ✕
                     </motion.button>
                   </motion.div>

@@ -15,8 +15,19 @@ const PRIORITY_META = {
   low:    { color: "#10b981" },
 };
 
+// Helper: convert hex to rgba with opacity
+function hexToRgba(hex, alpha) {
+  const h = hex.replace("#", "");
+  const r = parseInt(h.substring(0, 2), 16);
+  const g = parseInt(h.substring(2, 4), 16);
+  const b = parseInt(h.substring(4, 6), 16);
+  return `rgba(${r},${g},${b},${alpha})`;
+}
+
 export default function Calendar() {
-  const { isDark } = useTheme();
+  const { isDark, accent } = useTheme();
+  const ac = accent || "#ff6b9d";
+
   const { tasks, categories, addTask, updateTask, deleteTask } = useTasks();
 
   const [currentDate,    setCurrentDate]    = useState(new Date());
@@ -26,12 +37,12 @@ export default function Calendar() {
   const [newTaskPriority,setNewTaskPriority]= useState("medium");
   const [newTaskCategory,setNewTaskCategory]= useState("");
   const [addingTask,     setAddingTask]     = useState(false);
-  const [showDaySheet,   setShowDaySheet]   = useState(false); // mobile day detail
+  const [showDaySheet,   setShowDaySheet]   = useState(false);
 
   const textColor  = isDark ? "#f1f5f9"                : "#0f172a";
   const mutedColor = isDark ? "rgba(241,245,249,0.45)" : "rgba(15,23,42,0.45)";
   const cardBg     = isDark ? "rgba(15,23,42,0.7)"     : "rgba(255,255,255,0.9)";
-  const border     = isDark ? "rgba(255,107,157,0.12)" : "rgba(255,107,157,0.18)";
+  const border     = hexToRgba(ac, isDark ? 0.12 : 0.18);
 
   const year  = currentDate.getFullYear();
   const month = currentDate.getMonth();
@@ -68,7 +79,7 @@ export default function Calendar() {
   const handleDayClick = (cell) => {
     if (!cell.current || !cell.dateStr) return;
     setSelectedDate(cell.dateStr);
-    setShowDaySheet(true); // mobile: open sheet
+    setShowDaySheet(true);
   };
 
   const inputStyle = {
@@ -91,7 +102,7 @@ export default function Calendar() {
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px", flexWrap: "wrap", gap: "10px" }}>
         <div>
           <h1 style={{ fontSize: "clamp(22px,5vw,28px)", fontWeight: 800, margin: 0, letterSpacing: "-0.04em" }}>
-            <span style={{ background: "linear-gradient(135deg,#ff6b9d,#ff99cc)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>Calendar</span>
+            <span style={{ background: `linear-gradient(135deg,${ac},${ac}cc)`, WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>Calendar</span>
           </h1>
           <p style={{ fontSize: "12px", color: mutedColor, margin: 0 }}>{monthTasks.length} tasks this month</p>
         </div>
@@ -104,7 +115,7 @@ export default function Calendar() {
           <motion.button whileTap={{ scale: 0.92 }} onClick={() => setCurrentDate(new Date(year, month+1, 1))}
             style={{ width: "34px", height: "34px", borderRadius: "10px", border: `1px solid ${border}`, background: isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.04)", cursor: "pointer", color: textColor, fontSize: "16px" }}>›</motion.button>
           <motion.button whileTap={{ scale: 0.95 }} onClick={() => { setCurrentDate(new Date()); setSelectedDate(today); }}
-            style={{ padding: "6px 12px", borderRadius: "8px", border: `1px solid ${border}`, background: "rgba(255,107,157,0.1)", color: "#ff6b9d", cursor: "pointer", fontSize: "12px", fontWeight: 600, fontFamily: "inherit" }}>
+            style={{ padding: "6px 12px", borderRadius: "8px", border: `1px solid ${border}`, background: hexToRgba(ac, 0.1), color: ac, cursor: "pointer", fontSize: "12px", fontWeight: 600, fontFamily: "inherit" }}>
             Today
           </motion.button>
         </div>
@@ -113,7 +124,7 @@ export default function Calendar() {
       {/* Month stats strip */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: "8px", marginBottom: "14px" }}>
         {[
-          { label: "Total", value: monthTasks.length, color: "#ff6b9d" },
+          { label: "Total", value: monthTasks.length, color: ac },
           { label: "Done",  value: done,              color: "#10b981" },
           { label: `${pct}% done`, value: monthTasks.length - done, color: "#f59e0b" },
         ].map(s => (
@@ -154,8 +165,8 @@ export default function Calendar() {
                   cursor: cell.current ? "pointer" : "default",
                   borderBottom: `1px solid ${isDark ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.04)"}`,
                   borderRight:  `1px solid ${isDark ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.04)"}`,
-                  background: isSelected ? "rgba(255,107,157,0.14)"
-                            : isToday    ? "rgba(255,107,157,0.07)"
+                  background: isSelected ? hexToRgba(ac, 0.14)
+                            : isToday    ? hexToRgba(ac, 0.07)
                             : "transparent",
                   transition: "background 0.15s",
                 }}
@@ -165,7 +176,7 @@ export default function Calendar() {
                   borderRadius: "7px", margin: "0 auto 3px",
                   display: "flex", alignItems: "center", justifyContent: "center",
                   fontSize: "clamp(11px,2.5vw,13px)", fontWeight: isToday ? 800 : 500,
-                  background: isToday ? "linear-gradient(135deg,#ff6b9d,#ff99cc)" : "transparent",
+                  background: isToday ? `linear-gradient(135deg,${ac},${ac}cc)` : "transparent",
                   color: isToday ? "white" : cell.current ? textColor : mutedColor,
                 }}>{cell.day}</div>
 
@@ -175,7 +186,7 @@ export default function Calendar() {
                     {cellTasks.slice(0, 3).map((t, ti) => (
                       <div key={ti} style={{
                         width: "5px", height: "5px", borderRadius: "50%",
-                        background: PRIORITY_META[t.priority]?.color || "#ff6b9d",
+                        background: PRIORITY_META[t.priority]?.color || ac,
                         opacity: t.completed ? 0.4 : 1,
                       }} />
                     ))}
@@ -190,7 +201,7 @@ export default function Calendar() {
         </div>
       </div>
 
-      {/* Desktop: side panel (hidden on mobile, shown inline below on mobile) */}
+      {/* Desktop: side panel */}
       {selectedDate && (
         <div className="calendar-side-desktop" style={{ marginTop: "16px" }}>
           <DayPanel
@@ -198,7 +209,7 @@ export default function Calendar() {
             selectedTasks={selectedTasks}
             categories={categories}
             isDark={isDark} textColor={textColor} mutedColor={mutedColor}
-            cardBg={cardBg} border={border}
+            cardBg={cardBg} border={border} ac={ac}
             onAdd={() => setShowAddModal(true)}
             onToggle={(task) => updateTask(task.id, { completed: !task.completed })}
             onDelete={deleteTask}
@@ -239,7 +250,7 @@ export default function Calendar() {
               </div>
               <div style={{ display: "flex", gap: "8px" }}>
                 <motion.button whileTap={{ scale: 0.95 }} onClick={() => setShowAddModal(true)}
-                  style={{ padding: "7px 14px", borderRadius: "8px", background: "linear-gradient(135deg,#ff6b9d,#ff99cc)", border: "none", color: "white", cursor: "pointer", fontSize: "13px", fontWeight: 700, fontFamily: "inherit" }}>
+                  style={{ padding: "7px 14px", borderRadius: "8px", background: `linear-gradient(135deg,${ac},${ac}cc)`, border: "none", color: "white", cursor: "pointer", fontSize: "13px", fontWeight: 700, fontFamily: "inherit" }}>
                   + Add
                 </motion.button>
                 <button onClick={() => setShowDaySheet(false)}
@@ -333,7 +344,7 @@ export default function Calendar() {
               Cancel
             </button>
             <motion.button whileTap={{ scale: 0.97 }} onClick={handleAddTask} disabled={addingTask}
-              style={{ flex: 2, padding: "10px", borderRadius: "10px", background: "linear-gradient(135deg,#ff6b9d,#ff99cc)", border: "none", color: "white", cursor: "pointer", fontSize: "13px", fontWeight: 700, fontFamily: "inherit" }}>
+              style={{ flex: 2, padding: "10px", borderRadius: "10px", background: `linear-gradient(135deg,${ac},${ac}cc)`, border: "none", color: "white", cursor: "pointer", fontSize: "13px", fontWeight: 700, fontFamily: "inherit" }}>
               {addingTask ? "Adding…" : "Add Task"}
             </motion.button>
           </div>
@@ -359,7 +370,7 @@ export default function Calendar() {
 }
 
 // Reusable day panel (desktop sidebar)
-function DayPanel({ selectedDate, selectedTasks, categories, isDark, textColor, mutedColor, cardBg, border, onAdd, onToggle, onDelete }) {
+function DayPanel({ selectedDate, selectedTasks, categories, isDark, textColor, mutedColor, cardBg, border, ac, onAdd, onToggle, onDelete }) {
   return (
     <div style={{ background: cardBg, backdropFilter: "blur(12px)", borderRadius: "16px", border: `1px solid ${border}`, overflow: "hidden" }}>
       <div style={{ padding: "14px 16px", borderBottom: `1px solid ${border}`, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
@@ -370,7 +381,7 @@ function DayPanel({ selectedDate, selectedTasks, categories, isDark, textColor, 
           <div style={{ fontSize: "11px", color: mutedColor }}>{selectedTasks.length} tasks</div>
         </div>
         <motion.button whileTap={{ scale: 0.95 }} onClick={onAdd}
-          style={{ padding: "6px 12px", borderRadius: "8px", background: "linear-gradient(135deg,#ff6b9d,#ff99cc)", border: "none", color: "white", cursor: "pointer", fontSize: "12px", fontWeight: 700, fontFamily: "inherit" }}>
+          style={{ padding: "6px 12px", borderRadius: "8px", background: `linear-gradient(135deg,${ac},${ac}cc)`, border: "none", color: "white", cursor: "pointer", fontSize: "12px", fontWeight: 700, fontFamily: "inherit" }}>
           + Add
         </motion.button>
       </div>
