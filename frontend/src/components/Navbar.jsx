@@ -2,12 +2,12 @@ import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth }  from "../context/AuthContext";
 import { useTheme } from "../context/ThemeContext";
-import AuthModal    from "./AuthModal";
-import AppSettings  from "./AppSettings";
-import Portal       from "./Portal";
-import toast        from "react-hot-toast";
+import AuthModal   from "./AuthModal";
+import AppSettings from "./AppSettings";
+import Portal      from "./Portal";
+import toast       from "react-hot-toast";
 
-// ── Premium SVG icons ─────────────────────────────────────────────────────────
+/* ── Premium SVG icons ─────────────────────────────────────────────────────── */
 const Icons = {
   Today: ({ size=22, active }) => (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={active?2.2:1.8} strokeLinecap="round" strokeLinejoin="round">
@@ -17,9 +17,9 @@ const Icons = {
   ),
   Habits: ({ size=22, active }) => (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={active?2.2:1.8} strokeLinecap="round" strokeLinejoin="round">
-      <path d="M12 2a10 10 0 1 0 10 10"/>
-      <path d="M12 6v6l4 2"/>
-      <circle cx="19" cy="5" r="3" fill={active?"currentColor":"none"}/>
+      <circle cx="12" cy="12" r="9"/>
+      <path d="M12 7v5l3 3"/>
+      <circle cx="19" cy="5" r="2.5" fill={active?"currentColor":"none"} stroke="currentColor" strokeWidth="1.5"/>
     </svg>
   ),
   Tasks: ({ size=22, active }) => (
@@ -28,20 +28,19 @@ const Icons = {
       <path d="M9 12l2 2 4-4"/>
     </svg>
   ),
-  Categories: ({ size=22, active }) => (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={active?2.2:1.8} strokeLinecap="round" strokeLinejoin="round">
-      <rect x="3" y="3" width="7" height="7" rx="1.5"/>
-      <rect x="14" y="3" width="7" height="7" rx="1.5"/>
-      <rect x="3" y="14" width="7" height="7" rx="1.5"/>
-      <rect x="14" y="14" width="7" height="7" rx="1.5"/>
-    </svg>
-  ),
   Timer: ({ size=22, active }) => (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={active?2.2:1.8} strokeLinecap="round" strokeLinejoin="round">
       <circle cx="12" cy="13" r="8"/>
       <path d="M12 9v4l3 3"/>
-      <path d="M9 3h6"/>
-      <path d="M12 3v2"/>
+      <path d="M9 3h6"/><path d="M12 3v2"/>
+    </svg>
+  ),
+  Trophy: ({ size=22, active }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={active?2.2:1.8} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M6 9H4a2 2 0 0 1-2-2V5h4"/>
+      <path d="M18 9h2a2 2 0 0 0 2-2V5h-4"/>
+      <path d="M6 5h12v7a6 6 0 0 1-12 0V5z"/>
+      <path d="M12 18v3"/><path d="M8 21h8"/>
     </svg>
   ),
   Bell: ({ size=20 }) => (
@@ -80,50 +79,52 @@ const Icons = {
 };
 
 const NAV_ITEMS = [
-  { id:"today",      label:"Today",      Icon: Icons.Today      },
-  { id:"habits",     label:"Habits",     Icon: Icons.Habits     },
-  { id:"tasks",      label:"Tasks",      Icon: Icons.Tasks      },
-  { id:"categories", label:"Categories", Icon: Icons.Categories },
-  { id:"timer",      label:"Timer",      Icon: Icons.Timer      },
+  { id:"today",   label:"Today",   Icon:Icons.Today  },
+  { id:"habits",  label:"Habits",  Icon:Icons.Habits },
+  { id:"tasks",   label:"Tasks",   Icon:Icons.Tasks  },
+  { id:"timer",   label:"Timer",   Icon:Icons.Timer  },
+  { id:"rewards", label:"Rewards", Icon:Icons.Trophy },
 ];
 
-// ── Notification panel ────────────────────────────────────────────────────────
+/* ── Notification panel ────────────────────────────────────────────────────── */
 function NotifPanel({ onClose, isDark, border, textColor, mutedColor }) {
   const [notifs, setNotifs] = useState(() => {
     try { return JSON.parse(localStorage.getItem("notifs")||"[]"); } catch { return []; }
   });
-  const unread = notifs.filter(n => !n.read).length;
+  const unread  = notifs.filter(n => !n.read).length;
   const clearAll = () => { setNotifs([]); localStorage.setItem("notifs","[]"); };
-  const bg = isDark ? "rgba(10,6,20,0.99)" : "rgba(248,250,252,0.99)";
+  const bg = isDark ? "rgba(8,6,16,0.99)" : "rgba(248,250,252,0.99)";
 
   return (
     <Portal>
-      <motion.div initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}} onClick={onClose}
-        style={{ position:"fixed", inset:0, zIndex:8500, background:"rgba(0,0,0,0.6)", backdropFilter:"blur(6px)" }}/>
-      <motion.div initial={{y:"100%"}} animate={{y:0}} exit={{y:"100%"}}
+      <motion.div initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}}
+        onClick={onClose}
+        style={{ position:"fixed",inset:0,zIndex:8500,background:"rgba(0,0,0,0.6)",backdropFilter:"blur(6px)" }}/>
+      <motion.div
+        initial={{y:"100%"}} animate={{y:0}} exit={{y:"100%"}}
         transition={{ type:"spring", damping:30, stiffness:320 }}
-        style={{ position:"fixed", bottom:0, left:0, right:0, zIndex:8501, background:bg, borderRadius:"24px 24px 0 0", border:`1px solid ${border}`, maxHeight:"72vh", overflowY:"auto", paddingBottom:"calc(env(safe-area-inset-bottom,0px) + 80px)", fontFamily:"'DM Sans',sans-serif" }}>
-        <div style={{ display:"flex", justifyContent:"center", padding:"12px 0 4px" }}>
-          <div style={{ width:"36px", height:"4px", borderRadius:"2px", background:isDark?"rgba(255,255,255,0.18)":"rgba(0,0,0,0.12)" }}/>
+        style={{ position:"fixed",bottom:0,left:0,right:0,zIndex:8501,background:bg,borderRadius:"24px 24px 0 0",border:`1px solid ${border}`,maxHeight:"72vh",overflowY:"auto",paddingBottom:"calc(env(safe-area-inset-bottom,0px) + 80px)",fontFamily:"'DM Sans',sans-serif" }}>
+        <div style={{ display:"flex",justifyContent:"center",padding:"12px 0 4px" }}>
+          <div style={{ width:"36px",height:"4px",borderRadius:"2px",background:isDark?"rgba(255,255,255,0.18)":"rgba(0,0,0,0.12)" }}/>
         </div>
-        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"8px 20px 16px" }}>
+        <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 20px 16px" }}>
           <div>
-            <span style={{ fontSize:"17px", fontWeight:800, color:textColor, letterSpacing:"-0.03em" }}>Notifications</span>
-            {unread > 0 && <span style={{ fontSize:"12px", color:"var(--accent,#ff6b9d)", fontWeight:600, marginLeft:"8px" }}>· {unread} new</span>}
+            <span style={{ fontSize:"17px",fontWeight:800,color:textColor,letterSpacing:"-0.03em" }}>Notifications</span>
+            {unread > 0 && <span style={{ fontSize:"12px",color:"var(--accent,#ff6b9d)",fontWeight:600,marginLeft:"8px" }}>· {unread} new</span>}
           </div>
-          <button onClick={clearAll} style={{ background:"none", border:"none", color:"var(--accent,#ff6b9d)", cursor:"pointer", fontSize:"13px", fontWeight:600, fontFamily:"inherit" }}>Clear all</button>
+          <button onClick={clearAll} style={{ background:"none",border:"none",color:"var(--accent,#ff6b9d)",cursor:"pointer",fontSize:"13px",fontWeight:600,fontFamily:"inherit",WebkitTapHighlightColor:"transparent",touchAction:"manipulation" }}>Clear all</button>
         </div>
         <div style={{ padding:"0 14px 14px" }}>
           {notifs.length === 0 ? (
-            <div style={{ textAlign:"center", padding:"44px 16px" }}>
-              <div style={{ fontSize:"38px", marginBottom:"10px", opacity:0.5 }}>🔔</div>
-              <p style={{ fontSize:"14px", color:mutedColor }}>All caught up!</p>
+            <div style={{ textAlign:"center",padding:"44px 16px" }}>
+              <div style={{ fontSize:"38px",marginBottom:"10px",opacity:0.4 }}>🔔</div>
+              <p style={{ fontSize:"14px",color:mutedColor }}>All caught up!</p>
             </div>
           ) : notifs.map((n,i) => (
-            <div key={i} style={{ padding:"13px 15px", borderRadius:"14px", marginBottom:"8px", background:isDark?"rgba(255,255,255,0.04)":"rgba(0,0,0,0.03)", border:`1px solid ${n.read?border:"var(--accent,#ff6b9d)44"}`, opacity:n.read?0.6:1 }}>
-              <div style={{ fontSize:"13px", fontWeight:600, color:textColor }}>{n.title}</div>
-              <div style={{ fontSize:"12px", color:mutedColor, marginTop:"3px" }}>{n.body}</div>
-              <div style={{ fontSize:"10px", color:mutedColor, marginTop:"3px" }}>{n.time}</div>
+            <div key={i} style={{ padding:"13px 15px",borderRadius:"14px",marginBottom:"8px",background:isDark?"rgba(255,255,255,0.04)":"rgba(0,0,0,0.03)",border:`1px solid ${n.read?border:"var(--accent,#ff6b9d)44"}`,opacity:n.read?0.6:1 }}>
+              <div style={{ fontSize:"13px",fontWeight:600,color:textColor }}>{n.title}</div>
+              <div style={{ fontSize:"12px",color:mutedColor,marginTop:"3px" }}>{n.body}</div>
+              <div style={{ fontSize:"10px",color:mutedColor,marginTop:"3px" }}>{n.time}</div>
             </div>
           ))}
         </div>
@@ -132,42 +133,42 @@ function NotifPanel({ onClose, isDark, border, textColor, mutedColor }) {
   );
 }
 
-// ── Mobile menu sheet ─────────────────────────────────────────────────────────
+/* ── Mobile menu sheet ─────────────────────────────────────────────────────── */
 function MobileMenuSheet({ onClose, isDark, toggleTheme, border, textColor, mutedColor, user, logout, onOpenSettings, accent }) {
-  const bg = isDark ? "rgba(10,6,20,0.99)" : "rgba(248,250,252,0.99)";
-
+  const bg = isDark ? "rgba(8,6,16,0.99)" : "rgba(248,250,252,0.99)";
   const items = [
-    { Icon: isDark ? Icons.Sun : Icons.Moon, label: isDark ? "Light Mode" : "Dark Mode", action: () => { toggleTheme(); onClose(); } },
-    { Icon: Icons.Settings, label: "Settings", action: () => { onOpenSettings(); onClose(); } },
-    { Icon: Icons.Logout, label: "Log out", action: () => { logout(); toast("See you soon 👋"); onClose(); }, danger: true },
+    { Icon:isDark?Icons.Sun:Icons.Moon, label:isDark?"Light Mode":"Dark Mode", action:()=>{ toggleTheme(); onClose(); } },
+    { Icon:Icons.Settings, label:"Settings", action:()=>{ onOpenSettings(); onClose(); } },
+    { Icon:Icons.Logout,   label:"Log out",  action:()=>{ logout(); toast("See you soon 👋"); onClose(); }, danger:true },
   ];
-
   return (
     <Portal>
-      <motion.div initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}} onClick={onClose}
-        style={{ position:"fixed", inset:0, zIndex:8500, background:"rgba(0,0,0,0.6)", backdropFilter:"blur(6px)" }}/>
-      <motion.div initial={{y:"100%"}} animate={{y:0}} exit={{y:"100%"}}
+      <motion.div initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}}
+        onClick={onClose}
+        style={{ position:"fixed",inset:0,zIndex:8500,background:"rgba(0,0,0,0.6)",backdropFilter:"blur(6px)" }}/>
+      <motion.div
+        initial={{y:"100%"}} animate={{y:0}} exit={{y:"100%"}}
         transition={{ type:"spring", damping:30, stiffness:320 }}
-        style={{ position:"fixed", bottom:0, left:0, right:0, zIndex:8501, background:bg, borderRadius:"24px 24px 0 0", border:`1px solid ${border}`, paddingBottom:"calc(env(safe-area-inset-bottom,0px) + 80px)", fontFamily:"'DM Sans',sans-serif" }}>
-        <div style={{ display:"flex", justifyContent:"center", padding:"12px 0 4px" }}>
-          <div style={{ width:"36px", height:"4px", borderRadius:"2px", background:isDark?"rgba(255,255,255,0.18)":"rgba(0,0,0,0.12)" }}/>
+        style={{ position:"fixed",bottom:0,left:0,right:0,zIndex:8501,background:bg,borderRadius:"24px 24px 0 0",border:`1px solid ${border}`,paddingBottom:"calc(env(safe-area-inset-bottom,0px) + 80px)",fontFamily:"'DM Sans',sans-serif" }}>
+        <div style={{ display:"flex",justifyContent:"center",padding:"12px 0 4px" }}>
+          <div style={{ width:"36px",height:"4px",borderRadius:"2px",background:isDark?"rgba(255,255,255,0.18)":"rgba(0,0,0,0.12)" }}/>
         </div>
         {user && (
-          <div style={{ display:"flex", alignItems:"center", gap:"12px", padding:"12px 20px 18px" }}>
-            <div style={{ width:"46px", height:"46px", borderRadius:"14px", flexShrink:0, background:`linear-gradient(135deg,${accent},${accent}cc)`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:"18px", fontWeight:800, color:"white", boxShadow:`0 4px 16px ${accent}55` }}>
+          <div style={{ display:"flex",alignItems:"center",gap:"12px",padding:"12px 20px 18px" }}>
+            <div style={{ width:"46px",height:"46px",borderRadius:"14px",flexShrink:0,background:`linear-gradient(135deg,${accent},${accent}cc)`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:"18px",fontWeight:800,color:"white",boxShadow:`0 4px 16px ${accent}55` }}>
               {user?.name?.charAt(0)?.toUpperCase()}
             </div>
             <div>
-              <div style={{ fontSize:"15px", fontWeight:700, color:textColor }}>{user?.name}</div>
-              <div style={{ fontSize:"12px", color:mutedColor }}>{user?.email}</div>
+              <div style={{ fontSize:"15px",fontWeight:700,color:textColor }}>{user?.name}</div>
+              <div style={{ fontSize:"12px",color:mutedColor }}>{user?.email}</div>
             </div>
           </div>
         )}
-        <div style={{ padding:"0 14px 14px", display:"flex", flexDirection:"column", gap:"8px" }}>
+        <div style={{ padding:"0 14px 14px",display:"flex",flexDirection:"column",gap:"8px" }}>
           {items.map(item => (
             <motion.button key={item.label} whileTap={{scale:0.98}} onClick={item.action}
-              style={{ width:"100%", padding:"15px 18px", background:isDark?"rgba(255,255,255,0.04)":"rgba(0,0,0,0.03)", border:`1px solid ${item.danger?"rgba(244,63,94,0.2)":border}`, borderRadius:"16px", color:item.danger?"#f43f5e":textColor, cursor:"pointer", fontSize:"14px", fontWeight:600, fontFamily:"inherit", textAlign:"left", display:"flex", alignItems:"center", gap:"14px" }}>
-              <item.Icon size={20} />
+              style={{ width:"100%",padding:"15px 18px",background:isDark?"rgba(255,255,255,0.04)":"rgba(0,0,0,0.03)",border:`1px solid ${item.danger?"rgba(244,63,94,0.2)":border}`,borderRadius:"16px",color:item.danger?"#f43f5e":textColor,cursor:"pointer",fontSize:"14px",fontWeight:600,fontFamily:"inherit",textAlign:"left",display:"flex",alignItems:"center",gap:"14px",WebkitTapHighlightColor:"transparent",touchAction:"manipulation" }}>
+              <item.Icon size={20}/>
               {item.label}
             </motion.button>
           ))}
@@ -177,7 +178,7 @@ function MobileMenuSheet({ onClose, isDark, toggleTheme, border, textColor, mute
   );
 }
 
-// ── Main Navbar ───────────────────────────────────────────────────────────────
+/* ── Main Navbar ────────────────────────────────────────────────────────────── */
 export default function Navbar({ activePage, onPageChange }) {
   const { user, logout, isAuthenticated } = useAuth();
   const { isDark, toggleTheme, accent }   = useTheme();
@@ -189,6 +190,7 @@ export default function Navbar({ activePage, onPageChange }) {
   const [scrolled,     setScrolled]     = useState(false);
   const [unread,       setUnread]       = useState(0);
   const menuRef = useRef(null);
+  const ac = accent || "#ff6b9d";
 
   useEffect(() => {
     const fn = () => setScrolled(window.scrollY > 8);
@@ -212,110 +214,121 @@ export default function Navbar({ activePage, onPageChange }) {
     return () => clearInterval(iv);
   }, []);
 
-  const navBg      = isDark ? (scrolled?"rgba(10,6,20,0.97)":"rgba(10,6,20,0.88)") : (scrolled?"rgba(248,250,252,0.97)":"rgba(248,250,252,0.88)");
-  const border     = isDark ? "rgba(255,255,255,0.07)" : "rgba(0,0,0,0.07)";
-  const textColor  = isDark ? "#f1f5f9" : "#0f172a";
-  const mutedColor = isDark ? "rgba(241,245,249,0.45)" : "rgba(15,23,42,0.42)";
+  const navBg     = isDark
+    ? (scrolled ? "rgba(8,6,16,0.97)" : "rgba(8,6,16,0.88)")
+    : (scrolled ? "rgba(248,250,252,0.97)" : "rgba(248,250,252,0.88)");
+  const border     = isDark ? "rgba(255,255,255,0.07)"  : "rgba(0,0,0,0.07)";
+  const textColor  = isDark ? "#f1f5f9"                 : "#0f172a";
+  const mutedColor = isDark ? "rgba(241,245,249,0.45)"  : "rgba(15,23,42,0.42)";
 
   const toolBtn = {
     width:"36px", height:"36px", borderRadius:"10px",
     border:`1px solid ${border}`,
-    background: isDark?"rgba(255,255,255,0.05)":"rgba(0,0,0,0.04)",
+    background:isDark?"rgba(255,255,255,0.05)":"rgba(0,0,0,0.04)",
     cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center",
     transition:"all 0.15s", flexShrink:0, color:textColor, position:"relative",
+    WebkitTapHighlightColor:"transparent", touchAction:"manipulation",
   };
 
   return (
     <>
       {/* TOP NAV */}
       <motion.nav
-        initial={{ y:-64, opacity:0 }} animate={{ y:0, opacity:1 }}
+        initial={{y:-64,opacity:0}} animate={{y:0,opacity:1}}
         transition={{ type:"spring", damping:22, stiffness:220, delay:0.05 }}
-        style={{
-          position:"sticky", top:0, zIndex:300,
-          background:navBg, backdropFilter:"blur(28px) saturate(1.8)",
-          borderBottom:`1px solid ${border}`,
-          fontFamily:"'DM Sans',sans-serif", transition:"background 0.3s",
-          boxShadow: scrolled?"0 4px 32px rgba(0,0,0,0.1)":"none",
-          paddingTop:"env(safe-area-inset-top,0px)",
-        }}
+        style={{ position:"sticky",top:0,zIndex:300,background:navBg,backdropFilter:"blur(28px) saturate(1.8)",borderBottom:`1px solid ${border}`,fontFamily:"'DM Sans',sans-serif",transition:"background 0.3s",boxShadow:scrolled?"0 4px 32px rgba(0,0,0,0.12)":"none",paddingTop:"env(safe-area-inset-top,0px)" }}
       >
-        {/* Accent top line */}
-        <div style={{ position:"absolute", top:"env(safe-area-inset-top,0px)", left:0, right:0, height:"1.5px", background:`linear-gradient(90deg,transparent,${accent} 30%,${accent}aa 60%,transparent)`, opacity:0.9 }}/>
+        {/* Accent top stripe */}
+        <div style={{ position:"absolute",top:"env(safe-area-inset-top,0px)",left:0,right:0,height:"1.5px",background:`linear-gradient(90deg,transparent,${ac} 30%,${ac}aa 60%,transparent)`,opacity:0.85 }}/>
 
-        <div style={{ maxWidth:"1200px", margin:"0 auto", padding:"0 16px", height:"56px", display:"flex", alignItems:"center" }}>
+        <div style={{ maxWidth:"1200px",margin:"0 auto",padding:"0 16px",height:"56px",display:"flex",alignItems:"center" }}>
 
-          {/* Logo — Thirty */}
-          <motion.div whileHover={{scale:1.04}} whileTap={{scale:0.97}} onClick={() => onPageChange("today")}
-            style={{ display:"flex", alignItems:"center", gap:"8px", cursor:"pointer", flexShrink:0, marginRight:"16px" }}>
-            <div style={{ width:"32px", height:"32px", background:`linear-gradient(135deg,${accent},${accent}cc)`, borderRadius:"10px", display:"flex", alignItems:"center", justifyContent:"center", boxShadow:`0 0 16px ${accent}55`, fontSize:"10px", fontWeight:900, color:"white", letterSpacing:"-0.04em", flexShrink:0 }}>T</div>
-            <span style={{ fontSize:"16px", fontWeight:900, letterSpacing:"-0.05em", color:accent, userSelect:"none" }}>Thirty</span>
+          {/* Logo */}
+          <motion.div whileHover={{scale:1.04}} whileTap={{scale:0.97}}
+            onClick={() => onPageChange("today")}
+            style={{ display:"flex",alignItems:"center",gap:"8px",cursor:"pointer",flexShrink:0,marginRight:"16px" }}>
+            <div style={{ width:"32px",height:"32px",background:`linear-gradient(135deg,${ac},${ac}cc)`,borderRadius:"10px",display:"flex",alignItems:"center",justifyContent:"center",boxShadow:`0 0 16px ${ac}55`,fontSize:"12px",fontWeight:900,color:"white",letterSpacing:"-0.05em",flexShrink:0 }}>
+              30
+            </div>
+            <span style={{ fontSize:"16px",fontWeight:900,letterSpacing:"-0.05em",color:ac,userSelect:"none" }}>
+              Thirty
+            </span>
           </motion.div>
 
-          {/* Desktop nav */}
-          <div className="desktop-nav" style={{ display:"flex", alignItems:"center", gap:"2px", flex:1, justifyContent:"center" }}>
+          {/* Desktop nav pills */}
+          <div className="desktop-nav" style={{ display:"flex",alignItems:"center",gap:"2px",flex:1,justifyContent:"center" }}>
             {NAV_ITEMS.map(item => {
               const active = activePage === item.id;
               return (
-                <motion.button key={item.id} whileTap={{scale:0.94}} onClick={() => onPageChange(item.id)}
-                  style={{ position:"relative", display:"flex", alignItems:"center", gap:"6px", padding:"7px 12px", borderRadius:"10px", border:"none", background:active?(isDark?`${accent}18`:`${accent}12`):"transparent", color:active?accent:mutedColor, cursor:"pointer", fontSize:"12px", fontWeight:active?700:500, transition:"all 0.16s", fontFamily:"inherit", whiteSpace:"nowrap", outline:"none" }}
-                  onMouseEnter={e => { if(!active){ e.currentTarget.style.color=textColor; e.currentTarget.style.background=isDark?"rgba(255,255,255,0.05)":"rgba(0,0,0,0.04)"; }}}
-                  onMouseLeave={e => { if(!active){ e.currentTarget.style.color=mutedColor; e.currentTarget.style.background="transparent"; }}}
+                <motion.button key={item.id} whileTap={{scale:0.94}}
+                  onClick={() => onPageChange(item.id)}
+                  style={{ position:"relative",display:"flex",alignItems:"center",gap:"6px",padding:"7px 12px",borderRadius:"10px",border:"none",background:active?(isDark?`${ac}18`:`${ac}12`):"transparent",color:active?ac:mutedColor,cursor:"pointer",fontSize:"12px",fontWeight:active?700:500,transition:"all 0.16s",fontFamily:"inherit",whiteSpace:"nowrap",outline:"none" }}
+                  onMouseEnter={e=>{if(!active){e.currentTarget.style.color=textColor;e.currentTarget.style.background=isDark?"rgba(255,255,255,0.05)":"rgba(0,0,0,0.04)";}}}
+                  onMouseLeave={e=>{if(!active){e.currentTarget.style.color=mutedColor;e.currentTarget.style.background="transparent";}}}
                 >
                   <item.Icon size={14} active={active}/>
                   <span>{item.label}</span>
-                  {active && <motion.div layoutId="nav-pill" style={{ position:"absolute", bottom:"-1px", left:"50%", transform:"translateX(-50%)", width:"20px", height:"2px", background:`linear-gradient(90deg,${accent},${accent}aa)`, borderRadius:"2px" }}/>}
+                  {active && (
+                    <motion.div layoutId="nav-pill" style={{ position:"absolute",bottom:"-1px",left:"50%",transform:"translateX(-50%)",width:"20px",height:"2px",background:`linear-gradient(90deg,${ac},${ac}aa)`,borderRadius:"2px" }}/>
+                  )}
                 </motion.button>
               );
             })}
           </div>
 
           {/* Right tools */}
-          <div style={{ display:"flex", alignItems:"center", gap:"6px", flexShrink:0, marginLeft:"auto" }}>
+          <div style={{ display:"flex",alignItems:"center",gap:"6px",flexShrink:0,marginLeft:"auto" }}>
             <motion.button whileTap={{scale:0.9}} onClick={toggleTheme} className="desktop-only" style={toolBtn}>
               {isDark ? <Icons.Sun size={16}/> : <Icons.Moon size={16}/>}
             </motion.button>
 
             <motion.button whileTap={{scale:0.9}} onClick={() => setShowNotifs(true)} style={toolBtn}>
               <Icons.Bell size={16}/>
-              {unread > 0 && <div style={{ position:"absolute", top:"6px", right:"6px", width:"6px", height:"6px", borderRadius:"50%", background:"#f43f5e" }}/>}
+              {unread > 0 && (
+                <div style={{ position:"absolute",top:"6px",right:"6px",width:"6px",height:"6px",borderRadius:"50%",background:"#f43f5e" }}/>
+              )}
             </motion.button>
 
             <motion.button whileTap={{scale:0.9}} onClick={() => setShowSettings(true)} className="desktop-only" style={toolBtn}>
               <Icons.Settings size={16}/>
             </motion.button>
 
-            <div className="desktop-only" style={{ width:"1px", height:"18px", background:border, margin:"0 2px" }}/>
+            <div className="desktop-only" style={{ width:"1px",height:"18px",background:border,margin:"0 2px" }}/>
 
             {isAuthenticated ? (
               <div ref={menuRef} style={{ position:"relative" }}>
-                <motion.button whileTap={{scale:0.96}} onClick={() => setShowMenu(!showMenu)}
-                  style={{ display:"flex", alignItems:"center", gap:"6px", padding:"4px 8px 4px 4px", borderRadius:"99px", border:`1px solid ${showMenu?accent+"66":border}`, background:isDark?"rgba(255,255,255,0.05)":"rgba(0,0,0,0.04)", cursor:"pointer", color:textColor, fontSize:"12px", fontWeight:600, fontFamily:"inherit", transition:"all 0.15s" }}>
-                  <div style={{ width:"26px", height:"26px", borderRadius:"50%", background:`linear-gradient(135deg,${accent},${accent}cc)`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:"11px", fontWeight:800, color:"white", flexShrink:0 }}>
+                <motion.button whileTap={{scale:0.96}}
+                  onClick={() => setShowMenu(!showMenu)}
+                  style={{ display:"flex",alignItems:"center",gap:"6px",padding:"4px 8px 4px 4px",borderRadius:"99px",border:`1px solid ${showMenu?ac+"66":border}`,background:isDark?"rgba(255,255,255,0.05)":"rgba(0,0,0,0.04)",cursor:"pointer",color:textColor,fontSize:"12px",fontWeight:600,fontFamily:"inherit",transition:"all 0.15s",WebkitTapHighlightColor:"transparent" }}>
+                  <div style={{ width:"26px",height:"26px",borderRadius:"50%",background:`linear-gradient(135deg,${ac},${ac}cc)`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:"11px",fontWeight:800,color:"white",flexShrink:0 }}>
                     {user?.name?.charAt(0)?.toUpperCase()||"?"}
                   </div>
-                  <span className="desktop-only" style={{ maxWidth:"64px", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{user?.name?.split(" ")[0]}</span>
+                  <span className="desktop-only" style={{ maxWidth:"64px",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" }}>
+                    {user?.name?.split(" ")[0]}
+                  </span>
                 </motion.button>
 
                 <AnimatePresence>
                   {showMenu && (
-                    <motion.div initial={{opacity:0,y:-6,scale:0.96}} animate={{opacity:1,y:0,scale:1}} exit={{opacity:0,y:-6,scale:0.96}} transition={{duration:0.14}}
-                      style={{ position:"absolute", top:"46px", right:0, width:"220px", background:isDark?"rgba(10,6,20,0.98)":"rgba(255,255,255,0.98)", backdropFilter:"blur(24px)", borderRadius:"16px", border:`1px solid ${border}`, overflow:"hidden", boxShadow:"0 16px 48px rgba(0,0,0,0.24)", zIndex:400 }}>
-                      <div style={{ padding:"13px 15px", borderBottom:`1px solid ${border}`, display:"flex", alignItems:"center", gap:"10px" }}>
-                        <div style={{ width:"36px", height:"36px", borderRadius:"10px", background:`linear-gradient(135deg,${accent},${accent}cc)`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:"14px", fontWeight:800, color:"white", flexShrink:0 }}>
+                    <motion.div
+                      initial={{opacity:0,y:-6,scale:0.96}} animate={{opacity:1,y:0,scale:1}} exit={{opacity:0,y:-6,scale:0.96}}
+                      transition={{duration:0.14}}
+                      style={{ position:"absolute",top:"46px",right:0,width:"220px",background:isDark?"rgba(8,6,16,0.98)":"rgba(255,255,255,0.98)",backdropFilter:"blur(24px)",borderRadius:"16px",border:`1px solid ${border}`,overflow:"hidden",boxShadow:"0 16px 48px rgba(0,0,0,0.28)",zIndex:400 }}>
+                      <div style={{ padding:"13px 15px",borderBottom:`1px solid ${border}`,display:"flex",alignItems:"center",gap:"10px" }}>
+                        <div style={{ width:"36px",height:"36px",borderRadius:"10px",background:`linear-gradient(135deg,${ac},${ac}cc)`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:"14px",fontWeight:800,color:"white",flexShrink:0 }}>
                           {user?.name?.charAt(0)?.toUpperCase()}
                         </div>
                         <div style={{ minWidth:0 }}>
-                          <div style={{ fontSize:"13px", fontWeight:700, color:textColor, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{user?.name}</div>
-                          <div style={{ fontSize:"11px", color:mutedColor, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{user?.email}</div>
+                          <div style={{ fontSize:"13px",fontWeight:700,color:textColor,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" }}>{user?.name}</div>
+                          <div style={{ fontSize:"11px",color:mutedColor,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" }}>{user?.email}</div>
                         </div>
                       </div>
                       {[
-                        { Icon: isDark?Icons.Sun:Icons.Moon, label: isDark?"Light Mode":"Dark Mode", action: () => { setShowMenu(false); toggleTheme(); } },
-                        { Icon: Icons.Settings, label:"Settings", action: () => { setShowMenu(false); setShowSettings(true); } },
+                        { Icon:isDark?Icons.Sun:Icons.Moon, label:isDark?"Light Mode":"Dark Mode", action:()=>{ setShowMenu(false); toggleTheme(); } },
+                        { Icon:Icons.Settings, label:"Settings", action:()=>{ setShowMenu(false); setShowSettings(true); } },
                       ].map(item => (
                         <button key={item.label} onClick={item.action}
-                          style={{ width:"100%", padding:"10px 15px", background:"none", border:"none", color:textColor, cursor:"pointer", fontSize:"13px", textAlign:"left", fontFamily:"inherit", fontWeight:500, display:"flex", alignItems:"center", gap:"10px", transition:"background 0.12s" }}
+                          style={{ width:"100%",padding:"10px 15px",background:"none",border:"none",color:textColor,cursor:"pointer",fontSize:"13px",textAlign:"left",fontFamily:"inherit",fontWeight:500,display:"flex",alignItems:"center",gap:"10px",transition:"background 0.12s",WebkitTapHighlightColor:"transparent" }}
                           onMouseEnter={e=>e.currentTarget.style.background=isDark?"rgba(255,255,255,0.05)":"rgba(0,0,0,0.04)"}
                           onMouseLeave={e=>e.currentTarget.style.background="none"}>
                           <item.Icon size={16}/>{item.label}
@@ -323,7 +336,7 @@ export default function Navbar({ activePage, onPageChange }) {
                       ))}
                       <div style={{ borderTop:`1px solid ${border}` }}>
                         <button onClick={() => { setShowMenu(false); logout(); toast("See you soon 👋"); }}
-                          style={{ width:"100%", padding:"10px 15px", background:"none", border:"none", color:"#f87171", cursor:"pointer", fontSize:"13px", textAlign:"left", fontWeight:500, fontFamily:"inherit", display:"flex", alignItems:"center", gap:"10px" }}
+                          style={{ width:"100%",padding:"10px 15px",background:"none",border:"none",color:"#f87171",cursor:"pointer",fontSize:"13px",textAlign:"left",fontWeight:500,fontFamily:"inherit",display:"flex",alignItems:"center",gap:"10px",WebkitTapHighlightColor:"transparent" }}
                           onMouseEnter={e=>e.currentTarget.style.background="rgba(244,63,94,0.07)"}
                           onMouseLeave={e=>e.currentTarget.style.background="none"}>
                           <Icons.Logout size={16}/>Log out
@@ -334,33 +347,41 @@ export default function Navbar({ activePage, onPageChange }) {
                 </AnimatePresence>
               </div>
             ) : (
-              <motion.button whileHover={{scale:1.04}} whileTap={{scale:0.96}} onClick={() => setShowAuth(true)}
-                style={{ padding:"7px 16px", background:`linear-gradient(135deg,${accent},${accent}cc)`, border:"none", borderRadius:"99px", color:"white", cursor:"pointer", fontSize:"12px", fontWeight:700, boxShadow:`0 4px 14px ${accent}44`, fontFamily:"inherit", whiteSpace:"nowrap" }}>
+              <motion.button whileHover={{scale:1.04}} whileTap={{scale:0.96}}
+                onClick={() => setShowAuth(true)}
+                style={{ padding:"7px 16px",background:`linear-gradient(135deg,${ac},${ac}cc)`,border:"none",borderRadius:"99px",color:"white",cursor:"pointer",fontSize:"12px",fontWeight:700,boxShadow:`0 4px 14px ${ac}44`,fontFamily:"inherit",whiteSpace:"nowrap",WebkitTapHighlightColor:"transparent" }}>
                 Sign in
               </motion.button>
             )}
 
             {isAuthenticated && (
-              <motion.button whileTap={{scale:0.9}} className="mobile-only" onClick={() => setShowMobile(true)}
-                style={{ ...toolBtn, fontSize:"18px", letterSpacing:"2px", fontWeight:700 }}>···</motion.button>
+              <motion.button whileTap={{scale:0.9}} className="mobile-only"
+                onClick={() => setShowMobile(true)}
+                style={{ ...toolBtn, fontSize:"18px", letterSpacing:"2px", fontWeight:700 }}>
+                ···
+              </motion.button>
             )}
           </div>
         </div>
       </motion.nav>
 
       {/* MOBILE BOTTOM NAV */}
-      <div className="mobile-bottom-nav" style={{ position:"fixed", bottom:0, left:0, right:0, zIndex:300, background:navBg, backdropFilter:"blur(28px) saturate(1.8)", borderTop:`1px solid ${border}` }}>
-        <div style={{ display:"flex", justifyContent:"space-around", alignItems:"center", height:"64px", padding:"0 4px" }}>
+      <div className="mobile-bottom-nav" style={{ position:"fixed",bottom:0,left:0,right:0,zIndex:300,background:navBg,backdropFilter:"blur(28px) saturate(1.8)",borderTop:`1px solid ${border}` }}>
+        <div style={{ display:"flex",justifyContent:"space-around",alignItems:"center",height:"64px",padding:"0 4px" }}>
           {NAV_ITEMS.map(item => {
             const active = activePage === item.id;
             return (
-              <motion.button key={item.id} whileTap={{scale:0.87}} onClick={() => onPageChange(item.id)}
-                style={{ flex:1, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:"3px", padding:"6px 2px", background:"none", border:"none", cursor:"pointer", color:active?accent:mutedColor, fontFamily:"inherit", transition:"all 0.15s", position:"relative" }}>
-                {active && <motion.div layoutId="mobile-pill" style={{ position:"absolute", top:0, left:"25%", right:"25%", height:"2px", borderRadius:"0 0 3px 3px", background:`linear-gradient(90deg,${accent},${accent}aa)` }}/>}
-                <div style={{ filter:active?`drop-shadow(0 0 6px ${accent}88)`:"none", transition:"filter 0.2s" }}>
+              <motion.button key={item.id} whileTap={{scale:0.87}}
+                onClick={() => onPageChange(item.id)}
+                style={{ flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:"3px",padding:"6px 2px",background:"none",border:"none",cursor:"pointer",color:active?ac:mutedColor,fontFamily:"inherit",transition:"all 0.15s",position:"relative",WebkitTapHighlightColor:"transparent",touchAction:"manipulation" }}>
+                {active && (
+                  <motion.div layoutId="mobile-pill"
+                    style={{ position:"absolute",top:0,left:"25%",right:"25%",height:"2px",borderRadius:"0 0 3px 3px",background:`linear-gradient(90deg,${ac},${ac}aa)` }}/>
+                )}
+                <div style={{ filter:active?`drop-shadow(0 0 6px ${ac}88)`:"none",transition:"filter 0.2s" }}>
                   <item.Icon size={20} active={active}/>
                 </div>
-                <span style={{ fontSize:"9px", fontWeight:active?700:400, letterSpacing:"0.01em" }}>{item.label}</span>
+                <span style={{ fontSize:"9px",fontWeight:active?700:400,letterSpacing:"0.01em" }}>{item.label}</span>
               </motion.button>
             );
           })}
@@ -368,15 +389,16 @@ export default function Navbar({ activePage, onPageChange }) {
         <div style={{ height:"env(safe-area-inset-bottom,0px)" }}/>
       </div>
 
+      {/* Sheets */}
       <AnimatePresence>
-        {showNotifs && <NotifPanel key="notifs" onClose={() => setShowNotifs(false)} isDark={isDark} border={border} textColor={textColor} mutedColor={mutedColor}/>}
+        {showNotifs && <NotifPanel key="notifs" onClose={()=>setShowNotifs(false)} isDark={isDark} border={border} textColor={textColor} mutedColor={mutedColor}/>}
       </AnimatePresence>
       <AnimatePresence>
-        {showMobile && <MobileMenuSheet key="mobile-menu" onClose={() => setShowMobile(false)} isDark={isDark} toggleTheme={toggleTheme} border={border} textColor={textColor} mutedColor={mutedColor} user={user} logout={logout} onOpenSettings={() => setShowSettings(true)} accent={accent}/>}
+        {showMobile && <MobileMenuSheet key="mobile-menu" onClose={()=>setShowMobile(false)} isDark={isDark} toggleTheme={toggleTheme} border={border} textColor={textColor} mutedColor={mutedColor} user={user} logout={logout} onOpenSettings={()=>setShowSettings(true)} accent={ac}/>}
       </AnimatePresence>
 
-      <AuthModal isOpen={showAuth} onClose={() => setShowAuth(false)}/>
-      <AppSettings isOpen={showSettings} onClose={() => setShowSettings(false)}/>
+      <AuthModal    isOpen={showAuth}     onClose={()=>setShowAuth(false)}/>
+      <AppSettings  isOpen={showSettings} onClose={()=>setShowSettings(false)}/>
 
       <style>{`
         .mobile-bottom-nav{display:none}
