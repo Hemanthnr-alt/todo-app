@@ -1,6 +1,6 @@
 {
   "appId": "com.thirty.taskmanager",
-  "appName": "30",
+  "appName": "npx cap add androidnpm run buildnpx cap copynpx cap open android",
   "webDir": "dist",
   "server": {
     "androidScheme": "https",

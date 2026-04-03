@@ -4,7 +4,7 @@ import react from '@vitejs/plugin-react'
 export default defineConfig({
   plugins: [react()],
 
-  // ✅ REQUIRED for Capacitor (very important)
+  // ✅ REQUIRED for Capacitor
   base: './',
 
   server: {
@@ -24,6 +24,11 @@ export default defineConfig({
   build: {
     outDir: 'dist',
     sourcemap: false,
+
+    // ✅ IMPORTANT FIX for Samsung WebView
+    target: ['es2015', 'chrome60'],
+    cssTarget: 'chrome60',
+
     rollupOptions: {
       output: {
         manualChunks: {

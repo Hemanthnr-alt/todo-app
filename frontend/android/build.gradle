@@ -27,3 +27,9 @@ allprojects {
 task clean(type: Delete) {
     delete rootProject.buildDir
 }
+android {
+    defaultConfig {
+        minSdkVersion 22  // was probably 21, bump to 22
+        // ... rest stays the same
+    }
+}

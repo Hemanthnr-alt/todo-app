@@ -253,7 +253,7 @@ export default function AppSettings({ isOpen, onClose }) {
           <motion.div
             initial={{x:"100%"}} animate={{x:0}} exit={{x:"100%"}}
             transition={{ type:"spring", damping:32, stiffness:290 }}
-            style={{ position:"fixed",top:0,right:0,height:"100dvh",width:"min(420px,100vw)",background:bg,backdropFilter:"blur(28px)",borderLeft:`1px solid ${border}`,boxShadow:"-8px 0 56px rgba(0,0,0,0.22)",zIndex:1001,display:"flex",flexDirection:"column",fontFamily:"'DM Sans',sans-serif" }}
+            style={{ position:"fixed",top:0,right:0,height: "calc(var(--vh, 1vh) * 100)",width:"min(420px,100vw)",background:bg,backdropFilter:"blur(28px)",borderLeft:`1px solid ${border}`,boxShadow:"-8px 0 56px rgba(0,0,0,0.22)",zIndex:1001,display:"flex",flexDirection:"column",fontFamily:"'DM Sans',sans-serif" }}
           >
             {/* Header */}
             <div style={{ padding:"18px 22px 16px",borderBottom:`1px solid ${border}`,display:"flex",justifyContent:"space-between",alignItems:"center",flexShrink:0 }}>

@@ -10,8 +10,8 @@ export const useTheme = () => {
 };
 
 export const ACCENT_PRESETS = [
-  { name:"Pink",   value:"#ff6b9d" },
   { name:"Purple", value:"#a855f7" },
+  { name:"Pink",   value:"#ff6b9d" },
   { name:"Blue",   value:"#3b82f6" },
   { name:"Teal",   value:"#14b8a6" },
   { name:"Orange", value:"#f97316" },
@@ -20,7 +20,8 @@ export const ACCENT_PRESETS = [
 
 export const ThemeProvider = ({ children }) => {
   const [theme,  setTheme]  = useState(() => localStorage.getItem("theme")  || "dark");
-  const [accent, setAccent] = useState(() => localStorage.getItem("accent") || "#ff6b9d");
+  // ── Default is now purple ──
+  const [accent, setAccent] = useState(() => localStorage.getItem("accent") || "#a855f7");
 
   useEffect(() => {
     localStorage.setItem("theme", theme);
@@ -34,10 +35,10 @@ export const ThemeProvider = ({ children }) => {
     if (theme === "dark") {
       document.body.style.background = "#080610";
       document.body.style.backgroundImage = [
-        `radial-gradient(ellipse 70% 50% at 15% 10%, ${a}14 0%, transparent 55%)`,
-        `radial-gradient(ellipse 50% 40% at 85% 5%,  ${a}0e 0%, transparent 50%)`,
-        "radial-gradient(ellipse 60% 50% at 50% 100%, rgba(80,20,140,0.10) 0%, transparent 60%)",
-        "radial-gradient(ellipse 40% 30% at 90% 80%,  rgba(100,20,160,0.07) 0%, transparent 50%)",
+        `radial-gradient(ellipse 70% 50% at 15% 10%, ${a}18 0%, transparent 55%)`,
+        `radial-gradient(ellipse 50% 40% at 85% 5%,  ${a}10 0%, transparent 50%)`,
+        "radial-gradient(ellipse 60% 50% at 50% 100%, rgba(80,20,140,0.12) 0%, transparent 60%)",
+        "radial-gradient(ellipse 40% 30% at 90% 80%,  rgba(100,20,160,0.08) 0%, transparent 50%)",
       ].join(",");
       document.body.style.backgroundAttachment = "fixed";
       document.body.style.color = "#f1f5f9";

@@ -5,6 +5,11 @@
   padding: 0;
   box-sizing: border-box;
 }
+*, *::before, *::after {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
 
 :root {
   --accent:            #ff6b9d;
@@ -65,9 +70,13 @@ body {
 }
 
 .glass {
-  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+[style*="backdrop-filter"] {
   backdrop-filter: blur(16px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  -webkit-backdrop-filter: blur(16px);
 }
 
 .hide-scrollbar::-webkit-scrollbar { display: none; }

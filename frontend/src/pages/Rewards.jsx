@@ -225,82 +225,73 @@ export default function Rewards() {
       <AnimatePresence>
         {selected && (
           <>
-            {/* Backdrop */}
             <motion.div
               initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}}
               onClick={()=>setSelected(null)}
-              style={{
-                position:"fixed",
-                inset:0,
-                background:"rgba(0,0,0,0.7)",
-                zIndex:9000,
-                backdropFilter:"blur(8px)",
-              }}
+              style={{ position:"fixed",inset:0,background:"rgba(0,0,0,0.75)",zIndex:9000,backdropFilter:"blur(8px)" }}
             />
-            {/* Modal — fixed, truly centered with transform */}
-            <motion.div
-              initial={{opacity:0,scale:0.8,y:20}}
-              animate={{opacity:1,scale:1,y:0}}
-              exit={{opacity:0,scale:0.8,y:20}}
-              transition={{ type:"spring", damping:24, stiffness:300 }}
-              style={{
-                position:"fixed",
-                top:"50%",
-                left:"50%",
-                transform:"translate(-50%, -50%)",
-                zIndex:9001,
-                width:"min(320px, calc(100vw - 40px))",
-                /* ↑ never wider than screen on mobile */
-                background:isDark?"rgba(12,8,22,0.98)":"rgba(255,255,255,0.98)",
-                backdropFilter:"blur(28px)",
-                borderRadius:"24px",
-                border:`1px solid ${border}`,
-                padding:"28px 24px",
-                textAlign:"center",
-                fontFamily:"'DM Sans',sans-serif",
-                boxShadow:`0 24px 64px rgba(0,0,0,0.4), 0 0 0 1px ${CAT_COLORS[selected.cat]}33`,
-              }}
-            >
-              {/* Accent glow behind icon */}
-              <div style={{
-                width:"72px",height:"72px",borderRadius:"22px",
-                background:`linear-gradient(135deg,${CAT_COLORS[selected.cat]}22,${CAT_COLORS[selected.cat]}44)`,
-                border:`1.5px solid ${CAT_COLORS[selected.cat]}55`,
-                display:"flex",alignItems:"center",justifyContent:"center",
-                margin:"0 auto 16px",
-                fontSize:"36px",
-              }}>
-                {selected.icon}
-              </div>
-
-              <h3 style={{ fontSize:"20px",fontWeight:800,color:textColor,margin:"0 0 6px",letterSpacing:"-0.03em" }}>
-                {selected.name}
-              </h3>
-              <p style={{ fontSize:"13px",color:mutedColor,margin:"0 0 18px",lineHeight:1.6 }}>
-                {selected.desc}
-              </p>
-
-              {/* Status pill */}
-              <div style={{ display:"inline-flex",alignItems:"center",gap:"6px",padding:"7px 16px",borderRadius:"99px",background:earned.some(b=>b.id===selected.id)?`${CAT_COLORS[selected.cat]}20`:"rgba(255,255,255,0.07)",color:earned.some(b=>b.id===selected.id)?CAT_COLORS[selected.cat]:mutedColor,fontSize:"13px",fontWeight:700,border:`1px solid ${earned.some(b=>b.id===selected.id)?CAT_COLORS[selected.cat]+"44":border}`,marginBottom:"18px" }}>
-                {earned.some(b=>b.id===selected.id) ? "✓ Earned" : "🔒 Not yet earned"}
-              </div>
-
-              {/* Category label */}
-              <div style={{ fontSize:"11px",color:mutedColor,marginBottom:"20px" }}>
-                Category: <span style={{ color:CAT_COLORS[selected.cat],fontWeight:600 }}>{CAT_LABELS[selected.cat]}</span>
-              </div>
-
-              <button onClick={()=>setSelected(null)}
+            {/* Centering wrapper — no animation on this div */}
+            <div style={{
+              position:"fixed",
+              inset:0,
+              zIndex:9001,
+              display:"flex",
+              alignItems:"center",
+              justifyContent:"center",
+              padding:"20px",
+              pointerEvents:"none",
+            }}>
+              <motion.div
+                initial={{opacity:0,scale:0.82,y:16}}
+                animate={{opacity:1,scale:1,y:0}}
+                exit={{opacity:0,scale:0.82,y:16}}
+                transition={{ type:"spring", damping:26, stiffness:320 }}
+                onClick={e=>e.stopPropagation()}
                 style={{
-                  display:"block",width:"100%",padding:"12px",borderRadius:"12px",
-                  background:isDark?"rgba(255,255,255,0.08)":"rgba(0,0,0,0.06)",
-                  border:`1px solid ${border}`,color:mutedColor,cursor:"pointer",
-                  fontSize:"14px",fontWeight:600,fontFamily:"inherit",
-                  WebkitTapHighlightColor:"transparent",touchAction:"manipulation",
+                  width:"100%",
+                  maxWidth:"320px",
+                  background:isDark?"rgba(12,8,22,0.98)":"rgba(255,255,255,0.98)",
+                  backdropFilter:"blur(28px)",
+                  borderRadius:"24px",
+                  border:`1px solid ${border}`,
+                  padding:"28px 24px",
+                  textAlign:"center",
+                  fontFamily:"'DM Sans',sans-serif",
+                  boxShadow:`0 24px 64px rgba(0,0,0,0.45), 0 0 0 1px ${CAT_COLORS[selected.cat]}33`,
+                  pointerEvents:"all",
+                }}
+              >
+                <div style={{ width:"72px",height:"72px",borderRadius:"22px",background:`linear-gradient(135deg,${CAT_COLORS[selected.cat]}25,${CAT_COLORS[selected.cat]}50)`,border:`1.5px solid ${CAT_COLORS[selected.cat]}66`,display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 16px",fontSize:"36px" }}>
+                  {selected.icon}
+                </div>
+
+                <h3 style={{ fontSize:"20px",fontWeight:800,color:textColor,margin:"0 0 6px",letterSpacing:"-0.03em" }}>
+                  {selected.name}
+                </h3>
+                <p style={{ fontSize:"13px",color:mutedColor,margin:"0 0 16px",lineHeight:1.6 }}>
+                  {selected.desc}
+                </p>
+
+                <div style={{ display:"inline-flex",alignItems:"center",gap:"6px",padding:"7px 16px",borderRadius:"99px",
+                  background:earned.some(b=>b.id===selected.id)?`${CAT_COLORS[selected.cat]}20`:"rgba(255,255,255,0.06)",
+                  color:earned.some(b=>b.id===selected.id)?CAT_COLORS[selected.cat]:mutedColor,
+                  fontSize:"13px",fontWeight:700,
+                  border:`1px solid ${earned.some(b=>b.id===selected.id)?CAT_COLORS[selected.cat]+"44":border}`,
+                  marginBottom:"12px",
                 }}>
-                Close
-              </button>
-            </motion.div>
+                  {earned.some(b=>b.id===selected.id) ? "✓ Earned" : "🔒 Not yet earned"}
+                </div>
+
+                <div style={{ fontSize:"11px",color:mutedColor,marginBottom:"20px" }}>
+                  Category: <span style={{ color:CAT_COLORS[selected.cat],fontWeight:600 }}>{CAT_LABELS[selected.cat]}</span>
+                </div>
+
+                <button onClick={()=>setSelected(null)}
+                  style={{ display:"block",width:"100%",padding:"12px",borderRadius:"12px",background:isDark?"rgba(255,255,255,0.08)":"rgba(0,0,0,0.06)",border:`1px solid ${border}`,color:mutedColor,cursor:"pointer",fontSize:"14px",fontWeight:600,fontFamily:"inherit",WebkitTapHighlightColor:"transparent",touchAction:"manipulation" }}>
+                  Close
+                </button>
+              </motion.div>
+            </div>
           </>
         )}
       </AnimatePresence>
