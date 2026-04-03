@@ -27,9 +27,20 @@ allprojects {
 task clean(type: Delete) {
     delete rootProject.buildDir
 }
-android {
-    defaultConfig {
-        minSdkVersion 22  // was probably 21, bump to 22
-        // ... rest stays the same
+subprojects {
+    afterEvaluate { project ->
+        if (project.hasProperty("android")) {
+            project.android {
+                compileOptions {
+                    sourceCompatibility JavaVersion.VERSION_17
+                    targetCompatibility JavaVersion.VERSION_17
+                }
+            }
+        }
+
+        tasks.withType(JavaCompile).configureEach {
+            sourceCompatibility = "17"
+            targetCompatibility = "17"
+        }
     }
 }
