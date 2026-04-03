@@ -3,16 +3,17 @@ import { ThemeProvider } from "./context/ThemeContext";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import { Toaster } from "react-hot-toast";
 import AnimatedBackground from "./components/AnimatedBackground";
-import Navbar     from "./components/Navbar";
-import Tasks      from "./pages/Tasks";
-import Today      from "./pages/Today";
-import Calendar   from "./pages/Calendar";
-import Habits     from "./pages/Habits";
-import Categories from "./pages/Categories";
-import Timer      from "./pages/Timer";
-import Rewards    from "./pages/Rewards";
+import Navbar      from "./components/Navbar";
+import Tasks       from "./pages/Tasks";
+import Today       from "./pages/Today";
+import Calendar    from "./pages/Calendar";
+import Habits      from "./pages/Habits";
+import Categories  from "./pages/Categories";
+import Timer       from "./pages/Timer";
+import Rewards     from "./pages/Rewards";
 import { isNativeApp } from "./services/storage";
 
+/* ── PWA service worker ── */
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {
     navigator.serviceWorker.register("/sw.js").catch(() => {});
@@ -20,10 +21,11 @@ if ("serviceWorker" in navigator) {
 }
 
 const getNetworkEnabled = () => {
-  try { return JSON.parse(localStorage.getItem("thirty_network") ?? "true"); } catch { return true; }
+  try { return JSON.parse(localStorage.getItem("thirty_network") ?? "true"); }
+  catch { return true; }
 };
 
-/* ── Loading screen ──────────────────────────────────────────────────────── */
+/* ── Loading screen ─────────────────────────────────────────────────────── */
 function LoadingScreen() {
   return (
     <div style={{
@@ -40,10 +42,10 @@ function LoadingScreen() {
           display:"flex", alignItems:"center", justifyContent:"center",
           fontSize:"18px", fontWeight:900, color:"white",
           margin:"0 auto 20px",
-          boxShadow:"0 8px 32px var(--accent-glow,rgba(168,85,247,0.35))",
+          boxShadow:"0 8px 32px var(--accent-glow,rgba(168,85,247,0.4))",
           letterSpacing:"-0.05em",
         }}>30</div>
-        <p style={{ color:"rgba(255,255,255,0.3)", fontSize:"12px", margin:0, letterSpacing:"0.1em", textTransform:"uppercase" }}>
+        <p style={{ color:"rgba(255,255,255,0.28)", fontSize:"12px", margin:0, letterSpacing:"0.1em", textTransform:"uppercase" }}>
           Loading…
         </p>
       </div>
@@ -51,36 +53,37 @@ function LoadingScreen() {
   );
 }
 
-/* ── Main app content ────────────────────────────────────────────────────── */
+/* ── Main app ────────────────────────────────────────────────────────────── */
 function AppContent() {
   const [page,     setPage]     = useState("today");
+  const [todayKey, setTodayKey] = useState(0); // increment to remount Today
   const { loading }             = useAuth();
   const [isWaking, setIsWaking] = useState(false);
   const NATIVE = isNativeApp();
 
-  /* ── Fix 100dvh on Android/Samsung ── */
+  /* ── Fix 100dvh on Android / Samsung ── */
   useEffect(() => {
     const setVh = () => {
       const vh = window.innerHeight * 0.01;
       document.documentElement.style.setProperty("--vh", `${vh}px`);
     };
     setVh();
-    window.addEventListener("resize", setVh, { passive: true });
+    window.addEventListener("resize", setVh, { passive:true });
     return () => window.removeEventListener("resize", setVh);
   }, []);
 
-  /* ── One-time migration: upgrade old pink default to purple ── */
+  /* ── One-time migration: old pink → purple ── */
   useEffect(() => {
-    const savedAccent = localStorage.getItem("accent");
-    const migrated    = localStorage.getItem("accent_migrated_v2");
-    if (!migrated && (!savedAccent || savedAccent === "#ff6b9d")) {
+    const saved    = localStorage.getItem("accent");
+    const migrated = localStorage.getItem("accent_migrated_v2");
+    if (!migrated && (!saved || saved === "#ff6b9d")) {
       localStorage.setItem("accent", "#a855f7");
       localStorage.setItem("accent_migrated_v2", "true");
       window.location.reload();
     }
   }, []);
 
-  /* ── Wake Render backend (web only, or APK with internet on) ── */
+  /* ── Wake Render backend ── */
   useEffect(() => {
     if (NATIVE && !getNetworkEnabled()) return;
     if (!navigator.onLine) return;
@@ -93,8 +96,12 @@ function AppContent() {
     return () => { clearTimeout(timer); controller.abort(); };
   }, [NATIVE]);
 
-  /* ── Navigate: go home also resets to today ── */
+  /* ── Page navigation ── */
   const handlePageChange = (newPage) => {
+    if (newPage === "today") {
+      // Remount Today so date strip auto-scrolls back to today
+      setTodayKey(k => k + 1);
+    }
     setPage(newPage);
   };
 
@@ -104,7 +111,7 @@ function AppContent() {
     <div style={{ position:"relative", minHeight:"100vh" }}>
       <AnimatedBackground />
 
-      {/* Render waking indicator */}
+      {/* Render waking bar */}
       {isWaking && (
         <div style={{
           position:"fixed", top:0, left:0, right:0, height:"2px", zIndex:9999,
@@ -116,12 +123,15 @@ function AppContent() {
 
       <div style={{ position:"relative", zIndex:1 }}>
         <Navbar activePage={page} onPageChange={handlePageChange} />
+
         <div className="mobile-page-content">
-          {page === "today"      && (
+          {/* key={todayKey} forces remount every time user navigates to Today */}
+          {page === "today" && (
             <Today
-              onGoToTasks={()    => setPage("tasks")}
-              onGoToHabits={()   => setPage("habits")}
-              onGoToCalendar={() => setPage("calendar")}
+              key={todayKey}
+              onGoToTasks={()    => handlePageChange("tasks")}
+              onGoToHabits={()   => handlePageChange("habits")}
+              onGoToCalendar={() => handlePageChange("calendar")}
             />
           )}
           {page === "tasks"      && <Tasks />}
@@ -143,7 +153,7 @@ function AppContent() {
   );
 }
 
-/* ── Root export ─────────────────────────────────────────────────────────── */
+/* ── Root ────────────────────────────────────────────────────────────────── */
 export default function App() {
   return (
     <ThemeProvider>
@@ -165,8 +175,8 @@ export default function App() {
               boxShadow:    "0 8px 32px rgba(0,0,0,0.4)",
               padding:      "12px 16px",
             },
-            success: { iconTheme: { primary:"var(--accent,#a855f7)", secondary:"#0d0b1a" } },
-            error:   { style: { background:"#180a0a", border:"1px solid rgba(244,63,94,0.22)" } },
+            success: { iconTheme:{ primary:"var(--accent,#a855f7)", secondary:"#0d0b1a" } },
+            error:   { style:{ background:"#180a0a", border:"1px solid rgba(244,63,94,0.22)" } },
           }}
         />
       </AuthProvider>

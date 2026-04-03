@@ -51,74 +51,83 @@ export default function Today({ onGoToTasks, onGoToHabits, onGoToCalendar }) {
   const [selected,   setSelected]   = useState(todayStr);
   const [missedMap,  setMissedMap]  = useState(getMissed);
 
-  const stripRef = useRef(null);
+  const stripRef  = useRef(null);
+  const datesRef  = useRef(dates); // Keep a ref to dates for use in callbacks
+  datesRef.current = dates;
 
   const textColor  = isDark ? "#f1f5f9"                : "#0f172a";
   const mutedColor = isDark ? "rgba(241,245,249,0.45)" : "rgba(15,23,42,0.45)";
   const cardBg     = isDark ? "rgba(15,23,42,0.6)"     : "rgba(255,255,255,0.88)";
   const border     = isDark ? "rgba(255,255,255,0.07)" : "rgba(0,0,0,0.07)";
 
-  /* ── Scroll to a date ── */
-  const scrollToDate = useCallback((dateStr, behavior = "smooth") => {
+  /* ── Core scroll helper — uses ref so always fresh ── */
+  const scrollToDateStr = useCallback((dateStr, behavior = "smooth") => {
     if (!stripRef.current) return;
-    const idx  = dates.findIndex(d => fmtDate(d) === dateStr);
-    if (idx < 0) return;
-    const item = stripRef.current.children[idx];
-    if (item) item.scrollIntoView({ behavior, inline:"center", block:"nearest" });
-  }, [dates]);
-
-  useEffect(() => {
-    setTimeout(() => scrollToDate(todayStr, "auto"), 150);
+    const currentDates = datesRef.current;
+    const idx = currentDates.findIndex(d => fmtDate(d) === dateStr);
+    if (idx >= 0 && stripRef.current.children[idx]) {
+      stripRef.current.children[idx].scrollIntoView({ behavior, inline:"center", block:"nearest" });
+    }
   }, []);
 
+  /* ── On mount: scroll to today ── */
   useEffect(() => {
-    scrollToDate(selected, "smooth");
-  }, [selected, scrollToDate]);
+    const t = setTimeout(() => scrollToDateStr(todayStr, "auto"), 200);
+    return () => clearTimeout(t);
+  }, []); // eslint-disable-line
+
+  /* ── When selected changes: scroll to it ── */
+  useEffect(() => {
+    const t = setTimeout(() => scrollToDateStr(selected, "smooth"), 80);
+    return () => clearTimeout(t);
+  }, [selected, scrollToDateStr]);
+
+  /* ── When page becomes visible (user switches back): scroll to selected ── */
+  useEffect(() => {
+    const handleVisible = () => {
+      if (!document.hidden) {
+        setTimeout(() => scrollToDateStr(selected, "auto"), 100);
+      }
+    };
+    document.addEventListener("visibilitychange", handleVisible);
+    return () => document.removeEventListener("visibilitychange", handleVisible);
+  }, [selected, scrollToDateStr]);
 
   /* ── Go to today ── */
   const goToToday = useCallback(() => {
     setSelected(todayStr);
-    // Ensure today is in range
-    setRangeStart(prev => {
-      if (prev > -3) {
-        const newStart = -30;
-        setDates(buildDates(newStart, rangeEnd));
-        return newStart;
-      }
-      return prev;
-    });
-    setTimeout(() => scrollToDate(todayStr, "smooth"), 100);
-  }, [todayStr, rangeEnd, scrollToDate]);
+    setTimeout(() => scrollToDateStr(todayStr, "smooth"), 80);
+  }, [todayStr, scrollToDateStr]);
 
   /* ── Infinite scroll ── */
+  const rangeStartRef = useRef(rangeStart);
+  const rangeEndRef   = useRef(rangeEnd);
+  rangeStartRef.current = rangeStart;
+  rangeEndRef.current   = rangeEnd;
+
   const handleStripScroll = useCallback(() => {
     if (!stripRef.current) return;
     const { scrollLeft, scrollWidth, clientWidth } = stripRef.current;
     const THRESHOLD = 400;
 
     if (scrollLeft + clientWidth >= scrollWidth - THRESHOLD) {
-      setRangeEnd(prev => {
-        const newEnd = prev + 30;
-        setDates(buildDates(rangeStart, newEnd));
-        return newEnd;
-      });
+      const newEnd = rangeEndRef.current + 30;
+      setRangeEnd(newEnd);
+      setDates(buildDates(rangeStartRef.current, newEnd));
     }
     if (scrollLeft <= THRESHOLD) {
-      const EXTRA = 30;
-      setRangeStart(prev => {
-        const newStart = prev - EXTRA;
-        const newDates = buildDates(newStart, rangeEnd);
-        const prevScrollWidth = stripRef.current.scrollWidth;
-        setDates(newDates);
-        requestAnimationFrame(() => {
-          if (!stripRef.current) return;
-          const diff = stripRef.current.scrollWidth - prevScrollWidth;
-          stripRef.current.scrollLeft += diff;
-        });
-        return newStart;
+      const newStart = rangeStartRef.current - 30;
+      const newDates = buildDates(newStart, rangeEndRef.current);
+      const prevScrollWidth = stripRef.current.scrollWidth;
+      setRangeStart(newStart);
+      setDates(newDates);
+      requestAnimationFrame(() => {
+        if (!stripRef.current) return;
+        const diff = stripRef.current.scrollWidth - prevScrollWidth;
+        stripRef.current.scrollLeft += diff;
       });
     }
-  }, [rangeStart, rangeEnd]);
+  }, []);
 
   useEffect(() => {
     const el = stripRef.current;
@@ -180,7 +189,7 @@ export default function Today({ onGoToTasks, onGoToHabits, onGoToCalendar }) {
   return (
     <div style={{ fontFamily:"'DM Sans',sans-serif",color:textColor,paddingBottom:"20px" }}>
 
-      {/* ── Header ── */}
+      {/* Header */}
       <div style={{ padding:"20px 20px 10px",display:"flex",justifyContent:"space-between",alignItems:"flex-start" }}>
         <div style={{ minWidth:0,flex:1 }}>
           <p style={{ fontSize:"12px",color:mutedColor,margin:"0 0 2px",letterSpacing:"0.02em" }}>
@@ -208,7 +217,6 @@ export default function Today({ onGoToTasks, onGoToHabits, onGoToCalendar }) {
 
         {/* Right buttons */}
         <div style={{ display:"flex",gap:"8px",alignItems:"center",flexShrink:0,marginTop:"4px" }}>
-          {/* Back to today — only shows when not on today */}
           <AnimatePresence>
             {selected !== todayStr && (
               <motion.button
@@ -223,10 +231,7 @@ export default function Today({ onGoToTasks, onGoToHabits, onGoToCalendar }) {
             )}
           </AnimatePresence>
 
-          {/* Calendar icon — navigates to Calendar PAGE */}
-          <motion.button
-            whileTap={{scale:0.9}}
-            onClick={onGoToCalendar}
+          <motion.button whileTap={{scale:0.9}} onClick={onGoToCalendar}
             style={{ width:"40px",height:"40px",borderRadius:"12px",border:`1px solid ${border}`,background:isDark?"rgba(255,255,255,0.06)":"rgba(0,0,0,0.04)",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",color:textColor,WebkitTapHighlightColor:"transparent",touchAction:"manipulation" }}>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
               <rect x="3" y="4" width="18" height="18" rx="2"/>
@@ -238,7 +243,7 @@ export default function Today({ onGoToTasks, onGoToHabits, onGoToCalendar }) {
         </div>
       </div>
 
-      {/* ── Progress bar ── */}
+      {/* Progress bar */}
       {totalItems > 0 && (
         <div style={{ padding:"0 20px 14px" }}>
           <div style={{ height:"3px",background:isDark?"rgba(255,255,255,0.07)":"rgba(0,0,0,0.07)",borderRadius:"2px",overflow:"hidden" }}>
@@ -248,7 +253,7 @@ export default function Today({ onGoToTasks, onGoToHabits, onGoToCalendar }) {
         </div>
       )}
 
-      {/* ── Date strip — infinite scroll ── */}
+      {/* Date strip */}
       <div style={{ position:"relative",marginBottom:"20px" }}>
         <div style={{ position:"absolute",left:0,top:0,bottom:0,width:"40px",background:isDark?"linear-gradient(90deg,#080610,transparent)":"linear-gradient(90deg,#f5f0ff,transparent)",zIndex:2,pointerEvents:"none" }}/>
         <div style={{ position:"absolute",right:0,top:0,bottom:0,width:"40px",background:isDark?"linear-gradient(-90deg,#080610,transparent)":"linear-gradient(-90deg,#f5f0ff,transparent)",zIndex:2,pointerEvents:"none" }}/>
@@ -262,8 +267,8 @@ export default function Today({ onGoToTasks, onGoToHabits, onGoToCalendar }) {
               const isToday  = ds === todayStr;
               const isSel    = ds === selected;
               const isWeekend= d.getDay()===0 || d.getDay()===6;
-              const hasTask  = tasks.filter(t=>t.dueDate===ds).length > 0;
-              const hasDone  = habits.filter(h=>(h.completedDates||[]).includes(ds)).length > 0;
+              const hasTask  = tasks.some(t=>t.dueDate===ds);
+              const hasDone  = habits.some(h=>(h.completedDates||[]).includes(ds));
 
               return (
                 <motion.button key={ds} whileTap={{scale:0.9}}
@@ -272,13 +277,7 @@ export default function Today({ onGoToTasks, onGoToHabits, onGoToCalendar }) {
                     display:"flex",flexDirection:"column",alignItems:"center",gap:"3px",
                     padding:"10px 10px 8px",borderRadius:"14px",border:"none",cursor:"pointer",
                     minWidth:"52px",
-                    background: isSel
-                      ? `linear-gradient(135deg,${ac},${ac}cc)`
-                      : isToday
-                      ? `${ac}20`
-                      : isDark
-                      ? (isWeekend?"rgba(255,255,255,0.04)":"rgba(255,255,255,0.05)")
-                      : (isWeekend?"rgba(0,0,0,0.03)":"rgba(0,0,0,0.04)"),
+                    background: isSel ? `linear-gradient(135deg,${ac},${ac}cc)` : isToday ? `${ac}20` : isDark ? (isWeekend?"rgba(255,255,255,0.04)":"rgba(255,255,255,0.05)") : (isWeekend?"rgba(0,0,0,0.03)":"rgba(0,0,0,0.04)"),
                     boxShadow: isSel ? `0 4px 18px ${ac}44` : "none",
                     transition:"background 0.15s,box-shadow 0.15s",
                     WebkitTapHighlightColor:"transparent",touchAction:"manipulation",
@@ -310,9 +309,8 @@ export default function Today({ onGoToTasks, onGoToHabits, onGoToCalendar }) {
         </div>
       </div>
 
-      {/* ── Content ── */}
+      {/* Content */}
       <div style={{ padding:"0 16px" }}>
-
         {dayTasks.length===0 && dayHabits.length===0 && (
           <motion.div initial={{opacity:0}} animate={{opacity:1}}
             style={{ textAlign:"center",padding:"56px 20px",background:cardBg,backdropFilter:"blur(14px)",borderRadius:"22px",border:`1px solid ${border}` }}>
