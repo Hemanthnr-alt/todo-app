@@ -51,8 +51,8 @@ export default function Today({ onGoToTasks, onGoToHabits, onGoToCalendar }) {
   const [selected,   setSelected]   = useState(todayStr);
   const [missedMap,  setMissedMap]  = useState(getMissed);
 
-  const stripRef  = useRef(null);
-  const datesRef  = useRef(dates); // Keep a ref to dates for use in callbacks
+  const stripRef   = useRef(null);
+  const datesRef   = useRef(dates);
   datesRef.current = dates;
 
   const textColor  = isDark ? "#f1f5f9"                : "#0f172a";
@@ -60,44 +60,71 @@ export default function Today({ onGoToTasks, onGoToHabits, onGoToCalendar }) {
   const cardBg     = isDark ? "rgba(15,23,42,0.6)"     : "rgba(255,255,255,0.88)";
   const border     = isDark ? "rgba(255,255,255,0.07)" : "rgba(0,0,0,0.07)";
 
-  /* ── Core scroll helper — uses ref so always fresh ── */
+  /* ─────────────────────────────────────────────
+     Core scroll helper — manually calculates the
+     exact scrollLeft so the target cell lands
+     perfectly in the centre of the strip.
+  ───────────────────────────────────────────── */
   const scrollToDateStr = useCallback((dateStr, behavior = "smooth") => {
-    if (!stripRef.current) return;
+    const el = stripRef.current;
+    if (!el) return;
+
     const currentDates = datesRef.current;
     const idx = currentDates.findIndex(d => fmtDate(d) === dateStr);
-    if (idx >= 0 && stripRef.current.children[idx]) {
-      stripRef.current.children[idx].scrollIntoView({ behavior, inline:"center", block:"nearest" });
-    }
+    if (idx < 0) return;
+
+    const child = el.children[0]?.children[idx]; // inner flex div → nth child
+    if (!child) return;
+
+    // offsetLeft of the child relative to the scrollable container
+    const childLeft   = child.offsetLeft;
+    const childWidth  = child.offsetWidth;
+    const stripWidth  = el.clientWidth;
+
+    // We want the child centred: scrollLeft = childLeft - (stripWidth/2) + (childWidth/2)
+    const targetScroll = childLeft - stripWidth / 2 + childWidth / 2;
+
+    el.scrollTo({ left: targetScroll, behavior });
   }, []);
 
-  /* ── On mount: scroll to today ── */
+  /* ── On mount: jump (no animation) to today ── */
   useEffect(() => {
-    const t = setTimeout(() => scrollToDateStr(todayStr, "auto"), 200);
-    return () => clearTimeout(t);
+    // Use two rAFs to ensure the DOM has fully painted before measuring
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        scrollToDateStr(todayStr, "auto");
+      });
+    });
   }, []); // eslint-disable-line
 
-  /* ── When selected changes: scroll to it ── */
+  /* ── When selected changes: smooth-scroll to it ── */
   useEffect(() => {
-    const t = setTimeout(() => scrollToDateStr(selected, "smooth"), 80);
-    return () => clearTimeout(t);
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        scrollToDateStr(selected, "smooth");
+      });
+    });
   }, [selected, scrollToDateStr]);
 
-  /* ── When page becomes visible (user switches back): scroll to selected ── */
+  /* ── Re-centre when tab becomes visible again ── */
   useEffect(() => {
     const handleVisible = () => {
       if (!document.hidden) {
-        setTimeout(() => scrollToDateStr(selected, "auto"), 100);
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            scrollToDateStr(selected, "auto");
+          });
+        });
       }
     };
     document.addEventListener("visibilitychange", handleVisible);
     return () => document.removeEventListener("visibilitychange", handleVisible);
   }, [selected, scrollToDateStr]);
 
-  /* ── Go to today ── */
+  /* ── Go to today — single state update, effect handles scroll ── */
   const goToToday = useCallback(() => {
     setSelected(todayStr);
-    setTimeout(() => scrollToDateStr(todayStr, "smooth"), 80);
-  }, [todayStr, scrollToDateStr]);
+  }, [todayStr]);
 
   /* ── Infinite scroll ── */
   const rangeStartRef = useRef(rangeStart);
@@ -106,8 +133,9 @@ export default function Today({ onGoToTasks, onGoToHabits, onGoToCalendar }) {
   rangeEndRef.current   = rangeEnd;
 
   const handleStripScroll = useCallback(() => {
-    if (!stripRef.current) return;
-    const { scrollLeft, scrollWidth, clientWidth } = stripRef.current;
+    const el = stripRef.current;
+    if (!el) return;
+    const { scrollLeft, scrollWidth, clientWidth } = el;
     const THRESHOLD = 400;
 
     if (scrollLeft + clientWidth >= scrollWidth - THRESHOLD) {
@@ -118,7 +146,7 @@ export default function Today({ onGoToTasks, onGoToHabits, onGoToCalendar }) {
     if (scrollLeft <= THRESHOLD) {
       const newStart = rangeStartRef.current - 30;
       const newDates = buildDates(newStart, rangeEndRef.current);
-      const prevScrollWidth = stripRef.current.scrollWidth;
+      const prevScrollWidth = el.scrollWidth;
       setRangeStart(newStart);
       setDates(newDates);
       requestAnimationFrame(() => {
@@ -255,12 +283,17 @@ export default function Today({ onGoToTasks, onGoToHabits, onGoToCalendar }) {
 
       {/* Date strip */}
       <div style={{ position:"relative",marginBottom:"20px" }}>
+        {/* Fade edges */}
         <div style={{ position:"absolute",left:0,top:0,bottom:0,width:"40px",background:isDark?"linear-gradient(90deg,#080610,transparent)":"linear-gradient(90deg,#f5f0ff,transparent)",zIndex:2,pointerEvents:"none" }}/>
         <div style={{ position:"absolute",right:0,top:0,bottom:0,width:"40px",background:isDark?"linear-gradient(-90deg,#080610,transparent)":"linear-gradient(-90deg,#f5f0ff,transparent)",zIndex:2,pointerEvents:"none" }}/>
 
-        <div ref={stripRef}
+        {/* Scrollable strip — ref is on THIS element */}
+        <div
+          ref={stripRef}
           style={{ overflowX:"auto",padding:"6px 20px",WebkitOverflowScrolling:"touch" }}
-          className="hide-scrollbar">
+          className="hide-scrollbar"
+        >
+          {/* Single inner flex row — children[idx] is each date button */}
           <div style={{ display:"flex",gap:"6px",width:"max-content" }}>
             {dates.map((d) => {
               const ds       = fmtDate(d);
