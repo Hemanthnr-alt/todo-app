@@ -130,6 +130,8 @@ function AppContent() {
               onGoToTasks={()    => handlePageChange("tasks")}
               onGoToHabits={()   => handlePageChange("habits")}
               onGoToCalendar={() => handlePageChange("calendar")}
+              onGoToTimer={()    => handlePageChange("timer")}
+              onGoToRewards={()  => handlePageChange("rewards")}
             />
           )}
           {page === "tasks"      && <Tasks />}

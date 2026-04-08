@@ -36,7 +36,7 @@ const MISSED_KEY   = "thirty_missed_habits";
 const getMissed    = () => { try { return JSON.parse(localStorage.getItem(MISSED_KEY)||"{}"); } catch { return {}; } };
 const saveMissed   = (m) => localStorage.setItem(MISSED_KEY, JSON.stringify(m));
 
-export default function Today({ onGoToTasks, onGoToHabits, onGoToCalendar }) {
+export default function Today({ onGoToTasks, onGoToHabits, onGoToCalendar, onGoToTimer, onGoToRewards }) {
   const { isDark, accent }        = useTheme();
   const { user, isAuthenticated } = useAuth();
   const { tasks, categories, updateTask, deleteTask } = useTasks();
@@ -205,9 +205,37 @@ export default function Today({ onGoToTasks, onGoToHabits, onGoToCalendar }) {
             Your premium productivity companion. Sign in to get started.
           </p>
           <div style={{ display:"flex",gap:"8px",justifyContent:"center",flexWrap:"wrap" }}>
-            {["Tasks","Habits","Calendar","Timer","Rewards"].map(f=>(
-              <span key={f} style={{ padding:"5px 13px",borderRadius:"20px",background:`${ac}15`,color:ac,fontSize:"12px",fontWeight:600,border:`1px solid ${ac}30` }}>{f}</span>
-            ))}
+            {["Tasks", "Habits", "Calendar", "Timer", "Rewards"].map(f => {
+              const handlers = {
+                Tasks: onGoToTasks,
+                Habits: onGoToHabits,
+                Calendar: onGoToCalendar,
+                Timer: onGoToTimer,
+                Rewards: onGoToRewards
+              };
+              return (
+                <motion.button
+                  key={f}
+                  whileHover={{ scale: 1.05, background: `${ac}22` }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={handlers[f]}
+                  style={{
+                    padding: "6px 14px",
+                    borderRadius: "20px",
+                    background: `${ac}15`,
+                    color: ac,
+                    fontSize: "12px",
+                    fontWeight: 600,
+                    border: `1px solid ${ac}30`,
+                    cursor: "pointer",
+                    fontFamily: "inherit",
+                    transition: "all 0.2s"
+                  }}
+                >
+                  {f}
+                </motion.button>
+              );
+            })}
           </div>
         </motion.div>
       </div>
