@@ -31,21 +31,21 @@ function LoadingScreen() {
     <div style={{
       display:"flex", justifyContent:"center", alignItems:"center",
       minHeight:"100vh",
-      background:"linear-gradient(135deg,#080610,#0d0a1e)",
-      fontFamily:"'DM Sans',sans-serif",
+      background:"linear-gradient(135deg,#09090F,#0F0F1E)",
+      fontFamily:"'Inter',sans-serif",
     }}>
       <div style={{ textAlign:"center" }}>
         <div style={{
           width:"64px", height:"64px",
-          background:"linear-gradient(135deg,var(--accent,#a855f7),var(--accent,#a855f7)cc)",
+          background:"linear-gradient(135deg,#7C5CFC,#6447E8)",
           borderRadius:"20px",
           display:"flex", alignItems:"center", justifyContent:"center",
-          fontSize:"18px", fontWeight:900, color:"white",
+          fontSize:"18px", fontWeight:800, color:"white",
           margin:"0 auto 20px",
-          boxShadow:"0 8px 32px var(--accent-glow,rgba(168,85,247,0.4))",
+          boxShadow:"0 8px 32px rgba(124,92,252,0.4)",
           letterSpacing:"-0.05em",
         }}>30</div>
-        <p style={{ color:"rgba(255,255,255,0.28)", fontSize:"12px", margin:0, letterSpacing:"0.1em", textTransform:"uppercase" }}>
+        <p style={{ color:"rgba(255,255,255,0.25)", fontSize:"12px", margin:0, letterSpacing:"0.1em", textTransform:"uppercase" }}>
           Loading…
         </p>
       </div>
@@ -56,7 +56,7 @@ function LoadingScreen() {
 /* ── Main app ────────────────────────────────────────────────────────────── */
 function AppContent() {
   const [page,     setPage]     = useState("today");
-  const [todayKey, setTodayKey] = useState(0); // increment to remount Today
+  const [todayKey, setTodayKey] = useState(0);
   const { loading }             = useAuth();
   const [isWaking, setIsWaking] = useState(false);
   const NATIVE = isNativeApp();
@@ -72,13 +72,13 @@ function AppContent() {
     return () => window.removeEventListener("resize", setVh);
   }, []);
 
-  /* ── One-time migration: old pink → purple ── */
+  /* ── One-time migration: old pink/purple → new purple ── */
   useEffect(() => {
     const saved    = localStorage.getItem("accent");
-    const migrated = localStorage.getItem("accent_migrated_v2");
-    if (!migrated && (!saved || saved === "#ff6b9d")) {
-      localStorage.setItem("accent", "#a855f7");
-      localStorage.setItem("accent_migrated_v2", "true");
+    const migrated = localStorage.getItem("accent_migrated_v3");
+    if (!migrated && (!saved || saved === "#ff6b9d" || saved === "#a855f7")) {
+      localStorage.setItem("accent", "#7C5CFC");
+      localStorage.setItem("accent_migrated_v3", "true");
       window.location.reload();
     }
   }, []);
@@ -99,7 +99,6 @@ function AppContent() {
   /* ── Page navigation ── */
   const handlePageChange = (newPage) => {
     if (newPage === "today") {
-      // Remount Today so date strip auto-scrolls back to today
       setTodayKey(k => k + 1);
     }
     setPage(newPage);
@@ -115,7 +114,7 @@ function AppContent() {
       {isWaking && (
         <div style={{
           position:"fixed", top:0, left:0, right:0, height:"2px", zIndex:9999,
-          background:"linear-gradient(90deg,transparent,var(--accent,#a855f7),transparent)",
+          background:"linear-gradient(90deg,transparent,#7C5CFC,transparent)",
           animation:"shimmer 1.5s linear infinite",
           backgroundSize:"200% 100%",
         }}/>
@@ -125,7 +124,6 @@ function AppContent() {
         <Navbar activePage={page} onPageChange={handlePageChange} />
 
         <div className="mobile-page-content">
-          {/* key={todayKey} forces remount every time user navigates to Today */}
           {page === "today" && (
             <Today
               key={todayKey}
@@ -165,18 +163,18 @@ export default function App() {
           toastOptions={{
             duration: 3500,
             style: {
-              background:   "#0d0b1a",
-              color:        "#f1f5f9",
-              border:       "1px solid rgba(255,255,255,0.08)",
-              borderRadius: "14px",
+              background:   "#121220",
+              color:        "#F0EFF8",
+              border:       "1px solid rgba(255,255,255,0.07)",
+              borderRadius: "12px",
               fontSize:     "13px",
-              fontFamily:   "'DM Sans',sans-serif",
+              fontFamily:   "'Inter',sans-serif",
               maxWidth:     "300px",
-              boxShadow:    "0 8px 32px rgba(0,0,0,0.4)",
+              boxShadow:    "0 8px 32px rgba(0,0,0,0.5)",
               padding:      "12px 16px",
             },
-            success: { iconTheme:{ primary:"var(--accent,#a855f7)", secondary:"#0d0b1a" } },
-            error:   { style:{ background:"#180a0a", border:"1px solid rgba(244,63,94,0.22)" } },
+            success: { iconTheme:{ primary:"#7C5CFC", secondary:"#121220" } },
+            error:   { style:{ background:"#1A0A0A", border:"1px solid rgba(240,80,80,0.22)" } },
           }}
         />
       </AuthProvider>

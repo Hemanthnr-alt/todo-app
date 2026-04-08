@@ -22,12 +22,12 @@ export default function Categories() {
   const { tasks, categories, loading, addCategory, deleteCategory } = useTasks();
   const [showModal,   setShowModal]   = useState(false);
   const [name,        setName]        = useState("");
-  const [color,       setColor]       = useState(accent || "#ff6b9d");
+  const [color,       setColor]       = useState(accent || "#8b5cf6");
   const [icon,        setIcon]        = useState("📁");
   const [expandedId,  setExpandedId]  = useState(null);
   const [sortBy,      setSortBy]      = useState("name"); // name | tasks | progress
 
-  const ac = accent || "#ff6b9d";
+  const ac = accent || "#8b5cf6";
 
   const textColor  = isDark ? "#f1f5f9"                : "#0f172a";
   const mutedColor = isDark ? "rgba(241,245,249,0.45)" : "rgba(15,23,42,0.45)";

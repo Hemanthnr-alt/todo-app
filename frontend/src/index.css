@@ -1,69 +1,105 @@
-@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,800;1,9..40,400&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap');
 
 *, *::before, *::after {
   margin: 0;
   padding: 0;
   box-sizing: border-box;
 }
-*, *::before, *::after {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-}
 
+/* ── Design tokens ── */
 :root {
-  --accent:            #ff6b9d;
-  --accent-glow:       rgba(255, 107, 157, 0.35);
-  --bg-dark:           #080610;
-  --bg-light:          #f5f0ff;
+  /* Backgrounds */
+  --bg:              #09090F;
+  --surface:         #121220;
+  --surface-2:       #1A1A2E;
+
+  /* Borders */
+  --border:          rgba(255,255,255,0.07);
+  --border-strong:   rgba(255,255,255,0.12);
+
+  /* Accent */
+  --accent:          #7C5CFC;
+  --accent-hover:    #6447E8;
+  --accent-glow:     rgba(124,92,252,0.35);
+  --accent-subtle:   rgba(124,92,252,0.12);
+
+  /* Semantic */
+  --success:         #22C97E;
+  --success-subtle:  rgba(34,201,126,0.12);
+  --warning:         #F5A623;
+  --warning-subtle:  rgba(245,166,35,0.10);
+  --danger:          #F05050;
+  --danger-subtle:   rgba(240,80,80,0.12);
+
+  /* Text */
+  --text-primary:    #F0EFF8;
+  --text-secondary:  #8B8AA3;
+  --text-muted:      #55546B;
+
+  /* Radii */
+  --radius-card:     12px;
+  --radius-btn:      10px;
+  --radius-pill:     8px;
+  --radius-full:     999px;
+
+  /* Spacing */
+  --card-pad:        16px;
+
+  /* Anim */
+  --motion-duration: 0.2s;
+
+  /* Layout */
   --mobile-nav-height: 64px;
   --safe-top:          env(safe-area-inset-top, 0px);
   --safe-bottom:       env(safe-area-inset-bottom, 0px);
-  --motion-duration:   0.2s;
+}
+
+/* ── Legacy compat vars — keep accent var working for components that read it ── */
+[data-theme="dark"] {
+  --accent-glow: rgba(124,92,252,0.35);
 }
 
 html { scroll-behavior: smooth; }
 
 body {
-  font-family: 'DM Sans', sans-serif;
+  font-family: 'Inter', sans-serif;
+  background: var(--bg);
+  color: var(--text-primary);
   min-height: 100vh;
   overflow-x: hidden;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
-[data-theme="dark"] body, body {
-  background: #080610;
-  background-attachment: fixed;
-  color: #f1f5f9;
-}
-
 [data-theme="light"] body {
-  background: #f5f0ff;
-  background-attachment: fixed;
+  background: #F4F3FF;
   color: #0f172a;
 }
 
-[data-theme="dark"]  select,
-[data-theme="dark"]  input[type="date"],
-[data-theme="dark"]  input[type="time"],
-[data-theme="dark"]  input[type="color"]  { color-scheme: dark;  }
+/* ── Form color schemes ── */
+[data-theme="dark"] select,
+[data-theme="dark"] input[type="date"],
+[data-theme="dark"] input[type="time"],
+[data-theme="dark"] input[type="color"] { color-scheme: dark; }
 [data-theme="light"] select,
 [data-theme="light"] input[type="date"],
-[data-theme="light"] input[type="time"]   { color-scheme: light; }
+[data-theme="light"] input[type="time"] { color-scheme: light; }
 
+/* ── Focus ── */
 :focus         { outline: none; }
 :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
+/* ── Scrollbar ── */
 ::-webkit-scrollbar        { width: 4px; height: 4px; }
 ::-webkit-scrollbar-track  { background: transparent; }
-::-webkit-scrollbar-thumb  { background: var(--accent-glow); border-radius: 3px; }
+::-webkit-scrollbar-thumb  { background: rgba(124,92,252,0.3); border-radius: 3px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--accent); }
 
 ::selection { background: var(--accent-glow); color: inherit; }
 
+/* ── Utility classes ── */
 .gradient-text {
-  background: linear-gradient(135deg, var(--accent), #c084fc, #99ccff);
+  background: linear-gradient(135deg, var(--accent), #a78bfa);
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
@@ -74,15 +110,10 @@ body {
   -webkit-backdrop-filter: blur(12px);
 }
 
-[style*="backdrop-filter"] {
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-}
-
 .hide-scrollbar::-webkit-scrollbar { display: none; }
 .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 
-/* ── Animations ── */
+/* ── Keyframes ── */
 @keyframes float      { 0%,100%{ transform:translateY(0); }   50%{ transform:translateY(-10px); } }
 @keyframes pulse-glow { 0%,100%{ box-shadow:0 0 20px var(--accent-glow); } 50%{ box-shadow:0 0 40px var(--accent); } }
 @keyframes spin       { to{ transform:rotate(360deg); } }
@@ -92,6 +123,35 @@ body {
 @keyframes fadeUp     { from{ opacity:0; transform:translateY(12px); } to{ opacity:1; transform:translateY(0); } }
 @keyframes scaleIn    { from{ opacity:0; transform:scale(0.9); } to{ opacity:1; transform:scale(1); } }
 @keyframes bounce-in  { 0%{ transform:scale(0.3); opacity:0; } 60%{ transform:scale(1.1); } 100%{ transform:scale(1); opacity:1; } }
+
+/* Icon tap bounce */
+@keyframes icon-bounce {
+  0%   { transform: translateY(0); }
+  40%  { transform: translateY(-3px); }
+  70%  { transform: translateY(1px); }
+  100% { transform: translateY(0); }
+}
+
+/* Ring pulse for badge unlock */
+@keyframes ring-pulse {
+  0%   { box-shadow: 0 0 0 0 rgba(124,92,252,0.7); }
+  70%  { box-shadow: 0 0 0 12px rgba(124,92,252,0); }
+  100% { box-shadow: 0 0 0 0 rgba(124,92,252,0); }
+}
+
+/* Scale check for task complete */
+@keyframes check-bounce {
+  0%   { transform: scale(1); }
+  35%  { transform: scale(1.22); }
+  60%  { transform: scale(0.92); }
+  100% { transform: scale(1); }
+}
+
+/* Confetti pieces */
+@keyframes confetti-fall {
+  0%   { opacity:1; transform: translateY(-20px) rotate(0deg); }
+  100% { opacity:0; transform: translateY(120px) rotate(720deg); }
+}
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
@@ -129,4 +189,44 @@ body {
   -webkit-tap-highlight-color: transparent;
   touch-action: manipulation;
   user-select: none;
+}
+
+/* ── Premium pill filter ── */
+.pill-filter {
+  padding: 5px 13px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  font-family: 'Inter', sans-serif;
+  white-space: nowrap;
+  transition: all 0.15s;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+.pill-filter.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: white;
+  font-weight: 600;
+}
+
+/* ── Card base ── */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  padding: var(--card-pad);
+}
+
+/* ── Section label ── */
+.section-label {
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
 }
