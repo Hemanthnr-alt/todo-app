@@ -24,7 +24,7 @@ const BADGES = [
   { id:"comeback",       icon:"💪", name:"Comeback",         desc:"Return after 3+ days away",           cat:"special",check:(t)=>t.comeback },
 ];
 
-const CAT_COLORS = { tasks:"#F05050", habits:"#22C97E", org:"#7C5CFC", special:"#F5A623" };
+const CAT_COLORS = { tasks:"var(--danger)", habits:"var(--success)", org:"var(--accent)", special:"var(--streak)" };
 const CAT_LABELS = { tasks:"Tasks", habits:"Habits", org:"Organisation", special:"Special" };
 
 function getLastNDays(n) {
@@ -53,7 +53,7 @@ function ConfettiBurst({ active }) {
             top:"30%",left:"50%",
             width:"6px",height:"6px",
             borderRadius:i%3===0?"50%":"2px",
-            background:["#7C5CFC","#22C97E","#F5A623","#F0EFF8","#a78bfa"][i%5],
+            background:["var(--accent)","var(--success)","var(--streak)","var(--text-body)","var(--accent-hover)"][i%5],
           }}
         />
       ))}
@@ -69,12 +69,12 @@ export default function Rewards() {
   const [selected, setSelected]= useState(null);
   const [newlyEarned, setNewlyEarned] = useState(new Set());
   const prevEarnedIds = useRef(new Set());
-  const ac = accent || "#7C5CFC";
+  const ac = accent || "#6B46FF";
 
-  const textColor  = isDark ? "#F0EFF8" : "#0f172a";
-  const mutedColor = isDark ? "#8B8AA3" : "rgba(15,23,42,0.45)";
-  const cardBg     = isDark ? "#121220" : "rgba(255,255,255,0.92)";
-  const border     = "rgba(255,255,255,0.07)";
+  const textColor  = "var(--text-primary)";
+  const mutedColor = "var(--text-muted)";
+  const cardBg     = "var(--surface)";
+  const border     = "var(--border)";
 
   const today             = new Date().toISOString().split("T")[0];
   const bestStreak        = habits.length ? Math.max(0,...habits.map(h=>h.streak||0)) : 0;
@@ -123,16 +123,16 @@ export default function Rewards() {
       {/* Stats row */}
       <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(130px,1fr))",gap:"10px",marginBottom:"20px"}}>
         {[
-          { label:"Badges Earned", value:`${earned.length}/${BADGES.length}`, color:ac,        icon:"🏆" },
-          { label:"Best Streak",   value:`${bestStreak}d`,                    color:"#F5A623", icon:"🔥" },
-          { label:"Tasks Done",    value:totalCompleted,                       color:"#22C97E", icon:"✅" },
-          { label:"Habit Days",    value:totalHabitDays,                       color:"#7C5CFC", icon:"📅" },
+          { label:"Badges Earned", value:`${earned.length}/${BADGES.length}`, color:"var(--accent)",        icon:"🏆" },
+          { label:"Best Streak",   value:`${bestStreak}d`,                    color:"var(--warning)", icon:"🔥" },
+          { label:"Tasks Done",    value:totalCompleted,                       color:"var(--success)", icon:"✅" },
+          { label:"Habit Days",    value:totalHabitDays,                       color:"var(--accent)", icon:"📅" },
         ].map(s=>(
-          <div key={s.label} style={{padding:"14px",borderRadius:"12px",background:cardBg,border:"1px solid rgba(255,255,255,0.07)",display:"flex",alignItems:"center",gap:"10px"}}>
-            <div style={{width:"36px",height:"36px",borderRadius:"10px",background:`${s.color}18`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:"20px",flexShrink:0}}>{s.icon}</div>
+          <div key={s.label} style={{padding:"14px",borderRadius:"14px",background:cardBg,border:`1px solid ${border}`,display:"flex",alignItems:"center",gap:"10px"}}>
+            <div style={{width:"36px",height:"36px",borderRadius:"10px",background:`var(--surface-raised)`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:"20px",flexShrink:0}}>{s.icon}</div>
             <div>
-              <div style={{fontSize:"24px",fontWeight:600,color:s.color,lineHeight:1}}>{s.value}</div>
-              <div style={{fontSize:"12px",color:mutedColor,marginTop:"2px"}}>{s.label}</div>
+              <div style={{fontSize:"30px",fontWeight:700,fontFamily:"var(--font-heading)",color:s.color,lineHeight:1}}>{s.value}</div>
+              <div className="section-label" style={{marginTop:"6px"}}>{s.label}</div>
             </div>
           </div>
         ))}
@@ -188,41 +188,36 @@ export default function Rewards() {
                 transition={{delay:i*0.025}} whileHover={{y:-3,scale:1.02}} whileTap={{scale:0.97}}
                 onClick={()=>setSelected(selected?.id===badge.id?null:badge)}
                 style={{
-                  padding:"16px 12px",borderRadius:"12px",cursor:"pointer",textAlign:"center",
-                  background:isEarned?(isDark?`${catColor}08`:cardBg):cardBg,
+                  padding:"16px 12px",borderRadius:"14px",cursor:"pointer",textAlign:"center",
+                  background:isEarned?`var(--surface-raised)`:cardBg,
                   backdropFilter:"blur(12px)",
-                  /* Earned: purple ring glow; Locked: muted border */
-                  border:isEarned?`1.5px solid rgba(124,92,252,0.4)`:`1px solid ${border}`,
+                  border:isEarned?`2px solid var(--accent)`:`1px solid ${border}`,
                   boxShadow:isEarned
-                    ?`0 0 0 1px rgba(124,92,252,0.15), 0 4px 24px rgba(124,92,252,0.18)`
+                    ?`0 0 10px var(--accent-glow)`
                     :"none",
-                  opacity:isEarned?1:0.55,
+                  opacity:isEarned?1:0.35,
                   position:"relative",
-                  transition:"all 0.2s",
+                  transition:"all var(--motion-duration)",
                   animation:isNew?"ring-pulse 0.8s ease":"none",
                 }}>
-                {/* Confetti on unlock */}
                 <ConfettiBurst active={isNew}/>
-                {/* Earned checkmark */}
                 {isEarned&&(
-                  <div style={{position:"absolute",top:"8px",right:"8px",width:"18px",height:"18px",borderRadius:"50%",background:`linear-gradient(135deg,#7C5CFC,#6447E8)`,display:"flex",alignItems:"center",justifyContent:"center"}}>
+                  <div style={{position:"absolute",top:"8px",right:"8px",width:"18px",height:"18px",borderRadius:"50%",background:`var(--accent)`,display:"flex",alignItems:"center",justifyContent:"center"}}>
                     <span style={{fontSize:"9px",color:"white",fontWeight:900}}>✓</span>
                   </div>
                 )}
-                {/* Badge icon — grayscale if locked */}
                 <div style={{position:"relative",display:"inline-block",marginBottom:"8px"}}>
-                  <div style={{fontSize:"32px",filter:isEarned?"none":"grayscale(100%) opacity(0.5)"}}>{badge.icon}</div>
-                  {/* Lock overlay for locked badges */}
+                  <div style={{fontSize:"32px",filter:isEarned?"none":"grayscale(100%)"}}>{badge.icon}</div>
                   {!isEarned&&(
-                    <div style={{position:"absolute",bottom:"-4px",right:"-4px",width:"16px",height:"16px",borderRadius:"50%",background:"rgba(255,255,255,0.08)",border:"1px solid rgba(255,255,255,0.12)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"9px"}}>
+                    <div style={{position:"absolute",bottom:"-4px",right:"-4px",width:"16px",height:"16px",borderRadius:"50%",background:"var(--bg)",border:`1px solid ${border}`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:"9px"}}>
                       🔒
                     </div>
                   )}
                 </div>
-                <div style={{fontSize:"11px",fontWeight:700,color:isEarned?textColor:mutedColor,marginBottom:"3px",lineHeight:1.3}}>{badge.name}</div>
-                <div style={{fontSize:"9px",color:mutedColor,lineHeight:1.4}}>{badge.desc}</div>
+                <div style={{fontSize:"14px",fontFamily:"var(--font-heading)",fontWeight:700,color:isEarned?textColor:mutedColor,marginBottom:"3px",lineHeight:1.3}}>{badge.name}</div>
+                <div style={{fontSize:"11px",color:mutedColor,lineHeight:1.4}}>{badge.desc}</div>
                 {isEarned&&(
-                  <div style={{marginTop:"8px",display:"inline-flex",alignItems:"center",gap:"3px",padding:"2px 8px",borderRadius:"6px",background:"rgba(124,92,252,0.12)",color:"#7C5CFC",fontSize:"9px",fontWeight:700}}>
+                  <div style={{marginTop:"8px",display:"inline-flex",alignItems:"center",gap:"3px",padding:"4px 10px",borderRadius:"20px",background:"var(--accent-subtle)",color:"var(--accent-hover)",fontSize:"10px",fontWeight:600}}>
                     {CAT_LABELS[badge.cat]}
                   </div>
                 )}

@@ -31,21 +31,21 @@ function LoadingScreen() {
     <div style={{
       display:"flex", justifyContent:"center", alignItems:"center",
       minHeight:"100vh",
-      background:"linear-gradient(135deg,#09090F,#0F0F1E)",
-      fontFamily:"'Inter',sans-serif",
+      background:"var(--bg)",
+      fontFamily:"var(--font-heading)",
     }}>
       <div style={{ textAlign:"center" }}>
         <div style={{
           width:"64px", height:"64px",
-          background:"linear-gradient(135deg,#7C5CFC,#6447E8)",
+          background:"var(--accent)",
           borderRadius:"20px",
           display:"flex", alignItems:"center", justifyContent:"center",
           fontSize:"18px", fontWeight:800, color:"white",
           margin:"0 auto 20px",
-          boxShadow:"0 8px 32px rgba(124,92,252,0.4)",
+          boxShadow:"0 8px 32px var(--accent-glow)",
           letterSpacing:"-0.05em",
         }}>30</div>
-        <p style={{ color:"rgba(255,255,255,0.25)", fontSize:"12px", margin:0, letterSpacing:"0.1em", textTransform:"uppercase" }}>
+        <p style={{ color:"var(--text-secondary)", fontSize:"12px", margin:0, letterSpacing:"0.1em", textTransform:"uppercase" }}>
           Loading…
         </p>
       </div>

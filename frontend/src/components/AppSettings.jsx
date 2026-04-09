@@ -4,21 +4,23 @@ import { useAuth }  from "../context/AuthContext";
 import { useTheme } from "../context/ThemeContext";
 import toast from "react-hot-toast";
 
-function Toggle({ checked, onChange, isDark, accent }) {
+function Toggle({ checked, onChange, accent }) {
   return (
-    <button onClick={()=>onChange(!checked)}
+    <button onClick={() => onChange(!checked)}
       style={{
-        width:"40px",height:"22px",borderRadius:"999px",
-        background:checked?accent:(isDark?"rgba(255,255,255,0.12)":"rgba(0,0,0,0.15)"),
-        border:"none",position:"relative",cursor:"pointer",transition:"background 0.2s",
-        WebkitTapHighlightColor:"transparent",touchAction:"manipulation",flexShrink:0
+        width:"44px", height:"24px", borderRadius:"999px",
+        background: checked ? (accent||"var(--accent)") : "var(--surface-raised)",
+        border:"none", position:"relative", cursor:"pointer",
+        transition:"background 0.2s",
+        WebkitTapHighlightColor:"transparent", touchAction:"manipulation", flexShrink:0,
       }}>
       <div style={{
-        position:"absolute",top:"2px",left:checked?"20px":"2px",width:"18px",height:"18px",
-        backgroundColor:"white",borderRadius:"50%",
-        /* Enhanced spring cubic-bezier for toggle */
-        transition:"left 0.28s cubic-bezier(0.34, 1.56, 0.64, 1)",
-        boxShadow:"0 2px 4px rgba(0,0,0,0.2)"
+        position:"absolute", top:"3px",
+        left: checked ? "23px" : "3px",
+        width:"18px", height:"18px",
+        backgroundColor:"white", borderRadius:"50%",
+        transition:"left 0.25s cubic-bezier(0.34,1.56,0.64,1)",
+        boxShadow:"0 2px 4px rgba(0,0,0,0.3)",
       }}/>
     </button>
   );
@@ -26,215 +28,368 @@ function Toggle({ checked, onChange, isDark, accent }) {
 
 export default function AppSettings({ isOpen, onClose }) {
   const { user } = useAuth();
-  const { isDark, toggleTheme, accent, setAccent } = useTheme();
-  const [activeTab, setActiveTab]=useState("general");
-  const [pushStatus, setPushStatus]=useState("unknown");
-  const [devClicks, setDevClicks]=useState(0);
-  
-  const ac = accent || "#7C5CFC";
-  const getS=(k,def)=>{ try{const v=localStorage.getItem(`thirty_set_${k}`);return v?JSON.parse(v):def;}catch{return def;} };
-  const setS=(k,v)=>{ localStorage.setItem(`thirty_set_${k}`,JSON.stringify(v)); };
+  const { isDark, toggleTheme, accent, changeAccent, ACCENT_PRESETS } = useTheme();
+  const [activeTab, setActiveTab] = useState("general");
+  const [pushStatus, setPushStatus] = useState("unknown");
+  const [devClicks, setDevClicks] = useState(0);
 
-  const [sound, setSound]=useState(()=>getS("sound",true));
-  const [haptic, setHaptic]=useState(()=>getS("haptic",true));
-  const [weekStart, setWeekStart]=useState(()=>getS("weekStart","sunday"));
+  const ac = accent || "#6B46FF";
+  const getS = (k,def) => { try{const v=localStorage.getItem(`thirty_set_${k}`);return v?JSON.parse(v):def;}catch{return def;} };
+  const setS = (k,v) => { localStorage.setItem(`thirty_set_${k}`,JSON.stringify(v)); };
 
-  useEffect(()=>{ setS("sound",sound); setS("haptic",haptic); setS("weekStart",weekStart); },[sound,haptic,weekStart]);
+  const [sound,     setSound]     = useState(() => getS("sound",true));
+  const [haptic,    setHaptic]    = useState(() => getS("haptic",true));
+  const [weekStart, setWeekStart] = useState(() => getS("weekStart","sunday"));
 
-  useEffect(()=>{
-    if(isOpen){
-      if("Notification" in window){ setPushStatus(Notification.permission); }
-      else { setPushStatus("unsupported"); }
+  useEffect(() => { setS("sound",sound); setS("haptic",haptic); setS("weekStart",weekStart); },[sound,haptic,weekStart]);
+
+  useEffect(() => {
+    if (isOpen) {
+      if ("Notification" in window) setPushStatus(Notification.permission);
+      else setPushStatus("unsupported");
     }
   },[isOpen]);
 
   const reqPush = async () => {
-    if(!("Notification" in window)){ toast.error("Push not supported here"); return; }
-    try{ const p=await Notification.requestPermission(); setPushStatus(p); if(p==="granted")toast.success("Ready to go!"); else toast("Notifications disabled."); }
-    catch{toast.error("Error asking permission");}
+    if (!("Notification" in window)) { toast.error("Push not supported here"); return; }
+    try {
+      const p = await Notification.requestPermission();
+      setPushStatus(p);
+      if (p==="granted") toast.success("Notifications enabled!");
+      else toast("Notifications disabled.");
+    } catch { toast.error("Error asking permission"); }
   };
 
   const devMode = () => {
-    setDevClicks(c=>c+1);
-    if(devClicks===6){ toast("Developer mode activated 🛠", {icon:"🚀"}); localStorage.setItem("thirty_dev","true"); }
+    setDevClicks(c => c+1);
+    if (devClicks===6) { toast("Developer mode activated 🛠", {icon:"🚀"}); localStorage.setItem("thirty_dev","true"); }
   };
 
   if (!isOpen) return null;
 
-  const bg         = isDark ? "rgba(9,9,15,0.99)"   : "rgba(248,250,252,0.99)";
-  const textColor  = isDark ? "#F0EFF8"             : "#0f172a";
-  const mutedColor = isDark ? "#8B8AA3"             : "rgba(15,23,42,0.45)";
-  const cardBg     = isDark ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.03)";
-  const border     = isDark ? "rgba(255,255,255,0.07)" : "rgba(0,0,0,0.07)";
-
   const TABS = [
     { id:"general", icon:"⚙️", label:"General" },
-    { id:"look",    icon:"✨", label:"Look & Feel" },
+    { id:"look",    icon:"✨", label:"Appearance" },
     { id:"alerts",  icon:"🔔", label:"Alerts" },
     { id:"about",   icon:"ℹ️", label:"About" },
   ];
 
-  /* SWATCHES — only purples/pinks/blues for premium SaaS feel */
-  const SWATCHES=["#7C5CFC","#F05050","#22C97E","#F5A623","#3b82f6","#ec4899"];
+  const rowStyle = {
+    padding:"16px", display:"flex", justifyContent:"space-between",
+    alignItems:"center", borderBottom:"0.5px solid rgba(255,255,255,0.06)",
+  };
 
   return (
     <>
       <motion.div initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}} onClick={onClose}
-        style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.6)",backdropFilter:"blur(6px)",zIndex:8500}}/>
-      <motion.div initial={{y:"100%"}} animate={{y:0}} exit={{y:"100%"}} transition={{type:"spring",damping:30,stiffness:320}}
-        style={{position:"fixed",bottom:0,left:0,right:0,zIndex:8501,background:bg,borderRadius:"24px 24px 0 0",borderTop:`1px solid ${border}`,paddingBottom:"calc(env(safe-area-inset-bottom,0px) + 20px)",fontFamily:"'Inter',sans-serif",maxHeight:"88vh",display:"flex",flexDirection:"column"}}>
-        
-        {/* Header */}
-        <div style={{display:"flex",justifyContent:"center",padding:"12px 0 4px"}}>
-          <div style={{width:"36px",height:"4px",borderRadius:"2px",background:isDark?"rgba(255,255,255,0.15)":"rgba(0,0,0,0.12)"}}/>
-        </div>
-        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"8px 20px 24px"}}>
-          <h2 style={{fontSize:"20px",fontWeight:600,margin:0,color:textColor,letterSpacing:"-0.02em",fontFamily:"'Plus Jakarta Sans',sans-serif"}}>Settings</h2>
-          <button onClick={onClose} style={{width:"32px",height:"32px",borderRadius:"16px",background:cardBg,border:`1px solid ${border}`,cursor:"pointer",color:textColor,display:"flex",alignItems:"center",justifyContent:"center",fontSize:"14px",WebkitTapHighlightColor:"transparent"}}>✕</button>
+        style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.7)",
+          backdropFilter:"blur(6px)", zIndex:8500 }}/>
+      <motion.div
+        initial={{y:"100%"}} animate={{y:0}} exit={{y:"100%"}}
+        transition={{type:"spring", damping:30, stiffness:320}}
+        style={{
+          position:"fixed", bottom:0, left:0, right:0, zIndex:8501,
+          background:"var(--surface)",
+          borderRadius:"20px 20px 0 0",
+          borderTop:"0.5px solid rgba(255,255,255,0.1)",
+          paddingBottom:`calc(env(safe-area-inset-bottom,0px) + 20px)`,
+          fontFamily:"var(--font-body)",
+          maxHeight:"88vh", display:"flex", flexDirection:"column",
+        }}>
+
+        {/* Drag handle */}
+        <div style={{ display:"flex", justifyContent:"center", padding:"12px 0 4px" }}>
+          <div style={{ width:"36px", height:"4px", borderRadius:"2px",
+            background:"var(--surface-elevated)" }}/>
         </div>
 
-        <div style={{display:"flex",flexDirection:"column",flex:1,overflow:"hidden"}}>
+        {/* Header */}
+        <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between",
+          padding:"8px 20px 20px" }}>
+          <h2 style={{ fontSize:"20px", fontWeight:700, margin:0,
+            color:"var(--text-primary)", letterSpacing:"-0.02em",
+            fontFamily:"var(--font-heading)" }}>Settings</h2>
+          <button onClick={onClose}
+            style={{ width:"32px", height:"32px", borderRadius:"16px",
+              background:"var(--surface-raised)", border:"1px solid var(--border)",
+              cursor:"pointer", color:"var(--text-muted)",
+              display:"flex", alignItems:"center", justifyContent:"center",
+              fontSize:"14px", WebkitTapHighlightColor:"transparent" }}>✕</button>
+        </div>
+
+        <div style={{ display:"flex", flexDirection:"column", flex:1, overflow:"hidden" }}>
+
           {/* Tabs */}
-          <div style={{display:"flex",gap:"4px",overflowX:"auto",padding:"0 16px 12px",marginBottom:"8px"}} className="hide-scrollbar">
-            {TABS.map(t=>(
-              <button key={t.id} onClick={()=>setActiveTab(t.id)}
-                style={{padding:"8px 16px",borderRadius:"999px",border:`1px solid ${activeTab===t.id?(isDark?"rgba(255,255,255,0.15)":"rgba(0,0,0,0.15)"):border}`,background:activeTab===t.id?cardBg:"transparent",color:activeTab===t.id?textColor:mutedColor,cursor:"pointer",fontSize:"13px",fontWeight:activeTab===t.id?600:500,fontFamily:"inherit",display:"flex",alignItems:"center",gap:"6px",whiteSpace:"nowrap",transition:"all 0.15s"}}>
+          <div style={{ display:"flex", gap:"6px", overflowX:"auto",
+            padding:"0 16px 12px", marginBottom:"8px" }} className="hide-scrollbar">
+            {TABS.map(t => (
+              <button key={t.id} onClick={() => setActiveTab(t.id)}
+                style={{
+                  padding:"8px 16px", borderRadius:"999px",
+                  border: activeTab===t.id ? `1px solid var(--accent)` : "1px solid var(--border)",
+                  background: activeTab===t.id ? "var(--accent-subtle)" : "transparent",
+                  color: activeTab===t.id ? "var(--accent)" : "var(--text-muted)",
+                  cursor:"pointer", fontSize:"13px",
+                  fontWeight: activeTab===t.id ? 600 : 500,
+                  fontFamily:"inherit", display:"flex", alignItems:"center",
+                  gap:"6px", whiteSpace:"nowrap", transition:"all 0.15s",
+                  WebkitTapHighlightColor:"transparent",
+                }}>
                 <span>{t.icon}</span>{t.label}
               </button>
             ))}
           </div>
 
           {/* Content */}
-          <div style={{flex:1,overflowY:"auto",padding:"0 20px 20px"}}>
-            
-            {activeTab==="general"&&(
-              <AnimatePresence mode="wait"><motion.div initial={{opacity:0,y:10}} animate={{opacity:1,y:0}} exit={{opacity:0,y:-10}} transition={{duration:0.15}} style={{display:"flex",flexDirection:"column",gap:"24px"}}>
-                <div>
-                  <div style={{fontSize:"12px",fontWeight:600,color:mutedColor,textTransform:"uppercase",letterSpacing:"0.06em",marginBottom:"12px"}}>Account</div>
-                  <div style={{padding:"14px 16px",borderRadius:"14px",background:cardBg,border:`1px solid ${border}`,display:"flex",alignItems:"center",gap:"12px"}}>
-                    <div style={{width:"44px",height:"44px",borderRadius:"12px",background:`linear-gradient(135deg,${ac},#6447E8)`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:"18px",color:"white",fontWeight:800}}>{user?.name?.charAt(0)||"?"}</div>
-                    <div style={{flex:1}}>
-                      <div style={{fontSize:"15px",fontWeight:600,color:textColor}}>{user?.name||"Guest"}</div>
-                      <div style={{fontSize:"13px",color:mutedColor}}>{user?.email||"Not logged in"}</div>
-                    </div>
-                  </div>
-                </div>
-                <div>
-                  <div style={{fontSize:"12px",fontWeight:600,color:mutedColor,textTransform:"uppercase",letterSpacing:"0.06em",marginBottom:"12px"}}>System</div>
-                  <div style={{borderRadius:"14px",background:cardBg,border:`1px solid ${border}`,overflow:"hidden"}}>
-                    <div style={{padding:"16px",display:"flex",justifyContent:"space-between",alignItems:"center",borderBottom:`1px solid ${border}`}}>
-                      <div><div style={{fontSize:"14px",fontWeight:500,color:textColor}}>Sound effects</div><div style={{fontSize:"12px",color:mutedColor,marginTop:"2px"}}>For timers and completion</div></div>
-                      <Toggle checked={sound} onChange={setSound} isDark={isDark} accent={ac}/>
-                    </div>
-                    <div style={{padding:"16px",display:"flex",justifyContent:"space-between",alignItems:"center",borderBottom:`1px solid ${border}`}}>
-                      <div><div style={{fontSize:"14px",fontWeight:500,color:textColor}}>Haptic feedback</div><div style={{fontSize:"12px",color:mutedColor,marginTop:"2px"}}>Vibrate on actions (mobile)</div></div>
-                      <Toggle checked={haptic} onChange={setHaptic} isDark={isDark} accent={ac}/>
-                    </div>
-                    <div style={{padding:"16px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-                      <div><div style={{fontSize:"14px",fontWeight:500,color:textColor}}>Week starts on</div></div>
-                      <select value={weekStart} onChange={e=>setWeekStart(e.target.value)} style={{background:"transparent",border:`1px solid ${border}`,color:textColor,padding:"6px 12px",borderRadius:"8px",fontSize:"13px",fontFamily:"inherit",cursor:"pointer"}}>
-                        <option value="sunday">Sunday</option><option value="monday">Monday</option>
-                      </select>
-                    </div>
-                  </div>
-                </div>
-              </motion.div></AnimatePresence>
-            )}
+          <div style={{ flex:1, overflowY:"auto", padding:"0 16px 20px" }}>
 
-            {activeTab==="look"&&(
-              <AnimatePresence mode="wait"><motion.div initial={{opacity:0,y:10}} animate={{opacity:1,y:0}} exit={{opacity:0,y:-10}} transition={{duration:0.15}} style={{display:"flex",flexDirection:"column",gap:"24px"}}>
-                <div>
-                  <div style={{fontSize:"12px",fontWeight:600,color:mutedColor,textTransform:"uppercase",letterSpacing:"0.06em",marginBottom:"12px"}}>Theme</div>
-                  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"12px"}}>
-                    <button onClick={()=>{if(!isDark)toggleTheme();}} style={{padding:"16px",borderRadius:"14px",background:isDark?`${ac}18`:cardBg,border:`1px solid ${isDark?ac:border}`,color:textColor,cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:"10px",transition:"all 0.2s"}}>
-                      <div style={{fontSize:"24px"}}>🌙</div><span style={{fontSize:"13px",fontWeight:500}}>Dark</span>
-                    </button>
-                    <button onClick={()=>{if(isDark)toggleTheme();}} style={{padding:"16px",borderRadius:"14px",background:!isDark?`${ac}18`:cardBg,border:`1px solid ${!isDark?ac:border}`,color:textColor,cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:"10px",transition:"all 0.2s"}}>
-                      <div style={{fontSize:"24px"}}>☀️</div><span style={{fontSize:"13px",fontWeight:500}}>Light</span>
-                    </button>
-                  </div>
-                </div>
-                <div>
-                  <div style={{fontSize:"12px",fontWeight:600,color:mutedColor,textTransform:"uppercase",letterSpacing:"0.06em",marginBottom:"12px"}}>Accent Colour</div>
-                  <div style={{padding:"16px",borderRadius:"14px",background:cardBg,border:`1px solid ${border}`,display:"flex",flexWrap:"wrap",gap:"14px",justifyContent:"center"}}>
-                    {SWATCHES.map(hex => {
-                      const sel = ac===hex;
-                      /* Custom gap-ring for selected swatch, with checkmark */
-                      return (
-                        <button key={hex} onClick={()=>{setAccent(hex);localStorage.setItem("accent",hex);}}
-                          style={{
-                            width:"38px",height:"38px",borderRadius:"50%",background:hex,border:"none",cursor:"pointer",
-                            transition:"transform 0.15s, box-shadow 0.15s",display:"flex",alignItems:"center",justifyContent:"center",
-                            boxShadow:sel?`0 0 0 2px ${bg}, 0 0 0 4px ${hex}`:"none",
-                            transform:sel?"scale(1.05)":"scale(1)"
-                          }}>
-                          {sel && <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" style={{animation:"scale-check 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)"}}><polyline points="20 6 9 17 4 12"/></svg>}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              </motion.div></AnimatePresence>
-            )}
+            {/* GENERAL */}
+            {activeTab==="general" && (
+              <AnimatePresence mode="wait">
+                <motion.div initial={{opacity:0,y:8}} animate={{opacity:1,y:0}}
+                  exit={{opacity:0,y:-8}} transition={{duration:0.14}}
+                  style={{ display:"flex", flexDirection:"column", gap:"20px" }}>
 
-            {activeTab==="alerts"&&(
-              <AnimatePresence mode="wait"><motion.div initial={{opacity:0,y:10}} animate={{opacity:1,y:0}} exit={{opacity:0,y:-10}} transition={{duration:0.15}} style={{display:"flex",flexDirection:"column",gap:"24px"}}>
-                <div>
-                  <div style={{fontSize:"12px",fontWeight:600,color:mutedColor,textTransform:"uppercase",letterSpacing:"0.06em",marginBottom:"12px"}}>Push Notifications</div>
-                  <div style={{borderRadius:"14px",background:cardBg,border:`1px solid ${border}`,padding:"16px",marginBottom:"16px"}}>
-                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:"16px"}}>
-                      <div style={{flex:1,paddingRight:"16px"}}>
-                        <div style={{fontSize:"14px",fontWeight:500,color:textColor,marginBottom:"4px"}}>Daily Reminders</div>
-                        <div style={{fontSize:"13px",color:mutedColor,lineHeight:1.5}}>Get notified about overdue tasks, upcoming habits, and timer completions.</div>
+                  {/* Account */}
+                  <div>
+                    <div className="section-label" style={{ marginBottom:"10px" }}>Account</div>
+                    <div style={{ padding:"14px 16px", borderRadius:"14px",
+                      background:"var(--surface-raised)",
+                      display:"flex", alignItems:"center", gap:"12px" }}>
+                      <div style={{ width:"44px", height:"44px", borderRadius:"12px",
+                        background: ac, display:"flex", alignItems:"center",
+                        justifyContent:"center", fontSize:"18px",
+                        color:"white", fontWeight:800, fontFamily:"var(--font-heading)" }}>
+                        {user?.name?.charAt(0)||"?"}
                       </div>
-                      <div style={{padding:"6px 10px",borderRadius:"8px",background:pushStatus==="granted"?"rgba(34,201,126,0.12)":pushStatus==="denied"?"rgba(240,80,80,0.12)":"rgba(255,255,255,0.06)",color:pushStatus==="granted"?"#22C97E":pushStatus==="denied"?"#F05050":mutedColor,fontSize:"11px",fontWeight:700,textTransform:"uppercase",letterSpacing:"0.02em"}}>
-                        {pushStatus}
+                      <div style={{ flex:1 }}>
+                        <div style={{ fontSize:"15px", fontWeight:600, color:"var(--text-primary)" }}>
+                          {user?.name||"Guest"}
+                        </div>
+                        <div style={{ fontSize:"13px", color:"var(--text-muted)" }}>
+                          {user?.email||"Not logged in"}
+                        </div>
                       </div>
                     </div>
+                  </div>
 
-                    {pushStatus==="default"||pushStatus==="unknown" ? (
-                      <button onClick={reqPush} style={{width:"100%",padding:"12px",borderRadius:"10px",background:`linear-gradient(135deg,${ac},#6447E8)`,border:"none",color:"white",fontSize:"14px",fontWeight:600,cursor:"pointer",fontFamily:"inherit",boxShadow:`0 4px 16px rgba(124,92,252,0.3)`}}>
-                        Enable Notifications
+                  {/* System */}
+                  <div>
+                    <div className="section-label" style={{ marginBottom:"10px" }}>System</div>
+                    <div style={{ borderRadius:"14px", background:"var(--surface-raised)", overflow:"hidden" }}>
+                      <div style={rowStyle}>
+                        <div>
+                          <div style={{ fontSize:"15px", fontWeight:500, color:"var(--text-primary)" }}>Sound effects</div>
+                          <div style={{ fontSize:"12px", color:"var(--text-muted)", marginTop:"2px" }}>For timers and completion</div>
+                        </div>
+                        <Toggle checked={sound} onChange={setSound} accent={ac}/>
+                      </div>
+                      <div style={rowStyle}>
+                        <div>
+                          <div style={{ fontSize:"15px", fontWeight:500, color:"var(--text-primary)" }}>Haptic feedback</div>
+                          <div style={{ fontSize:"12px", color:"var(--text-muted)", marginTop:"2px" }}>Vibrate on actions (mobile)</div>
+                        </div>
+                        <Toggle checked={haptic} onChange={setHaptic} accent={ac}/>
+                      </div>
+                      <div style={{ padding:"16px", display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+                        <div style={{ fontSize:"15px", fontWeight:500, color:"var(--text-primary)" }}>Week starts on</div>
+                        <select value={weekStart} onChange={e=>setWeekStart(e.target.value)}
+                          style={{ background:"var(--bg)", border:"1px solid var(--border)",
+                            color:"var(--text-primary)", padding:"6px 12px",
+                            borderRadius:"8px", fontSize:"13px",
+                            fontFamily:"inherit", cursor:"pointer" }}>
+                          <option value="sunday">Sunday</option>
+                          <option value="monday">Monday</option>
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+                </motion.div>
+              </AnimatePresence>
+            )}
+
+            {/* APPEARANCE */}
+            {activeTab==="look" && (
+              <AnimatePresence mode="wait">
+                <motion.div initial={{opacity:0,y:8}} animate={{opacity:1,y:0}}
+                  exit={{opacity:0,y:-8}} transition={{duration:0.14}}
+                  style={{ display:"flex", flexDirection:"column", gap:"20px" }}>
+
+                  {/* Theme */}
+                  <div>
+                    <div className="section-label" style={{ marginBottom:"10px" }}>Theme</div>
+                    <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:"10px" }}>
+                      <button onClick={() => { if(!isDark) toggleTheme(); }}
+                        style={{ padding:"18px", borderRadius:"14px",
+                          background: isDark ? "var(--accent-subtle)" : "var(--surface-raised)",
+                          border: isDark ? `1.5px solid var(--accent)` : "1.5px solid var(--border)",
+                          color:"var(--text-primary)", cursor:"pointer",
+                          display:"flex", flexDirection:"column",
+                          alignItems:"center", gap:"10px", transition:"all 0.2s",
+                          WebkitTapHighlightColor:"transparent" }}>
+                        <div style={{ fontSize:"24px" }}>🌙</div>
+                        <span style={{ fontSize:"13px", fontWeight:600,
+                          color: isDark ? "var(--accent)" : "var(--text-muted)" }}>Dark</span>
                       </button>
-                    ) : pushStatus==="denied" ? (
-                      /* Updated Amber card for blocked status */
-                      <div style={{padding:"12px",borderRadius:"10px",background:"rgba(245,166,35,0.08)",border:"1px solid rgba(245,166,35,0.22)",display:"flex",gap:"10px",alignItems:"flex-start"}}>
-                        <div style={{fontSize:"16px"}}>⚠️</div>
-                        <div style={{fontSize:"12px",color:"#F5A623",lineHeight:1.5}}>Notifications are blocked. Please allow them in your device settings to receive reminders.</div>
-                      </div>
-                    ) : (
-                      <div style={{padding:"12px",borderRadius:"10px",background:"rgba(34,201,126,0.08)",border:"1px solid rgba(34,201,126,0.22)",display:"flex",gap:"10px",alignItems:"flex-start"}}>
-                        <div style={{fontSize:"16px"}}>✅</div>
-                        <div style={{fontSize:"12px",color:"#22C97E",lineHeight:1.5}}>You're all set! We'll send you timely reminders for your tasks and timers.</div>
-                      </div>
-                    )}
+                      <button onClick={() => { if(isDark) toggleTheme(); }}
+                        style={{ padding:"18px", borderRadius:"14px",
+                          background: !isDark ? "var(--accent-subtle)" : "var(--surface-raised)",
+                          border: !isDark ? `1.5px solid var(--accent)` : "1.5px solid var(--border)",
+                          color:"var(--text-primary)", cursor:"pointer",
+                          display:"flex", flexDirection:"column",
+                          alignItems:"center", gap:"10px", transition:"all 0.2s",
+                          WebkitTapHighlightColor:"transparent" }}>
+                        <div style={{ fontSize:"24px" }}>☀️</div>
+                        <span style={{ fontSize:"13px", fontWeight:600,
+                          color: !isDark ? "var(--accent)" : "var(--text-muted)" }}>Light</span>
+                      </button>
+                    </div>
                   </div>
-                </div>
-              </motion.div></AnimatePresence>
+
+                  {/* Accent */}
+                  <div>
+                    <div className="section-label" style={{ marginBottom:"10px" }}>Accent colour</div>
+                    <div style={{ padding:"16px", borderRadius:"14px",
+                      background:"var(--surface-raised)",
+                      display:"flex", flexWrap:"wrap", gap:"14px", justifyContent:"center" }}>
+                      {ACCENT_PRESETS.map(preset => {
+                        const sel = ac === preset.value;
+                        return (
+                          <button key={preset.value}
+                            onClick={() => changeAccent(preset.value)}
+                            style={{
+                              width:"42px", height:"42px", borderRadius:"50%",
+                              background: preset.value, border:"none", cursor:"pointer",
+                              transition:"transform 0.15s, box-shadow 0.15s",
+                              display:"flex", alignItems:"center", justifyContent:"center",
+                              boxShadow: sel ? `0 0 0 2px var(--bg), 0 0 0 4px ${preset.value}` : "none",
+                              transform: sel ? "scale(1.1)" : "scale(1)",
+                              WebkitTapHighlightColor:"transparent",
+                            }}>
+                            {sel && (
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+                                stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                                <polyline points="20 6 9 17 4 12"/>
+                              </svg>
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </motion.div>
+              </AnimatePresence>
             )}
 
-            {activeTab==="about"&&(
-              <AnimatePresence mode="wait"><motion.div initial={{opacity:0,y:10}} animate={{opacity:1,y:0}} exit={{opacity:0,y:-10}} transition={{duration:0.15}} style={{textAlign:"center",padding:"20px 0"}}>
-                <div onClick={devMode} style={{width:"80px",height:"80px",borderRadius:"22px",background:`linear-gradient(135deg,${ac},#6447E8)`,margin:"0 auto 16px",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"28px",fontWeight:800,color:"white",boxShadow:`0 8px 32px rgba(124,92,252,0.3)`}}>
-                  30
-                </div>
-                <h3 style={{fontSize:"20px",fontWeight:700,margin:"0 0 4px",color:textColor,letterSpacing:"-0.02em"}}>Thirty</h3>
-                <p style={{fontSize:"14px",color:mutedColor,margin:"0 0 32px"}}>Version 3.0.0 (Premium)</p>
-                
-                <div style={{display:"flex",flexDirection:"column",gap:"12px",background:cardBg,borderRadius:"16px",border:`1px solid ${border}`,padding:"12px"}}>
-                  <a href="#" style={{display:"flex",justifyContent:"space-between",padding:"12px",color:textColor,textDecoration:"none",fontSize:"14px",fontWeight:500}}><span>Feedback & Support</span><span style={{color:mutedColor}}>↗</span></a>
-                  <div style={{height:"1px",background:border}}/>
-                  <a href="#" style={{display:"flex",justifyContent:"space-between",padding:"12px",color:textColor,textDecoration:"none",fontSize:"14px",fontWeight:500}}><span>Privacy Policy</span><span style={{color:mutedColor}}>↗</span></a>
-                  <div style={{height:"1px",background:border}}/>
-                  <a href="#" style={{display:"flex",justifyContent:"space-between",padding:"12px",color:textColor,textDecoration:"none",fontSize:"14px",fontWeight:500}}><span>Terms of Service</span><span style={{color:mutedColor}}>↗</span></a>
-                </div>
-                <div style={{marginTop:"32px",fontSize:"12px",color:mutedColor,opacity:0.6}}>Designed with <span style={{color:"#F05050"}}>♥</span> for productivity</div>
-              </motion.div></AnimatePresence>
+            {/* ALERTS */}
+            {activeTab==="alerts" && (
+              <AnimatePresence mode="wait">
+                <motion.div initial={{opacity:0,y:8}} animate={{opacity:1,y:0}}
+                  exit={{opacity:0,y:-8}} transition={{duration:0.14}}
+                  style={{ display:"flex", flexDirection:"column", gap:"20px" }}>
+                  <div>
+                    <div className="section-label" style={{ marginBottom:"10px" }}>Push Notifications</div>
+                    <div style={{ borderRadius:"14px", background:"var(--surface-raised)", padding:"16px" }}>
+                      <div style={{ display:"flex", justifyContent:"space-between",
+                        alignItems:"flex-start", marginBottom:"16px" }}>
+                        <div style={{ flex:1, paddingRight:"16px" }}>
+                          <div style={{ fontSize:"15px", fontWeight:500, color:"var(--text-primary)", marginBottom:"4px" }}>
+                            Daily Reminders
+                          </div>
+                          <div style={{ fontSize:"13px", color:"var(--text-muted)", lineHeight:1.5 }}>
+                            Get notified about tasks, habits, and timers.
+                          </div>
+                        </div>
+                        <div style={{ padding:"6px 10px", borderRadius:"8px",
+                          background: pushStatus==="granted" ? "rgba(48,209,88,0.15)"
+                            : pushStatus==="denied" ? "rgba(255,69,58,0.15)"
+                            : "var(--surface-elevated)",
+                          color: pushStatus==="granted" ? "var(--success)"
+                            : pushStatus==="denied" ? "var(--danger)"
+                            : "var(--text-muted)",
+                          fontSize:"11px", fontWeight:700, textTransform:"uppercase" }}>
+                          {pushStatus}
+                        </div>
+                      </div>
+
+                      {pushStatus==="default"||pushStatus==="unknown" ? (
+                        <button className="btn-primary" onClick={reqPush}
+                          style={{ width:"100%", height:"46px", fontSize:"14px" }}>
+                          Enable Notifications
+                        </button>
+                      ) : pushStatus==="denied" ? (
+                        <div style={{ padding:"12px", borderRadius:"10px",
+                          background:"rgba(255,69,58,0.1)",
+                          border:"1px solid rgba(255,69,58,0.25)",
+                          display:"flex", gap:"10px", alignItems:"flex-start" }}>
+                          <div style={{ fontSize:"16px" }}>⚠️</div>
+                          <div style={{ fontSize:"12px", color:"var(--danger)", lineHeight:1.5 }}>
+                            Notifications are blocked. Allow them in device settings.
+                          </div>
+                        </div>
+                      ) : (
+                        <div style={{ padding:"12px", borderRadius:"10px",
+                          background:"rgba(48,209,88,0.1)",
+                          border:"1px solid rgba(48,209,88,0.25)",
+                          display:"flex", gap:"10px", alignItems:"flex-start" }}>
+                          <div style={{ fontSize:"16px" }}>✅</div>
+                          <div style={{ fontSize:"12px", color:"var(--success)", lineHeight:1.5 }}>
+                            You're all set! Reminders are active.
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </motion.div>
+              </AnimatePresence>
+            )}
+
+            {/* ABOUT */}
+            {activeTab==="about" && (
+              <AnimatePresence mode="wait">
+                <motion.div initial={{opacity:0,y:8}} animate={{opacity:1,y:0}}
+                  exit={{opacity:0,y:-8}} transition={{duration:0.14}}
+                  style={{ textAlign:"center", padding:"20px 0" }}>
+                  <div onClick={devMode}
+                    style={{ width:"80px", height:"80px", borderRadius:"22px",
+                      background: ac, margin:"0 auto 16px",
+                      display:"flex", alignItems:"center", justifyContent:"center",
+                      fontSize:"28px", fontWeight:800, color:"white",
+                      boxShadow:`0 8px 32px ${ac}55`, cursor:"default",
+                      fontFamily:"var(--font-heading)" }}>
+                    30
+                  </div>
+                  <h3 style={{ fontSize:"20px", fontWeight:700, margin:"0 0 4px",
+                    color:"var(--text-primary)", letterSpacing:"-0.02em",
+                    fontFamily:"var(--font-heading)" }}>Thirty</h3>
+                  <p style={{ fontSize:"14px", color:"var(--text-muted)", margin:"0 0 32px" }}>
+                    Version 3.0.0 · Premium
+                  </p>
+
+                  <div style={{ display:"flex", flexDirection:"column", gap:"0",
+                    background:"var(--surface-raised)", borderRadius:"14px", overflow:"hidden" }}>
+                    {["Feedback & Support","Privacy Policy","Terms of Service"].map((item, i, arr) => (
+                      <a key={item} href="#"
+                        style={{ display:"flex", justifyContent:"space-between", padding:"15px 16px",
+                          color:"var(--text-primary)", textDecoration:"none",
+                          fontSize:"15px", fontWeight:500,
+                          borderBottom: i < arr.length-1 ? "0.5px solid rgba(255,255,255,0.06)" : "none" }}>
+                        <span>{item}</span>
+                        <span style={{ color:"var(--text-muted)" }}>↗</span>
+                      </a>
+                    ))}
+                  </div>
+
+                  <div style={{ marginTop:"32px", fontSize:"12px", color:"var(--text-muted)", opacity:0.6 }}>
+                    Made with <span style={{ color:"var(--danger)" }}>♥</span> for productivity
+                  </div>
+                </motion.div>
+              </AnimatePresence>
             )}
 
           </div>
         </div>
-        <style>{`.hide-scrollbar::-webkit-scrollbar{display:none} .hide-scrollbar{-ms-overflow-style:none;scrollbar-width:none} @keyframes scale-check{from{transform:scale(0.5);opacity:0}to{transform:scale(1);opacity:1}}`}</style>
+        <style>{`.hide-scrollbar::-webkit-scrollbar{display:none}.hide-scrollbar{-ms-overflow-style:none;scrollbar-width:none}`}</style>
       </motion.div>
     </>
   );

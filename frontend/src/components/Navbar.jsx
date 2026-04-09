@@ -227,19 +227,17 @@ export default function Navbar({ activePage, onPageChange }) {
     return () => clearInterval(iv);
   }, []);
 
-  const navBg  = isDark
-    ? (scrolled ? "rgba(9,9,15,0.97)" : "rgba(9,9,15,0.88)")
-    : (scrolled ? "rgba(248,250,252,0.97)" : "rgba(248,250,252,0.88)");
-  const border     = isDark ? "rgba(255,255,255,0.07)"  : "rgba(0,0,0,0.07)";
-  const textColor  = isDark ? "#F0EFF8"                 : "#0f172a";
-  const mutedColor = isDark ? "#8B8AA3"                 : "rgba(15,23,42,0.42)";
+  const navBg  = scrolled ? "var(--bg)" : "var(--bg)"; // We let it just blend into --bg or can apply opacity
+  const border     = "var(--border)";
+  const textColor  = "var(--text-primary)";
+  const mutedColor = "var(--text-muted)";
 
   const toolBtn = {
     width:"36px", height:"36px", borderRadius:"10px",
     border:`1px solid ${border}`,
-    background:isDark?"rgba(255,255,255,0.05)":"rgba(0,0,0,0.04)",
+    background: "var(--surface-raised)",
     cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center",
-    transition:"all 0.15s", flexShrink:0, color:textColor, position:"relative",
+    transition:"all var(--motion-duration) var(--easing-default)", flexShrink:0, color:textColor, position:"relative",
     WebkitTapHighlightColor:"transparent", touchAction:"manipulation",
   };
 
@@ -249,21 +247,29 @@ export default function Navbar({ activePage, onPageChange }) {
       <motion.nav
         initial={{y:-64,opacity:0}} animate={{y:0,opacity:1}}
         transition={{ type:"spring", damping:22, stiffness:220, delay:0.05 }}
-        style={{ position:"sticky",top:0,zIndex:300,background:navBg,backdropFilter:"blur(28px) saturate(1.8)",borderBottom:`1px solid ${border}`,fontFamily:"'Inter',sans-serif",transition:"background 0.3s",boxShadow:scrolled?"0 4px 32px rgba(0,0,0,0.18)":"none",paddingTop:"env(safe-area-inset-top,0px)" }}
+        style={{ position:"sticky",top:0,zIndex:300,
+          background:"var(--bg)",
+          borderBottom:`0.5px solid rgba(255,255,255,0.1)`,
+          fontFamily:"var(--font-body)",
+          paddingTop:"env(safe-area-inset-top,0px)" }}
       >
-        {/* Accent top stripe */}
-        <div style={{ position:"absolute",top:"env(safe-area-inset-top,0px)",left:0,right:0,height:"1.5px",background:`linear-gradient(90deg,transparent,${ac} 30%,${ac}aa 60%,transparent)`,opacity:0.85 }}/>
+
+
 
         <div style={{ maxWidth:"1200px",margin:"0 auto",padding:"0 16px",height:"56px",display:"flex",alignItems:"center" }}>
 
-          {/* Logo — keep "30" brand mark exactly */}
-          <motion.div whileHover={{scale:1.04}} whileTap={{scale:0.97}}
+          {/* Logo */}
+          <motion.div whileTap={{scale:0.97}}
             onClick={() => onPageChange("today")}
             style={{ display:"flex",alignItems:"center",gap:"8px",cursor:"pointer",flexShrink:0,marginRight:"16px" }}>
-            <div style={{ width:"32px",height:"32px",background:`linear-gradient(135deg,${ac},#6447E8)`,borderRadius:"10px",display:"flex",alignItems:"center",justifyContent:"center",boxShadow:`0 0 16px rgba(124,92,252,0.45)`,fontSize:"12px",fontWeight:900,color:"white",letterSpacing:"-0.05em",flexShrink:0 }}>
+            <div style={{ width:"32px",height:"32px",background:"var(--accent)",borderRadius:"10px",
+              display:"flex",alignItems:"center",justifyContent:"center",
+              boxShadow:"0 0 16px rgba(107,70,255,0.4)",
+              fontSize:"12px",fontWeight:900,color:"white",letterSpacing:"-0.05em",flexShrink:0 }}>
               30
             </div>
-            <span style={{ fontSize:"16px",fontWeight:800,letterSpacing:"-0.05em",color:ac,userSelect:"none",fontFamily:"'Plus Jakarta Sans',sans-serif" }}>
+            <span style={{ fontSize:"16px",fontWeight:800,letterSpacing:"-0.05em",
+              color:"var(--accent)",userSelect:"none",fontFamily:"var(--font-heading)" }}>
               Thirty
             </span>
           </motion.div>
@@ -379,25 +385,59 @@ export default function Navbar({ activePage, onPageChange }) {
       </motion.nav>
 
       {/* MOBILE BOTTOM NAV */}
-      <div className="mobile-bottom-nav" style={{ position:"fixed",bottom:0,left:0,right:0,zIndex:300,background:navBg,backdropFilter:"blur(28px) saturate(1.8)",borderTop:`1px solid ${border}` }}>
-        <div style={{ display:"flex",justifyContent:"space-around",alignItems:"center",height:"64px",padding:"0 4px" }}>
+      <div className="mobile-bottom-nav" style={{
+        position:"fixed", bottom:0, left:0, right:0, zIndex:300,
+        background:"#000000",
+        borderTop:"0.5px solid rgba(255,255,255,0.1)",
+      }}>
+        <div style={{ display:"flex", justifyContent:"space-around", alignItems:"center",
+          height:"64px", padding:"0 4px" }}>
           {NAV_ITEMS.map(item => {
             const active = activePage === item.id;
             return (
               <motion.button key={item.id}
-                whileTap={{ y: -3 }}
-                transition={{ type:"spring", stiffness:500, damping:20 }}
+                whileTap={{ scale: 0.96 }}
+                transition={{ type:"spring", stiffness:280, damping:22 }}
                 onClick={() => onPageChange(item.id)}
-                style={{ flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:"4px",padding:"6px 2px",background:"none",border:"none",cursor:"pointer",color:active?ac:mutedColor,fontFamily:"inherit",transition:"color 0.15s",position:"relative",WebkitTapHighlightColor:"transparent",touchAction:"manipulation" }}>
-                {/* 2px purple underline bar at top */}
+                style={{
+                  flex:1, display:"flex", flexDirection:"column",
+                  alignItems:"center", justifyContent:"center",
+                  gap:"3px", padding:"6px 2px",
+                  background:"none", border:"none", cursor:"pointer",
+                  fontFamily:"var(--font-body)",
+                  position:"relative",
+                  WebkitTapHighlightColor:"transparent", touchAction:"manipulation",
+                }}>
+                {/* Active indicator — 2px bar at top */}
                 {active && (
                   <motion.div layoutId="mobile-pill"
-                    style={{ position:"absolute",top:0,left:"25%",right:"25%",height:"2px",borderRadius:"0 0 3px 3px",background:ac }}/>
+                    style={{ position:"absolute", top:0, left:"30%", right:"30%",
+                      height:"2px", borderRadius:"0 0 2px 2px",
+                      background:"var(--accent)" }}/>
                 )}
-                <div style={{ filter:active?`drop-shadow(0 0 8px ${ac}99)`:"none",transition:"filter 0.2s" }}>
-                  <item.Icon size={22} active={active}/>
+                {/* Active pill behind icon + label */}
+                {active && (
+                  <div style={{
+                    position:"absolute", inset:"4px 8px",
+                    borderRadius:"10px",
+                    background:"rgba(107,70,255,0.12)",
+                  }}/>
+                )}
+                <div style={{
+                  filter: active ? "drop-shadow(0 0 10px rgba(107,70,255,0.4))" : "none",
+                  transition:"filter 150ms",
+                  position:"relative",
+                  color: active ? "var(--accent)" : "rgba(235,235,245,0.35)",
+                }}>
+                  <item.Icon size={24} active={active}/>
                 </div>
-                <span style={{ fontSize:"10px",fontWeight:active?600:400,letterSpacing:"0.01em" }}>{item.label}</span>
+                <span style={{
+                  fontSize:"10px",
+                  fontWeight: active ? 600 : 500,
+                  letterSpacing:"0.01em",
+                  color: active ? "var(--accent)" : "rgba(235,235,245,0.35)",
+                  position:"relative",
+                }}>{item.label}</span>
               </motion.button>
             );
           })}

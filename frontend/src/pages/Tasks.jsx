@@ -12,9 +12,9 @@ const tomorrowStr = () => { const d=new Date(); d.setDate(d.getDate()+1); return
 const weekEndStr  = () => { const d=new Date(); d.setDate(d.getDate()+7); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`; };
 
 const PM = {
-  high:   { color:"#F05050", bg:"rgba(240,80,80,0.12)",  label:"High",   dot:"🔴" },
-  medium: { color:"#F5A623", bg:"rgba(245,166,35,0.12)", label:"Medium", dot:"🟡" },
-  low:    { color:"#22C97E", bg:"rgba(34,201,126,0.12)", label:"Low",    dot:"🟢" },
+  high:   { color:"var(--danger)", bg:"var(--danger-subtle)",  label:"High",   dot:"🔴" },
+  medium: { color:"var(--warning)", bg:"var(--warning-subtle)", label:"Medium", dot:"🟡" },
+  low:    { color:"var(--success)", bg:"var(--success-subtle)", label:"Low",    dot:"🟢" },
 };
 const PRIORITY_OPTS = [
   { value:"high", label:"🔴 High" },{ value:"medium", label:"🟡 Medium" },{ value:"low", label:"🟢 Low" },
@@ -49,31 +49,31 @@ function SubTasks({ task, onUpdate, isDark, textColor, mutedColor, border, input
     <div style={{marginTop:"8px"}}>
       {sub.map(s=>(
         <div key={s.id} style={{display:"flex",alignItems:"center",gap:"7px",marginBottom:"3px"}}>
-          <input type="checkbox" checked={s.done} onChange={()=>onUpdate(task.id,{subtasks:sub.map(x=>x.id===s.id?{...x,done:!x.done}:x)})} style={{cursor:"pointer",accentColor:"#7C5CFC"}}/>
+          <input type="checkbox" checked={s.done} onChange={()=>onUpdate(task.id,{subtasks:sub.map(x=>x.id===s.id?{...x,done:!x.done}:x)})} style={{cursor:"pointer",accentColor:"var(--accent)"}}/>
           <span style={{fontSize:"12px",textDecoration:s.done?"line-through":"none",opacity:s.done?.5:1,flex:1,color:textColor}}>{s.title}</span>
-          <button onClick={()=>onUpdate(task.id,{subtasks:sub.filter(x=>x.id!==s.id)})} style={{background:"none",border:"none",cursor:"pointer",color:"#F05050",fontSize:"11px"}}>✕</button>
+          <button onClick={()=>onUpdate(task.id,{subtasks:sub.filter(x=>x.id!==s.id)})} style={{background:"none",border:"none",cursor:"pointer",color:"var(--danger)",fontSize:"11px"}}>✕</button>
         </div>
       ))}
       <div style={{display:"flex",gap:"5px",marginTop:"5px"}}>
         <input value={text} onChange={e=>setText(e.target.value)} onKeyDown={e=>e.key==="Enter"&&add()} placeholder="Add subtask…"
           style={{flex:1,padding:"4px 9px",borderRadius:"6px",border:`1px solid ${border}`,background:inputBg,color:textColor,fontSize:"12px",fontFamily:"inherit",outline:"none"}}/>
-        <button onClick={add} style={{padding:"4px 9px",borderRadius:"6px",background:"rgba(124,92,252,0.1)",border:"1px solid rgba(124,92,252,0.3)",color:"#7C5CFC",cursor:"pointer",fontSize:"12px"}}>+</button>
+        <button onClick={add} style={{padding:"4px 9px",borderRadius:"6px",background:"var(--accent-subtle)",border:"1px solid var(--accent)",color:"var(--accent)",cursor:"pointer",fontSize:"12px"}}>+</button>
       </div>
     </div>
   );
 }
 
-function TaskCard({ task, categories, onUpdate, onDelete, isDark, accent }) {
+function TaskCard({ task, categories, onUpdate, onDelete }) {
   const [expanded, setExpanded] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [bouncing, setBouncing] = useState(false);
   const fileRef = useRef();
-  const ac = accent || "#7C5CFC";
-  const textColor  = isDark ? "#F0EFF8" : "#0f172a";
-  const mutedColor = isDark ? "#8B8AA3" : "rgba(15,23,42,0.45)";
-  const border     = "rgba(255,255,255,0.07)";
-  const inputBg    = isDark ? "rgba(255,255,255,0.07)" : "#ffffff";
-  const dateInput  = { padding:"5px 8px",borderRadius:"8px",border:"1px solid rgba(255,255,255,0.12)",background:inputBg,color:textColor,fontSize:"12px",fontFamily:"inherit",outline:"none" };
+
+  const textColor  = "var(--text-primary)";
+  const mutedColor = "var(--text-muted)";
+  const border     = "var(--border)";
+  const inputBg    = "var(--bg)";
+  const dateInput  = { padding:"5px 8px",borderRadius:"8px",border:`1px solid var(--border)`,background:inputBg,color:textColor,fontSize:"12px",fontFamily:"inherit",outline:"none" };
   const pm = PM[task.priority]||PM.medium;
   const cat = categories.find(c=>c.id===task.categoryId);
   const today = todayStr();
@@ -81,8 +81,8 @@ function TaskCard({ task, categories, onUpdate, onDelete, isDark, accent }) {
   const dueFmt = formatDue(task.dueDate);
   const subCount = task.subtasks?.length||0;
   const subDone  = task.subtasks?.filter(s=>s.done).length||0;
-  const cardBg = isDark?(overdue?"rgba(240,80,80,0.06)":"#121220"):(overdue?"rgba(240,80,80,0.04)":"rgba(255,255,255,0.92)");
-  const barColor = task.completed ? "#22C97E" : pm.color;
+  const cardBg = overdue ? "var(--danger-subtle)" : "var(--surface)";
+  const barColor = task.completed ? "var(--accent-subtle)" : pm.color;
 
   const handleComplete = () => {
     if (!task.completed) { setBouncing(true); setTimeout(()=>setBouncing(false),500); }
@@ -101,37 +101,40 @@ function TaskCard({ task, categories, onUpdate, onDelete, isDark, accent }) {
 
   return (
     <motion.div layout initial={{opacity:0,y:10}} animate={{opacity:1,y:0}} exit={{opacity:0,y:-6,scale:.97}}
-      style={{background:cardBg,backdropFilter:"blur(14px)",borderRadius:"12px",border:`1px solid ${overdue?"rgba(240,80,80,0.22)":"rgba(255,255,255,0.07)"}`,borderLeft:`3px solid ${barColor}`,overflow:"hidden",transition:"border-left-color 0.4s ease"}}>
+      style={{background:cardBg,borderRadius:"14px",
+        border:overdue?`1px solid var(--border-danger)`:"none",
+        borderLeft:`3px solid ${barColor}`,
+        overflow:"hidden",transition:"border-left-color 0.4s ease"}}>
       <div style={{padding:"16px",display:"flex",alignItems:"flex-start",gap:"12px"}}>
         <motion.div onClick={handleComplete}
-          animate={bouncing?{scale:[1,1.22,0.92,1]}:{scale:1}}
+          animate={bouncing?{scale:[1,1.3,0.92,1]}:{scale:1}}
           transition={{type:"spring",stiffness:400,damping:15}}
-          style={{width:"20px",height:"20px",borderRadius:"6px",flexShrink:0,marginTop:"2px",border:`2px solid ${task.completed?"#22C97E":"rgba(255,255,255,0.2)"}`,background:task.completed?"linear-gradient(135deg,#22C97E,#16a37a)":"transparent",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",transition:"border-color 0.14s, background 0.14s",WebkitTapHighlightColor:"transparent",touchAction:"manipulation"}}>
+          style={{width:"20px",height:"20px",borderRadius:"6px",flexShrink:0,marginTop:"2px",border:`2px solid ${task.completed?"var(--success)":"var(--border-strong)"}`,background:task.completed?"var(--success)":"transparent",boxShadow:task.completed?"0 0 8px var(--success-glow)":"none",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",transition:"all 0.3s",WebkitTapHighlightColor:"transparent",touchAction:"manipulation"}}>
           {task.completed && <span style={{color:"white",fontSize:"10px",fontWeight:700}}>✓</span>}
         </motion.div>
         <div style={{flex:1,minWidth:0}}>
           <div style={{display:"flex",alignItems:"center",gap:"6px",flexWrap:"wrap",marginBottom:"4px"}}>
-            <span style={{fontSize:"15px",fontWeight:500,color:textColor,textDecoration:task.completed?"line-through":"none",opacity:task.completed?.5:1}}>{task.title}</span>
+            <span style={{fontSize:"15px",fontWeight:600,fontFamily:"var(--font-heading)",color:task.completed?"var(--text-muted)":"var(--text-primary)",textDecoration:task.completed?"line-through":"none"}}>{task.title}</span>
             <span style={{fontSize:"11px",fontWeight:600,padding:"2px 8px",borderRadius:"20px",background:pm.bg,color:pm.color,flexShrink:0}}>{pm.dot} {pm.label}</span>
             {cat&&<span style={{fontSize:"11px",fontWeight:600,padding:"2px 8px",borderRadius:"20px",background:`${cat.color}18`,color:cat.color,flexShrink:0}}>{cat.icon} {cat.name}</span>}
-            {dueFmt&&<span style={{fontSize:"11px",fontWeight:500,padding:"2px 8px",borderRadius:"20px",background:overdue?"rgba(240,80,80,0.12)":"rgba(124,92,252,0.1)",color:overdue?"#F05050":"#7C5CFC",flexShrink:0}}>📅 {dueFmt}{overdue?" · Overdue":""}</span>}
+            {dueFmt&&<span style={{fontSize:"11px",fontWeight:500,padding:"2px 8px",borderRadius:"20px",background:overdue?"var(--danger-subtle)":"var(--accent-subtle)",color:overdue?"var(--danger)":"var(--accent)",flexShrink:0}}>📅 {dueFmt}{overdue?" · Overdue":""}</span>}
             {subCount>0&&<span style={{fontSize:"11px",color:mutedColor}}>{subDone}/{subCount}</span>}
             {task.attachments?.length>0&&<span style={{fontSize:"11px",color:mutedColor}}>📎{task.attachments.length}</span>}
           </div>
           {task.description&&<p style={{fontSize:"14px",color:mutedColor,margin:"3px 0 0",lineHeight:1.6}}>{task.description}</p>}
           {subCount>0&&(
-            <div style={{marginTop:"7px",height:"3px",background:"rgba(255,255,255,0.07)",borderRadius:"2px",overflow:"hidden"}}>
-              <div style={{height:"100%",borderRadius:"2px",width:`${(subDone/subCount)*100}%`,background:"linear-gradient(90deg,#22C97E,#16a37a)",transition:"width 0.3s"}}/>
+            <div style={{marginTop:"7px",height:"3px",background:"var(--surface-raised)",borderRadius:"2px",overflow:"hidden"}}>
+              <div style={{height:"100%",borderRadius:"2px",width:`${(subDone/subCount)*100}%`,background:"var(--success)",transition:"width 0.3s"}}/>
             </div>
           )}
         </div>
         <div style={{display:"flex",gap:"5px",flexShrink:0}}>
           <motion.button whileTap={{scale:.9}} onClick={()=>setExpanded(!expanded)}
-            style={{width:"28px",height:"28px",borderRadius:"8px",background:expanded?"rgba(124,92,252,0.12)":"rgba(255,255,255,0.05)",border:"none",cursor:"pointer",fontSize:"11px",color:expanded?"#7C5CFC":mutedColor,display:"flex",alignItems:"center",justifyContent:"center",WebkitTapHighlightColor:"transparent",touchAction:"manipulation"}}>
+            style={{width:"28px",height:"28px",borderRadius:"8px",background:expanded?"var(--accent-subtle)":"var(--surface-raised)",border:"none",cursor:"pointer",fontSize:"11px",color:expanded?"var(--accent)":mutedColor,display:"flex",alignItems:"center",justifyContent:"center",WebkitTapHighlightColor:"transparent",touchAction:"manipulation"}}>
             {expanded?"▲":"▼"}
           </motion.button>
           <motion.button whileTap={{scale:.9}} onClick={()=>onDelete(task.id)}
-            style={{width:"28px",height:"28px",borderRadius:"8px",background:"rgba(240,80,80,0.08)",border:"none",cursor:"pointer",fontSize:"12px",color:"#F05050",display:"flex",alignItems:"center",justifyContent:"center",WebkitTapHighlightColor:"transparent",touchAction:"manipulation"}}>
+            style={{width:"28px",height:"28px",borderRadius:"8px",background:"rgba(255,69,58,0.1)",border:"none",cursor:"pointer",fontSize:"12px",color:"var(--danger)",display:"flex",alignItems:"center",justifyContent:"center",WebkitTapHighlightColor:"transparent",touchAction:"manipulation"}}>
             ✕
           </motion.button>
         </div>
@@ -165,30 +168,28 @@ function TaskCard({ task, categories, onUpdate, onDelete, isDark, accent }) {
 }
 
 export default function Tasks() {
-  const { isDark, accent } = useTheme();
   const { tasks, categories, loading, stats, addTask, updateTask, deleteTask, setTasks, addCategory } = useTasks();
-  const ac = accent || "#7C5CFC";
   const [newTitle,setNewTitle]=useState(""); const [newPriority,setNewPriority]=useState("medium"); const [newCategory,setNewCategory]=useState(""); const [newDueDate,setNewDueDate]=useState(""); const [newDesc,setNewDesc]=useState("");
   const [search,setSearch]=useState(""); const [activeFilter,setActiveFilter]=useState("all");
   const [showAddForm,setShowAddForm]=useState(false); const [showCatModal,setShowCatModal]=useState(false);
-  const [catName,setCatName]=useState(""); const [catColor,setCatColor]=useState(ac); const [catIcon,setCatIcon]=useState("📁"); const [addingTask,setAddingTask]=useState(false);
+  const [catName,setCatName]=useState(""); const [catColor,setCatColor]=useState("#6B46FF"); const [catIcon,setCatIcon]=useState("📁"); const [addingTask,setAddingTask]=useState(false);
 
-  const textColor  = isDark ? "#F0EFF8" : "#0f172a";
-  const mutedColor = isDark ? "#8B8AA3" : "rgba(15,23,42,0.45)";
-  const cardBg     = isDark ? "#121220" : "rgba(255,255,255,0.92)";
-  const inputBg    = isDark ? "rgba(255,255,255,0.07)" : "#ffffff";
-  const inputStyle = { padding:"10px 13px",borderRadius:"10px",border:"1px solid rgba(255,255,255,0.08)",background:inputBg,color:textColor,fontSize:"13px",fontFamily:"inherit",outline:"none" };
+  const textColor  = "var(--text-primary)";
+  const mutedColor = "var(--text-muted)";
+  const cardBg     = "var(--surface)";
+  const inputBg    = "var(--bg)";
+  const inputStyle = { padding:"10px 13px",borderRadius:"10px",border:"1px solid var(--border)",background:inputBg,color:textColor,fontSize:"13px",fontFamily:"inherit",outline:"none" };
 
   const today=todayStr(), weekEnd=weekEndStr();
   const dueCounts=useMemo(()=>({today:tasks.filter(x=>x.dueDate===today).length,overdue:tasks.filter(x=>x.dueDate&&x.dueDate<today&&!x.completed).length,week:tasks.filter(x=>x.dueDate&&x.dueDate>=today&&x.dueDate<=weekEnd).length}),[tasks,today,weekEnd]);
 
   const PILLS=[
-    {id:"all",label:`All (${tasks.length})`,color:ac},
-    {id:"today",label:`Today (${dueCounts.today})`,color:"#7C5CFC"},
-    {id:"overdue",label:`⚠ ${dueCounts.overdue} Overdue`,color:"#F05050"},
-    {id:"week",label:"This Week",color:"#22C97E"},
-    {id:"high",label:"High",color:"#F05050"},{id:"medium",label:"Medium",color:"#F5A623"},{id:"low",label:"Low",color:"#22C97E"},
-    {id:"pending",label:"Pending",color:"#F5A623"},{id:"done",label:"Done",color:"#22C97E"},
+    {id:"all",label:`All (${tasks.length})`,color:"var(--accent)"},
+    {id:"today",label:`Today (${dueCounts.today})`,color:"var(--accent)"},
+    {id:"overdue",label:`⚠ ${dueCounts.overdue} Overdue`,color:"var(--danger)"},
+    {id:"week",label:"This Week",color:"var(--success)"},
+    {id:"high",label:"High",color:"var(--danger)"},{id:"medium",label:"Medium",color:"var(--warning)"},{id:"low",label:"Low",color:"var(--success)"},
+    {id:"pending",label:"Pending",color:"var(--warning)"},{id:"done",label:"Done",color:"var(--success)"},
     ...categories.slice(0,4).map(c=>({id:`cat_${c.id}`,label:`${c.icon} ${c.name}`,color:c.color})),
   ];
 
@@ -213,33 +214,33 @@ export default function Tasks() {
   const categoryOpts=[{value:"",label:"No category"},...categories.map(c=>({value:c.id,label:`${c.icon} ${c.name}`}))];
 
   return (
-    <div style={{maxWidth:"900px",margin:"0 auto",padding:"24px 16px",fontFamily:"'Inter',sans-serif",color:textColor}}>
+    <div style={{maxWidth:"900px",margin:"0 auto",padding:"24px 16px",fontFamily:"var(--font-body)",color:textColor}}>
       {/* Header */}
       <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:"24px",flexWrap:"wrap",gap:"10px"}}>
         <div>
-          <h1 style={{fontSize:"26px",fontWeight:600,margin:0,letterSpacing:"-0.02em",fontFamily:"'Plus Jakarta Sans',sans-serif"}}>My <span style={{background:`linear-gradient(135deg,${ac},#a78bfa)`,WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent"}}>Tasks</span></h1>
+          <h1 style={{fontSize:"28px",fontWeight:700,margin:0,letterSpacing:"-0.03em",fontFamily:"var(--font-heading)",color:"var(--text-primary)"}}>Tasks</h1>
           <p style={{fontSize:"13px",color:mutedColor,margin:"3px 0 0"}}>{stats.completed}/{stats.total} completed{stats.overdue>0?` · ⚠ ${stats.overdue} overdue`:" · All on track ✓"}</p>
         </div>
-        <motion.button whileHover={{scale:1.04}} whileTap={{scale:.97}} onClick={()=>setShowAddForm(!showAddForm)}
-          style={{height:"48px",padding:"0 20px",borderRadius:"10px",background:`linear-gradient(135deg,${ac},#6447E8)`,border:"none",color:"white",cursor:"pointer",fontSize:"15px",fontWeight:600,boxShadow:"0 4px 16px rgba(124,92,252,0.4)",fontFamily:"inherit",WebkitTapHighlightColor:"transparent",touchAction:"manipulation"}}>
+        <motion.button whileTap={{scale:.97}} onClick={()=>setShowAddForm(!showAddForm)}
+          style={{height:"48px",padding:"0 22px",borderRadius:"14px",background:"var(--accent)",border:"none",color:"white",cursor:"pointer",fontSize:"15px",fontWeight:600,boxShadow:"0 4px 18px var(--accent-glow)",fontFamily:"inherit",WebkitTapHighlightColor:"transparent",touchAction:"manipulation"}}>
           + New Task
         </motion.button>
       </div>
 
       {/* Stats */}
       <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:"10px",marginBottom:"20px"}}>
-        {[{label:"Total",value:stats.total,color:ac,icon:"📋"},{label:"Done",value:stats.completed,color:"#22C97E",icon:"✅"},{label:"Pending",value:stats.pending,color:"#F5A623",icon:"⏳"},{label:"High 🔥",value:stats.highPriority,color:"#F05050",icon:"🔥"}].map(s=>(
-          <div key={s.label} style={{padding:"14px",borderRadius:"12px",background:cardBg,border:"1px solid rgba(255,255,255,0.07)",position:"relative",overflow:"hidden"}}>
+        {[{label:"Total",value:stats.total,color:"var(--accent)",icon:"📋"},{label:"Done",value:stats.completed,color:"var(--success)",icon:"✅"},{label:"Pending",value:stats.pending,color:"var(--warning)",icon:"⏳"},{label:"High 🔥",value:stats.highPriority,color:"var(--danger)",icon:"🔥"}].map(s=>(
+          <div key={s.label} style={{padding:"14px",borderRadius:"12px",background:"var(--surface)",border:"none",position:"relative",overflow:"hidden"}}>
             <div style={{position:"absolute",top:"12px",left:"12px",fontSize:"20px",opacity:0.55}}>{s.icon}</div>
-            <div style={{fontSize:"24px",fontWeight:600,color:s.color,marginTop:"28px"}}>{s.value}</div>
-            <div style={{fontSize:"12px",color:mutedColor,marginTop:"2px"}}>{s.label}</div>
+            <div style={{fontSize:"24px",fontWeight:700,color:s.color,marginTop:"28px",fontFamily:"var(--font-heading)"}}>{s.value}</div>
+            <div style={{fontSize:"11px",color:mutedColor,marginTop:"4px",textTransform:"uppercase",letterSpacing:"0.06em",fontWeight:600}}>{s.label}</div>
           </div>
         ))}
       </div>
 
       {/* Add task form */}
       <AnimatePresence>
-        {showAddForm&&(<motion.div initial={{height:0,opacity:0}} animate={{height:"auto",opacity:1}} exit={{height:0,opacity:0}} style={{overflow:"hidden",marginBottom:"18px"}}><div style={{padding:"18px",borderRadius:"12px",background:cardBg,border:"1px solid rgba(255,255,255,0.07)"}}><h3 style={{margin:"0 0 14px",fontSize:"15px",fontWeight:600,color:textColor}}>New Task</h3><div style={{display:"flex",flexDirection:"column",gap:"9px"}}><input placeholder="Task title *" value={newTitle} onChange={e=>setNewTitle(e.target.value)} onKeyDown={e=>e.key==="Enter"&&handleAddTask()} autoFocus style={{...inputStyle,fontSize:"15px",fontWeight:500}}/><textarea placeholder="Description (optional)" value={newDesc} onChange={e=>setNewDesc(e.target.value)} rows={2} style={{...inputStyle,resize:"vertical"}}/><div style={{display:"flex",gap:"9px",flexWrap:"wrap",alignItems:"flex-start"}}><CustomSelect value={newPriority} onChange={setNewPriority} options={PRIORITY_OPTS} style={{minWidth:"130px"}}/><CustomSelect value={newCategory} onChange={setNewCategory} options={categoryOpts} style={{minWidth:"150px"}}/><input type="date" value={newDueDate} onChange={e=>setNewDueDate(e.target.value)} style={inputStyle}/></div><div style={{display:"flex",gap:"7px",justifyContent:"flex-end"}}><button onClick={()=>setShowAddForm(false)} style={{...inputStyle,cursor:"pointer",padding:"8px 14px"}}>Cancel</button><motion.button whileTap={{scale:.97}} onClick={handleAddTask} disabled={addingTask} style={{padding:"8px 20px",borderRadius:"10px",background:`linear-gradient(135deg,${ac},#6447E8)`,border:"none",color:"white",cursor:"pointer",fontSize:"13px",fontWeight:600,fontFamily:"inherit"}}>{addingTask?"Adding…":"Add Task"}</motion.button></div></div></div></motion.div>)}
+        {showAddForm&&(<motion.div initial={{height:0,opacity:0}} animate={{height:"auto",opacity:1}} exit={{height:0,opacity:0}} style={{overflow:"hidden",marginBottom:"18px"}}><div style={{padding:"18px",borderRadius:"12px",background:cardBg,border:"1px solid var(--border)"}}><h3 style={{margin:"0 0 14px",fontSize:"15px",fontWeight:600,fontFamily:"var(--font-heading)",color:textColor}}>New Task</h3><div style={{display:"flex",flexDirection:"column",gap:"9px"}}><input placeholder="Task title *" value={newTitle} onChange={e=>setNewTitle(e.target.value)} onKeyDown={e=>e.key==="Enter"&&handleAddTask()} autoFocus style={{...inputStyle,fontSize:"15px",fontWeight:500}}/><textarea placeholder="Description (optional)" value={newDesc} onChange={e=>setNewDesc(e.target.value)} rows={2} style={{...inputStyle,resize:"vertical"}}/><div style={{display:"flex",gap:"9px",flexWrap:"wrap",alignItems:"flex-start"}}><CustomSelect value={newPriority} onChange={setNewPriority} options={PRIORITY_OPTS} style={{minWidth:"130px"}}/><CustomSelect value={newCategory} onChange={setNewCategory} options={categoryOpts} style={{minWidth:"150px"}}/><input type="date" value={newDueDate} onChange={e=>setNewDueDate(e.target.value)} style={inputStyle}/></div><div style={{display:"flex",gap:"7px",justifyContent:"flex-end"}}><button onClick={()=>setShowAddForm(false)} style={{...inputStyle,cursor:"pointer",padding:"8px 14px"}}>Cancel</button><motion.button className="btn-primary" whileTap={{scale:.97}} onClick={handleAddTask} disabled={addingTask} style={{padding:"8px 20px",borderRadius:"10px",height:"auto",boxShadow:"none",fontSize:"13px"}}>{addingTask?"Adding…":"Add Task"}</motion.button></div></div></div></motion.div>)}
       </AnimatePresence>
 
       {/* Search */}
@@ -254,16 +255,16 @@ export default function Tasks() {
         <div style={{display:"flex",gap:"6px",width:"max-content",paddingBottom:"2px"}}>
           {PILLS.map(f=>{
             const on=activeFilter===f.id;
-            return(<button key={f.id} onClick={()=>setActiveFilter(f.id)} style={{padding:"5px 13px",borderRadius:"8px",border:`1px solid ${on?f.color:"rgba(255,255,255,0.07)"}`,background:on?f.color:(isDark?"#121220":"rgba(255,255,255,0.5)"),color:on?"white":mutedColor,cursor:"pointer",fontSize:"13px",fontWeight:on?600:400,fontFamily:"inherit",whiteSpace:"nowrap",transition:"all 0.15s",WebkitTapHighlightColor:"transparent",touchAction:"manipulation"}}>{f.label}</button>);
+            return(<button key={f.id} onClick={()=>setActiveFilter(f.id)} className={`pill-filter ${on ? "active" : ""}`}>{f.label}</button>);
           })}
-          <button onClick={()=>setShowCatModal(true)} style={{padding:"5px 13px",borderRadius:"8px",border:"1px dashed rgba(124,92,252,0.35)",background:"transparent",color:"#7C5CFC",cursor:"pointer",fontSize:"13px",fontFamily:"inherit",whiteSpace:"nowrap"}}>+ Category</button>
+          <button onClick={()=>setShowCatModal(true)} style={{padding:"5px 13px",borderRadius:"8px",border:"1px dashed var(--accent-glow)",background:"transparent",color:"var(--accent)",cursor:"pointer",fontSize:"13px",fontFamily:"inherit",whiteSpace:"nowrap"}}>+ Category</button>
         </div>
       </div>
 
       {/* Task list */}
       {loading?(<div style={{textAlign:"center",padding:"60px 0",color:mutedColor}}><div style={{fontSize:"28px",marginBottom:"10px",animation:"spin 1s linear infinite",display:"inline-block"}}>⟳</div><p style={{fontSize:"14px"}}>Loading tasks…</p></div>)
       :filteredTasks.length===0?(<motion.div initial={{opacity:0}} animate={{opacity:1}} style={{textAlign:"center",padding:"60px 0"}}><div style={{display:"flex",justifyContent:"center",marginBottom:"16px"}}><EmptyIllustration color={mutedColor}/></div><p style={{color:mutedColor,fontSize:"15px",fontWeight:500,margin:"0 0 6px"}}>{search?`No results for "${search}"`:"No tasks here yet"}</p><p style={{color:mutedColor,fontSize:"13px",opacity:0.6,margin:0}}>{search?"Try a different search":"Tap + New Task to add one"}</p></motion.div>)
-      :(<motion.div layout style={{display:"flex",flexDirection:"column",gap:"8px"}}><AnimatePresence>{filteredTasks.map(task=>(<TaskCard key={task.id} task={task} categories={categories} onUpdate={handleUpdate} onDelete={deleteTask} isDark={isDark} accent={ac}/>))}</AnimatePresence></motion.div>)}
+      :(<motion.div layout style={{display:"flex",flexDirection:"column",gap:"8px"}}><AnimatePresence>{filteredTasks.map(task=>(<TaskCard key={task.id} task={task} categories={categories} onUpdate={handleUpdate} onDelete={deleteTask} />))}</AnimatePresence></motion.div>)}
 
       {/* Category modal */}
       <CenteredModal isOpen={showCatModal} onClose={()=>setShowCatModal(false)} title="New Category" maxWidth="360px">
@@ -275,7 +276,7 @@ export default function Tasks() {
           </div>
           <div style={{display:"flex",gap:"7px"}}>
             <button onClick={()=>setShowCatModal(false)} style={{flex:1,...inputStyle,cursor:"pointer",textAlign:"center",padding:"10px"}}>Cancel</button>
-            <button onClick={handleAddCat} style={{flex:1,padding:"10px",borderRadius:"10px",background:`linear-gradient(135deg,${ac},#6447E8)`,border:"none",color:"white",cursor:"pointer",fontSize:"13px",fontWeight:600,fontFamily:"inherit"}}>Create</button>
+            <button onClick={handleAddCat} style={{flex:1,padding:"10px",borderRadius:"10px",background:"var(--accent)",border:"none",color:"white",cursor:"pointer",fontSize:"13px",fontWeight:600,fontFamily:"inherit",boxShadow:"0 4px 14px var(--accent-glow)"}}>Create</button>
           </div>
         </div>
       </CenteredModal>

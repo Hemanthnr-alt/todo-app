@@ -15,7 +15,7 @@ function Ring({ pct, color, size=200, stroke=10, children }) {
   return (
     <div style={{position:"relative",width:size,height:size,margin:"0 auto 24px"}}>
       <svg width={size} height={size} style={{transform:"rotate(-90deg)",position:"absolute",top:0,left:0}}>
-        <circle cx={size/2} cy={size/2} r={r} fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth={stroke}/>
+        <circle cx={size/2} cy={size/2} r={r} fill="none" stroke="var(--surface-raised)" strokeWidth={stroke}/>
         <circle cx={size/2} cy={size/2} r={r} fill="none" stroke={color} strokeWidth={stroke}
           strokeDasharray={circ} strokeDashoffset={circ*(1-Math.min(pct,100)/100)}
           strokeLinecap="round" style={{transition:"stroke-dashoffset 0.1s linear,stroke 0.3s"}}/>
@@ -28,11 +28,11 @@ function Ring({ pct, color, size=200, stroke=10, children }) {
 function NumSpin({ value, onChange, label, isDark, border, textColor, mutedColor }) {
   return (
     <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:"4px"}}>
-      <button onClick={()=>onChange(Math.min(59,(value||0)+1))} style={{width:"34px",height:"22px",borderRadius:"6px",border:`1px solid ${border}`,background:"rgba(255,255,255,0.06)",color:textColor,cursor:"pointer",fontSize:"13px",display:"flex",alignItems:"center",justifyContent:"center"}}>▲</button>
+      <button onClick={()=>onChange(Math.min(59,(value||0)+1))} style={{width:"34px",height:"22px",borderRadius:"6px",border:"1px solid var(--border)",background:"var(--surface-raised)",color:"var(--text-primary)",cursor:"pointer",fontSize:"13px",display:"flex",alignItems:"center",justifyContent:"center"}}>▲</button>
       <input value={String(value||0).padStart(2,"0")} onChange={e=>onChange(Math.min(99,Math.max(0,parseInt(e.target.value.replace(/\D/g,""))||0)))}
-        style={{width:"52px",padding:"8px 4px",textAlign:"center",fontSize:"26px",fontWeight:800,background:isDark?"rgba(255,255,255,0.07)":"rgba(0,0,0,0.05)",border:`1px solid ${border}`,borderRadius:"10px",color:textColor,outline:"none",fontFamily:"inherit"}}/>
-      <button onClick={()=>onChange(Math.max(0,(value||0)-1))} style={{width:"34px",height:"22px",borderRadius:"6px",border:`1px solid ${border}`,background:"rgba(255,255,255,0.06)",color:textColor,cursor:"pointer",fontSize:"13px",display:"flex",alignItems:"center",justifyContent:"center"}}>▼</button>
-      <span style={{fontSize:"9px",color:mutedColor,fontWeight:700,textTransform:"uppercase",letterSpacing:"0.06em"}}>{label}</span>
+        style={{width:"52px",padding:"8px 4px",textAlign:"center",fontSize:"26px",fontWeight:800,background:"var(--surface-raised)",border:"1px solid var(--border)",borderRadius:"10px",color:"var(--text-primary)",outline:"none",fontFamily:"inherit"}}/>
+      <button onClick={()=>onChange(Math.max(0,(value||0)-1))} style={{width:"34px",height:"22px",borderRadius:"6px",border:"1px solid var(--border)",background:"var(--surface-raised)",color:"var(--text-primary)",cursor:"pointer",fontSize:"13px",display:"flex",alignItems:"center",justifyContent:"center"}}>▼</button>
+      <span style={{fontSize:"9px",color:"var(--text-muted)",fontWeight:700,textTransform:"uppercase",letterSpacing:"0.06em"}}>{label}</span>
     </div>
   );
 }
@@ -52,28 +52,28 @@ function Stopwatch({ isDark, textColor, mutedColor, border, cardBg, accent }) {
 
   return (
     <div style={{textAlign:"center"}}>
-      {/* 72px digit display */}
+      {/* 80px digit display */}
       <div style={{marginBottom:"28px"}}>
-        <div style={{fontSize:"72px",fontWeight:800,letterSpacing:"-0.04em",color:textColor,fontVariantNumeric:"tabular-nums",lineHeight:1,fontFamily:"'Inter',sans-serif"}}>
+        <div style={{fontSize:"80px",fontWeight:800,letterSpacing:"-0.04em",color:textColor,fontVariantNumeric:"tabular-nums",lineHeight:1,fontFamily:"var(--font-heading)"}}>
           {fmtMs(elapsed)}
         </div>
-        <div style={{fontSize:"26px",color:mutedColor,fontVariantNumeric:"tabular-nums",marginTop:"4px"}}>
+        <div style={{fontSize:"26px",color:mutedColor,fontVariantNumeric:"tabular-nums",marginTop:"4px",fontFamily:"var(--font-body)"}}>
           {fmtMsMs(elapsed)}
         </div>
       </div>
       <div style={{display:"flex",gap:"10px",justifyContent:"center",marginBottom:"24px"}}>
         <motion.button whileTap={{scale:0.95}} onClick={lap} disabled={!running}
-          style={{padding:"12px 22px",borderRadius:"999px",border:`1px solid ${border}`,background:running?(isDark?"rgba(255,255,255,0.08)":"rgba(0,0,0,0.06)"):"transparent",color:running?textColor:mutedColor,cursor:running?"pointer":"default",fontSize:"14px",fontWeight:600,fontFamily:"inherit"}}>
+          style={{padding:"12px 22px",borderRadius:"var(--radius-pill)",border:`1px solid ${border}`,background:running?"var(--surface-raised)":"transparent",color:running?textColor:mutedColor,cursor:running?"pointer":"default",fontSize:"14px",fontWeight:600,fontFamily:"var(--font-body)"}}>
           Lap
         </motion.button>
-        <motion.button whileTap={{scale:0.93}} onClick={toggle}
-          style={{padding:"12px 40px",borderRadius:"999px",border:"none",background:running?"linear-gradient(135deg,#F05050,#f97316)":`linear-gradient(135deg,${accent},#6447E8)`,color:"white",cursor:"pointer",fontSize:"15px",fontWeight:700,fontFamily:"inherit",boxShadow:running?"0 4px 20px rgba(240,80,80,0.4)":`0 4px 20px rgba(124,92,252,0.4)`}}>
+        <motion.button className="btn-primary" whileTap={{scale:0.93}} onClick={toggle}
+          style={{padding:"0 40px",background:running?"var(--danger)":"var(--accent)",boxShadow:running?"0 4px 20px var(--danger-subtle)":""}}>
           {running?"Stop":elapsed>0?"Resume":"Start"}
         </motion.button>
-        {elapsed>0&&!running&&(<motion.button whileTap={{scale:0.95}} onClick={reset} style={{padding:"12px 22px",borderRadius:"999px",border:`1px solid ${border}`,background:isDark?"rgba(255,255,255,0.08)":"rgba(0,0,0,0.06)",color:textColor,cursor:"pointer",fontSize:"14px",fontWeight:600,fontFamily:"inherit"}}>Reset</motion.button>)}
+        {elapsed>0&&!running&&(<motion.button whileTap={{scale:0.95}} onClick={reset} style={{padding:"12px 22px",borderRadius:"var(--radius-pill)",border:`1px solid ${border}`,background:"var(--surface-raised)",color:textColor,cursor:"pointer",fontSize:"14px",fontWeight:600,fontFamily:"var(--font-body)"}}>Reset</motion.button>)}
       </div>
       {laps.length>0&&(
-        <div style={{background:cardBg,borderRadius:"12px",border:`1px solid ${border}`,overflow:"hidden",maxHeight:"260px",overflowY:"auto"}}>
+        <div style={{background:"var(--surface)",borderRadius:"12px",border:"1px solid var(--border)",overflow:"hidden",maxHeight:"260px",overflowY:"auto"}}>
           <div style={{display:"grid",gridTemplateColumns:"40px 1fr 1fr",padding:"9px 14px",borderBottom:`1px solid ${border}`}}>
             {["#","Split","Total"].map(h=><span key={h} style={{fontSize:"10px",fontWeight:700,color:mutedColor,textTransform:"uppercase",letterSpacing:"0.06em"}}>{h}</span>)}
           </div>
@@ -130,18 +130,18 @@ function Countdown({ isDark, textColor, mutedColor, border, cardBg, accent }) {
           <div style={{display:"flex",gap:"7px",justifyContent:"center",flexWrap:"wrap",marginBottom:"24px"}}>
             {PRESETS.map(p=>(<button key={p.l} onClick={()=>{setH(p.h);setM(p.m);setS(p.s);}} style={{padding:"6px 14px",borderRadius:"999px",border:`1px solid ${border}`,background:isDark?"rgba(255,255,255,0.06)":"rgba(0,0,0,0.05)",color:textColor,cursor:"pointer",fontSize:"12px",fontWeight:500,fontFamily:"inherit"}}>{p.l}</button>))}
           </div>
-          <motion.button whileTap={{scale:0.95}} onClick={start} disabled={totalMs<=0} style={{padding:"14px 52px",borderRadius:"999px",border:"none",background:totalMs>0?`linear-gradient(135deg,${accent},#6447E8)`:"rgba(255,255,255,0.1)",color:"white",cursor:totalMs>0?"pointer":"default",fontSize:"16px",fontWeight:700,fontFamily:"inherit",boxShadow:totalMs>0?`0 4px 20px rgba(124,92,252,0.4)`:"none"}}>Start</motion.button>
+          <motion.button whileTap={{scale:0.95}} onClick={start} disabled={totalMs<=0} style={{padding:"14px 52px",borderRadius:"var(--radius-pill)",border:"none",background:totalMs>0?"var(--accent)":"var(--surface-raised)",color:"white",cursor:totalMs>0?"pointer":"default",fontSize:"16px",fontWeight:700,fontFamily:"inherit",boxShadow:totalMs>0?"0 4px 20px var(--accent-glow)":"none"}}>Start</motion.button>
         </>
       ):(
         <>
-          <Ring pct={pct} color={ring} size={220} stroke={12}>
-            <div style={{fontSize:"48px",fontWeight:800,color:remaining<10000?"#F05050":textColor,fontVariantNumeric:"tabular-nums",transition:"color 0.3s",fontFamily:"'Inter',sans-serif"}}>{fmtMs(remaining)}</div>
-            {remaining<10000&&remaining>0&&<div style={{fontSize:"11px",color:"#F05050",fontWeight:700,marginTop:"4px"}}>⚠ Almost done!</div>}
-            {completed&&<div style={{fontSize:"13px",color:"#22C97E",fontWeight:700,marginTop:"4px"}}>✓ Complete!</div>}
+          <Ring pct={pct} color={ring} size={240} stroke={14}>
+            <div style={{fontSize:"64px",fontWeight:800,color:remaining<10000?"var(--danger)":textColor,fontVariantNumeric:"tabular-nums",transition:"color 0.3s",fontFamily:"var(--font-heading)"}}>{fmtMs(remaining)}</div>
+            {remaining<10000&&remaining>0&&<div style={{fontSize:"11px",color:"var(--danger)",fontWeight:700,marginTop:"4px"}}>⚠ Almost done!</div>}
+            {completed&&<div style={{fontSize:"13px",color:"var(--success)",fontWeight:700,marginTop:"4px"}}>✓ Complete!</div>}
           </Ring>
           <div style={{display:"flex",gap:"10px",justifyContent:"center"}}>
-            {remaining>0&&!completed&&(<motion.button whileTap={{scale:0.95}} onClick={toggle} style={{padding:"12px 40px",borderRadius:"999px",border:"none",background:running?"linear-gradient(135deg,#F05050,#f97316)":`linear-gradient(135deg,${accent},#6447E8)`,color:"white",cursor:"pointer",fontSize:"15px",fontWeight:700,fontFamily:"inherit"}}>{running?"Pause":"Resume"}</motion.button>)}
-            <motion.button whileTap={{scale:0.95}} onClick={reset} style={{padding:"12px 24px",borderRadius:"999px",border:`1px solid ${border}`,background:isDark?"rgba(255,255,255,0.07)":"rgba(0,0,0,0.05)",color:textColor,cursor:"pointer",fontSize:"14px",fontWeight:600,fontFamily:"inherit"}}>Reset</motion.button>
+            {remaining>0&&!completed&&(<motion.button className="btn-primary" whileTap={{scale:0.95}} onClick={toggle} style={{padding:"0 40px",background:running?"var(--danger)":"var(--accent)",boxShadow:running?"0 4px 20px var(--danger-subtle)":""}}>{running?"Pause":"Resume"}</motion.button>)}
+            <motion.button whileTap={{scale:0.95}} onClick={reset} style={{padding:"12px 24px",borderRadius:"var(--radius-pill)",border:`1px solid ${border}`,background:"var(--surface-raised)",color:textColor,cursor:"pointer",fontSize:"14px",fontWeight:600,fontFamily:"inherit"}}>Reset</motion.button>
           </div>
         </>
       )}
@@ -206,13 +206,13 @@ function Intervals({ isDark, textColor, mutedColor, border, cardBg, accent }) {
           <div style={{display:"flex",gap:"5px",justifyContent:"center",marginBottom:"16px"}}>
             {Array.from({length:totalRounds||rounds}).map((_,i)=>(<div key={i} style={{width:"7px",height:"7px",borderRadius:"50%",background:i<round-1?"#22C97E":i===round-1?phaseColor:"rgba(255,255,255,0.14)",transition:"all 0.3s"}}/>))}
           </div>
-          <Ring pct={pct} color={phaseColor} size={190} stroke={10}>
-            <div style={{fontSize:"38px",fontWeight:800,color:textColor,fontVariantNumeric:"tabular-nums",fontFamily:"'Inter',sans-serif"}}>{fmtMs(remaining)}</div>
-            <div style={{fontSize:"11px",color:mutedColor,marginTop:"4px"}}>{phase}</div>
+          <Ring pct={pct} color={phaseColor} size={220} stroke={14}>
+            <div style={{fontSize:"48px",fontWeight:800,color:textColor,fontVariantNumeric:"tabular-nums",fontFamily:"var(--font-heading)"}}>{fmtMs(remaining)}</div>
+            <div style={{fontSize:"11px",color:mutedColor,marginTop:"4px",textTransform:"uppercase",letterSpacing:"0.05em",fontWeight:700}}>{phase}</div>
           </Ring>
           <div style={{display:"flex",gap:"10px",justifyContent:"center"}}>
-            <motion.button whileTap={{scale:0.95}} onClick={()=>setRunning(r=>!r)} style={{padding:"12px 40px",borderRadius:"999px",border:"none",background:running?"linear-gradient(135deg,#F05050,#f97316)":`linear-gradient(135deg,${accent},#6447E8)`,color:"white",cursor:"pointer",fontSize:"15px",fontWeight:700,fontFamily:"inherit"}}>{running?"Pause":"Resume"}</motion.button>
-            <motion.button whileTap={{scale:0.95}} onClick={reset} style={{padding:"12px 24px",borderRadius:"999px",border:`1px solid ${border}`,background:isDark?"rgba(255,255,255,0.07)":"rgba(0,0,0,0.05)",color:textColor,cursor:"pointer",fontSize:"14px",fontWeight:600,fontFamily:"inherit"}}>Reset</motion.button>
+            <motion.button className="btn-primary" whileTap={{scale:0.95}} onClick={()=>setRunning(r=>!r)} style={{padding:"0 40px",background:running?"var(--danger)":"var(--accent)",boxShadow:running?"0 4px 20px var(--danger-subtle)":""}}>{running?"Pause":"Resume"}</motion.button>
+            <motion.button whileTap={{scale:0.95}} onClick={reset} style={{padding:"12px 24px",borderRadius:"var(--radius-pill)",border:`1px solid ${border}`,background:"var(--surface-raised)",color:textColor,cursor:"pointer",fontSize:"14px",fontWeight:600,fontFamily:"inherit"}}>Reset</motion.button>
           </div>
         </>
       )}
@@ -239,20 +239,20 @@ function Pomodoro({ isDark, textColor, mutedColor, border, accent }) {
   return (
     <div style={{textAlign:"center"}}>
       <div style={{display:"flex",gap:"6px",justifyContent:"center",marginBottom:"20px"}}>
-        {PHASES.map((p,i)=>(<button key={p.id} onClick={()=>switchPhase(i)} style={{padding:"7px 14px",borderRadius:"999px",border:`1.5px solid ${phaseIdx===i?p.color:border}`,background:phaseIdx===i?`${p.color}18`:"transparent",color:phaseIdx===i?p.color:mutedColor,cursor:"pointer",fontSize:"12px",fontWeight:phaseIdx===i?700:400,fontFamily:"inherit",transition:"all 0.15s"}}>{p.label}</button>))}
+        {PHASES.map((p,i)=>(<button key={p.id} onClick={()=>switchPhase(i)} style={{padding:"7px 16px",borderRadius:"14px",border:phaseIdx===i?`1.5px solid ${p.color}`:`1.5px solid var(--surface-raised)`,background:phaseIdx===i?`var(--accent)`:"var(--surface-raised)",color:phaseIdx===i?"white":mutedColor,cursor:"pointer",fontSize:"12px",fontWeight:phaseIdx===i?700:600,fontFamily:"inherit",transition:"all 0.15s"}}>{p.label}</button>))}
       </div>
       <div style={{display:"flex",gap:"5px",justifyContent:"center",marginBottom:"16px"}}>
         {[0,1,2,3].map(i=>(<div key={i} style={{width:"10px",height:"10px",borderRadius:"50%",background:i<sessions%4?accent:`rgba(255,255,255,0.12)`,transition:"all 0.3s"}}/>))}
       </div>
-      <Ring pct={pct} color={phase.color} size={210} stroke={12}>
-        <div style={{fontSize:"48px",fontWeight:800,color:textColor,fontVariantNumeric:"tabular-nums",fontFamily:"'Inter',sans-serif"}}>{fmtMs(remaining)}</div>
-        <div style={{fontSize:"11px",color:phase.color,marginTop:"4px",fontWeight:600}}>{phase.label}</div>
+      <Ring pct={pct} color={phase.color} size={240} stroke={14}>
+        <div style={{fontSize:"64px",fontWeight:800,color:textColor,fontVariantNumeric:"tabular-nums",fontFamily:"var(--font-heading)"}}>{fmtMs(remaining)}</div>
+        <div style={{fontSize:"12px",color:phase.color,marginTop:"4px",fontWeight:700,letterSpacing:"0.05em",textTransform:"uppercase"}}>{phase.label}</div>
       </Ring>
       <div style={{display:"flex",gap:"10px",justifyContent:"center"}}>
-        <motion.button whileTap={{scale:0.95}} onClick={()=>setRunning(r=>!r)} style={{padding:"13px 44px",borderRadius:"999px",border:"none",background:running?"linear-gradient(135deg,#F05050,#f97316)":`linear-gradient(135deg,${phase.color},${phase.color}cc)`,color:"white",cursor:"pointer",fontSize:"15px",fontWeight:700,fontFamily:"inherit"}}>
+        <motion.button className="btn-primary" whileTap={{scale:0.95}} onClick={()=>setRunning(r=>!r)} style={{padding:"0 44px",background:running?"var(--danger)":"var(--accent)",boxShadow:running?"0 4px 20px var(--danger-subtle)":""}}>
           {running?"Pause":remaining===totalMs?"Start":"Resume"}
         </motion.button>
-        <motion.button whileTap={{scale:0.95}} onClick={()=>{setRunning(false);setRemaining(phase.mins*60*1000);clearInterval(interval.current);}} style={{padding:"13px 22px",borderRadius:"999px",border:`1px solid ${border}`,background:isDark?"rgba(255,255,255,0.07)":"rgba(0,0,0,0.05)",color:textColor,cursor:"pointer",fontSize:"14px",fontWeight:600,fontFamily:"inherit"}}>Reset</motion.button>
+        <motion.button whileTap={{scale:0.95}} onClick={()=>{setRunning(false);setRemaining(phase.mins*60*1000);clearInterval(interval.current);}} style={{padding:"12px 22px",borderRadius:"var(--radius-pill)",border:`1px solid ${border}`,background:"var(--surface-raised)",color:textColor,cursor:"pointer",fontSize:"14px",fontWeight:600,fontFamily:"inherit"}}>Reset</motion.button>
       </div>
       <div style={{marginTop:"18px",fontSize:"12px",color:mutedColor}}>Sessions completed: <strong style={{color:accent}}>{sessions}</strong></div>
     </div>
@@ -262,38 +262,36 @@ function Pomodoro({ isDark, textColor, mutedColor, border, accent }) {
 export default function Timer() {
   const { isDark, accent } = useTheme();
   const [tab, setTab] = useState("stopwatch");
-  const ac = accent || "#7C5CFC";
-  const textColor  = isDark ? "#F0EFF8" : "#0f172a";
-  const mutedColor = isDark ? "#8B8AA3" : "rgba(15,23,42,0.45)";
-  const cardBg     = isDark ? "#121220" : "rgba(255,255,255,0.92)";
-  const border     = "rgba(255,255,255,0.07)";
+  const ac = "var(--accent)";
+  const textColor  = "var(--text-primary)";
+  const mutedColor = "var(--text-muted)";
+  const cardBg     = "var(--surface)";
+  const border     = "var(--border)";
 
   const TABS=[{id:"stopwatch",label:"Stopwatch",icon:"⏱"},{id:"countdown",label:"Countdown",icon:"⏳"},{id:"intervals",label:"Intervals",icon:"🔄"},{id:"pomodoro",label:"Pomodoro",icon:"🍅"}];
 
   return (
-    <div style={{maxWidth:"500px",margin:"0 auto",padding:"20px 16px",fontFamily:"'Inter',sans-serif",color:textColor}}>
-      <h1 style={{fontSize:"26px",fontWeight:600,margin:"0 0 20px",letterSpacing:"-0.02em",fontFamily:"'Plus Jakarta Sans',sans-serif"}}>
-        <span style={{background:`linear-gradient(135deg,${ac},#a78bfa)`,WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent"}}>Timer</span>
-      </h1>
+    <div style={{maxWidth:"500px",margin:"0 auto",padding:"20px 16px",fontFamily:"var(--font-body)",color:"var(--text-primary)"}}>
+      <h1 style={{fontSize:"28px",fontWeight:700,margin:"0 0 20px",letterSpacing:"-0.03em",fontFamily:"var(--font-heading)",color:"var(--text-primary)"}}>Timer</h1>
 
       {/* Segmented control tabs */}
-      <div style={{display:"flex",background:"rgba(255,255,255,0.05)",borderRadius:"12px",padding:"3px",marginBottom:"24px",gap:"2px",position:"relative"}}>
+      <div style={{display:"flex",background:"var(--surface)",borderRadius:"12px",padding:"3px",marginBottom:"24px",gap:"2px"}}>
         {TABS.map(t=>{
           const active=tab===t.id;
           return(
             <button key={t.id} onClick={()=>setTab(t.id)}
               style={{flex:1,padding:"8px 4px",borderRadius:"9px",border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:"11px",fontWeight:active?700:500,
-                background:active?"rgba(255,255,255,0.1)":"transparent",
-                color:active?textColor:mutedColor,
+                background:active?"var(--surface-raised)":"transparent",
+                color:active?"var(--text-primary)":"var(--text-muted)",
                 transition:"all 0.15s",display:"flex",alignItems:"center",justifyContent:"center",gap:"4px",
-                boxShadow:active?"0 1px 4px rgba(0,0,0,0.2)":"none"}}>
+                boxShadow:active?"0 1px 4px rgba(0,0,0,0.3)":"none"}}>
               <span>{t.icon}</span><span>{t.label}</span>
             </button>
           );
         })}
       </div>
 
-      <div style={{padding:"26px 18px",background:cardBg,backdropFilter:"blur(14px)",borderRadius:"16px",border:`1px solid ${border}`,minHeight:"340px"}}>
+      <div style={{padding:"26px 18px",background:"var(--surface)",borderRadius:"16px",border: isDark?"none":"1px solid var(--border)",minHeight:"340px"}}>
         <AnimatePresence mode="wait">
           <motion.div key={tab} initial={{opacity:0,y:6}} animate={{opacity:1,y:0}} exit={{opacity:0,y:-6}} transition={{duration:0.14}}>
             {tab==="stopwatch"&&<Stopwatch isDark={isDark} textColor={textColor} mutedColor={mutedColor} border={border} cardBg={cardBg} accent={ac}/>}

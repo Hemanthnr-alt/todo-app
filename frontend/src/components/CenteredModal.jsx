@@ -2,17 +2,9 @@ import { motion, AnimatePresence } from "framer-motion";
 import Portal from "./Portal";
 import { useTheme } from "../context/ThemeContext";
 
-/**
- * Centered modal using React Portal so it's always centered on the viewport
- * regardless of any transformed parent elements.
- */
 export default function CenteredModal({ isOpen, onClose, title, children, maxWidth = "440px" }) {
-  const { isDark } = useTheme();
-
-  const bg     = isDark ? "#0d1526" : "#ffffff";
-  const border = isDark ? "rgba(255,107,157,0.14)" : "rgba(255,107,157,0.2)";
-  const textColor = isDark ? "#f1f5f9" : "#0f172a";
-  const mutedColor = isDark ? "rgba(241,245,249,0.45)" : "rgba(15,23,42,0.45)";
+  const { isDark, accent } = useTheme();
+  const ac = accent || "#6B46FF";
 
   return (
     <Portal>
@@ -28,27 +20,21 @@ export default function CenteredModal({ isOpen, onClose, title, children, maxWid
               transition={{ duration: 0.18 }}
               onClick={onClose}
               style={{
-                position: "fixed",
-                inset: 0,
-                background: "rgba(0,0,0,0.68)",
-                backdropFilter: "blur(7px)",
-                WebkitBackdropFilter: "blur(7px)",
+                position: "fixed", inset: 0,
+                background: "rgba(0,0,0,0.75)",
+                backdropFilter: "blur(6px)",
+                WebkitBackdropFilter: "blur(6px)",
                 zIndex: 9998,
               }}
             />
 
-            {/* Modal box — centered via flexbox on a full-screen container */}
+            {/* Modal wrapper */}
             <div
               key="modal-wrapper"
               style={{
-                position: "fixed",
-                inset: 0,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                zIndex: 9999,
-                padding: "16px",
-                pointerEvents: "none",
+                position: "fixed", inset: 0,
+                display: "flex", alignItems: "center", justifyContent: "center",
+                zIndex: 9999, padding: "16px", pointerEvents: "none",
               }}
             >
               <motion.div
@@ -60,31 +46,25 @@ export default function CenteredModal({ isOpen, onClose, title, children, maxWid
                 onClick={(e) => e.stopPropagation()}
                 style={{
                   pointerEvents: "auto",
-                  width: "100%",
-                  maxWidth,
+                  width: "100%", maxWidth,
                   maxHeight: "calc(100dvh - 48px)",
                   overflowY: "auto",
-                  background: bg,
-                  borderRadius: "24px",
-                  padding: "26px",
-                  border: `1px solid ${border}`,
-                  boxShadow: "0 32px 80px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,107,157,0.06)",
+                  background: "var(--surface)",
+                  borderRadius: "20px",
+                  padding: "24px",
+                  border: isDark ? "none" : "1px solid var(--border)",
+                  boxShadow: "0 32px 80px rgba(0,0,0,0.6)",
                 }}
               >
                 {/* Header */}
                 <div style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                  marginBottom: "20px",
+                  display: "flex", justifyContent: "space-between",
+                  alignItems: "center", marginBottom: "20px",
                 }}>
                   <h2 style={{
-                    fontSize: "20px",
-                    fontWeight: 800,
-                    margin: 0,
-                    color: textColor,
-                    letterSpacing: "-0.03em",
-                    fontFamily: "'DM Sans', sans-serif",
+                    fontSize: "20px", fontWeight: 700, margin: 0,
+                    color: "var(--text-primary)", letterSpacing: "-0.03em",
+                    fontFamily: "var(--font-heading)",
                   }}>
                     {title}
                   </h2>
@@ -93,15 +73,16 @@ export default function CenteredModal({ isOpen, onClose, title, children, maxWid
                     aria-label="Close"
                     style={{
                       width: "32px", height: "32px", borderRadius: "9px",
-                      background: isDark ? "rgba(255,255,255,0.07)" : "rgba(0,0,0,0.06)",
-                      border: `1px solid ${border}`,
-                      color: mutedColor, cursor: "pointer",
+                      background: "var(--surface-raised)",
+                      border: "1px solid var(--border)",
+                      color: "var(--text-muted)", cursor: "pointer",
                       fontSize: "14px", display: "flex",
                       alignItems: "center", justifyContent: "center",
                       flexShrink: 0, transition: "all 0.15s",
+                      WebkitTapHighlightColor: "transparent",
                     }}
-                    onMouseEnter={e => e.currentTarget.style.color = "#ff6b9d"}
-                    onMouseLeave={e => e.currentTarget.style.color = mutedColor}
+                    onMouseEnter={e => { e.currentTarget.style.color = ac; e.currentTarget.style.borderColor = ac; }}
+                    onMouseLeave={e => { e.currentTarget.style.color = "var(--text-muted)"; e.currentTarget.style.borderColor = "var(--border)"; }}
                   >✕</button>
                 </div>
 
