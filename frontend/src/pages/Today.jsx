@@ -6,10 +6,7 @@ import { useTasks }  from "../hooks/useTasks";
 import { useHabits } from "../hooks/useHabits";
 
 const fmtDate = (d) => {
-  const y  = d.getFullYear();
-  const mo = String(d.getMonth()+1).padStart(2,"0");
-  const dy = String(d.getDate()).padStart(2,"0");
-  return `${y}-${mo}-${dy}`;
+  return d.toISOString().split("T")[0];
 };
 
 function buildDates(startOffset, endOffset) {
@@ -161,7 +158,7 @@ export default function Today({ onGoToTasks, onGoToHabits, onGoToCalendar, onGoT
             margin:"0 auto 20px", boxShadow:`0 8px 28px ${ac}55`, letterSpacing:"-0.04em" }}>30</div>
           <h2 style={{ fontSize:"22px", fontWeight:700, margin:"0 0 10px",
             color: textColor, letterSpacing:"-0.03em", fontFamily:"var(--font-heading)" }}>
-            Welcome to <span style={{ color: ac }}>Thirty</span>
+            Welcome to <span style={{ color: "var(--accent)" }}>Thirty</span>
           </h2>
           <p style={{ fontSize:"14px", color: mutedColor, margin:"0 0 24px", lineHeight:1.6 }}>
             Your productivity companion. Sign in to get started.
@@ -341,10 +338,8 @@ export default function Today({ onGoToTasks, onGoToHabits, onGoToCalendar, onGoT
                     style={{
                       display:"flex", alignItems:"center", gap:"12px",
                       padding:"13px 14px",
-                      /* Transparent — sits directly on black canvas */
                       background:"transparent",
-                      /* Thin divider only */
-                      borderBottom:"0.5px solid rgba(255,255,255,0.08)",
+                      borderBottom:"0.5px solid var(--border)",
                       transition:"all 0.2s",
                     }}>
                     {/* Icon — solid colour */}
@@ -359,7 +354,7 @@ export default function Today({ onGoToTasks, onGoToHabits, onGoToCalendar, onGoT
                         opacity:(done||isMissed)?0.45:1 }}>{h.name}</div>
                       <span style={{ display:"inline-block", marginTop:"3px",
                         padding:"2px 7px", borderRadius:"6px", fontSize:"12px", fontWeight:600,
-                        background: isMissed?"rgba(255,69,58,0.18)" : done?"rgba(48,209,88,0.18)" : `${h.color}28`,
+                        background: isMissed?"var(--danger-subtle)" : done?"var(--success-subtle)" : `${h.color}22`,
                         color: isMissed?"var(--danger)" : done?"var(--success)" : h.color }}>
                         {isMissed?"Missed" : done?"Done" : "Habit"}
                       </span>
@@ -412,7 +407,7 @@ export default function Today({ onGoToTasks, onGoToHabits, onGoToCalendar, onGoT
                       display:"flex", alignItems:"center", gap:"12px",
                       padding:"13px 14px",
                       background:"transparent",
-                      borderBottom:"0.5px solid rgba(255,255,255,0.08)",
+                      borderBottom:"0.5px solid var(--border)",
                       borderLeft:`3px solid ${pm}`,
                       opacity: task.completed?0.5:1,
                       transition:"all 0.2s",

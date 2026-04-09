@@ -26,12 +26,12 @@ export default function CustomSelect({ value, onChange, options, style = {}, pla
 
   const selected = options.find(o => o.value === value);
 
-  const textColor  = isDark ? "#f1f5f9"                       : "#0f172a";
-  const mutedColor = isDark ? "rgba(241,245,249,0.45)"        : "rgba(15,23,42,0.45)";
-  const bg         = isDark ? "rgba(20,30,50,0.98)"           : "#ffffff";
-  const border     = isDark ? "rgba(255,255,255,0.12)"        : "rgba(0,0,0,0.12)";
-  const hoverBg    = isDark ? "rgba(255,107,157,0.1)"         : "rgba(255,107,157,0.07)";
-  const triggerBg  = isDark ? "rgba(255,255,255,0.07)"        : "#ffffff";
+  const textColor  = "var(--text-primary)";
+  const mutedColor = "var(--text-muted)";
+  const bg         = "var(--surface-elevated)";
+  const border     = "var(--border)";
+  const hoverBg    = "var(--surface-raised)";
+  const triggerBg  = "var(--surface)";
 
   const openDropdown = () => {
     if (!triggerRef.current) return;
@@ -84,7 +84,7 @@ export default function CustomSelect({ value, onChange, options, style = {}, pla
     background: triggerBg,
     color: textColor,
     fontSize: "13px",
-    fontFamily: "'DM Sans', sans-serif",
+    fontFamily: "var(--font-body)",
     cursor: "pointer",
     userSelect: "none",
     transition: "border-color 0.15s",
@@ -98,7 +98,7 @@ export default function CustomSelect({ value, onChange, options, style = {}, pla
         ref={triggerRef}
         onClick={openDropdown}
         style={baseStyle}
-        onMouseEnter={e => e.currentTarget.style.borderColor = "#ff6b9d"}
+        onMouseEnter={e => e.currentTarget.style.borderColor = "var(--accent)"}
         onMouseLeave={e => e.currentTarget.style.borderColor = border}
       >
         <span>{selected ? selected.label : <span style={{ color: mutedColor }}>{placeholder}</span>}</span>
@@ -127,10 +127,10 @@ export default function CustomSelect({ value, onChange, options, style = {}, pla
                 background: bg,
                 borderRadius: "12px",
                 border: `1px solid ${border}`,
-                boxShadow: "0 12px 40px rgba(0,0,0,0.28), 0 0 0 1px rgba(255,107,157,0.06)",
+                boxShadow: "0 12px 40px rgba(0,0,0,0.3), 0 0 0 1px var(--border)",
                 zIndex: 99999,
                 overflow: "hidden",
-                fontFamily: "'DM Sans', sans-serif",
+                fontFamily: "var(--font-body)",
               }}
             >
               {options.map((opt) => {
@@ -143,8 +143,8 @@ export default function CustomSelect({ value, onChange, options, style = {}, pla
                       padding: "10px 14px",
                       fontSize: "13px",
                       fontWeight: isActive ? 700 : 400,
-                      color: isActive ? "#ff6b9d" : textColor,
-                      background: isActive ? "rgba(255,107,157,0.1)" : "transparent",
+                      color: isActive ? "var(--accent)" : textColor,
+                      background: isActive ? "var(--accent-subtle)" : "transparent",
                       cursor: "pointer",
                       transition: "background 0.12s",
                       display: "flex",
@@ -155,7 +155,7 @@ export default function CustomSelect({ value, onChange, options, style = {}, pla
                     onMouseLeave={e => { if (!isActive) e.currentTarget.style.background = "transparent"; }}
                   >
                     {isActive && (
-                      <span style={{ fontSize: "10px", color: "#ff6b9d", flexShrink: 0 }}>✓</span>
+                      <span style={{ fontSize: "10px", color: "var(--accent)", flexShrink: 0 }}>✓</span>
                     )}
                     {!isActive && <span style={{ width: "14px", flexShrink: 0 }} />}
                     {opt.label}

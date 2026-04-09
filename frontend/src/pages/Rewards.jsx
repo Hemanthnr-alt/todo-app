@@ -111,12 +111,10 @@ export default function Rewards() {
   const filteredDisplay = filter==="earned"?earned:filter==="locked"?locked:filter==="all"?BADGES:BADGES.filter(b=>b.cat===filter);
 
   return (
-    <div style={{maxWidth:"900px",margin:"0 auto",padding:"24px 16px 40px",fontFamily:"'Inter',sans-serif",color:textColor}}>
+    <div style={{maxWidth:"900px",margin:"0 auto",padding:"24px 16px 40px",fontFamily:"var(--font-body)",color:textColor}}>
       {/* Header */}
       <div style={{marginBottom:"24px"}}>
-        <h1 style={{fontSize:"26px",fontWeight:600,margin:"0 0 4px",letterSpacing:"-0.02em",fontFamily:"'Plus Jakarta Sans',sans-serif"}}>
-          <span style={{background:`linear-gradient(135deg,${ac},#a78bfa)`,WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent"}}>Rewards</span>
-        </h1>
+        <h1 style={{fontSize:"28px",fontWeight:700,margin:"0 0 4px",letterSpacing:"-0.03em",fontFamily:"var(--font-heading)",color:"var(--text-primary)"}}>Rewards</h1>
         <p style={{fontSize:"13px",color:mutedColor,margin:0}}>{earned.length}/{BADGES.length} badges earned</p>
       </div>
 
@@ -141,7 +139,7 @@ export default function Rewards() {
       {/* Habit streak bars */}
       {habits.length>0&&(
         <div style={{background:cardBg,borderRadius:"12px",border:"1px solid rgba(255,255,255,0.07)",padding:"16px",marginBottom:"20px"}}>
-          <div style={{fontSize:"13px",fontWeight:600,letterSpacing:"0.06em",textTransform:"uppercase",color:mutedColor,marginBottom:"12px"}}>Habit Streaks</div>
+          <div className="section-label" style={{marginBottom:"12px"}}>Habit Streaks</div>
           {habits.slice(0,5).map(h=>{
             const pct=bestStreak>0?Math.min(100,(h.streak||0)/Math.max(bestStreak,7)*100):0;
             return(
@@ -150,7 +148,7 @@ export default function Rewards() {
                   <span style={{fontSize:"12px",fontWeight:600,color:textColor}}>{h.icon} {h.name}</span>
                   <span style={{fontSize:"11px",fontWeight:700,color:h.color||ac}}>🔥 {h.streak||0}</span>
                 </div>
-                <div style={{height:"4px",background:"rgba(255,255,255,0.07)",borderRadius:"2px",overflow:"hidden"}}>
+                <div style={{height:"4px",background:"var(--surface-elevated)",borderRadius:"2px",overflow:"hidden"}}>
                   <motion.div initial={{width:0}} animate={{width:`${pct}%`}} transition={{duration:0.7}}
                     style={{height:"100%",background:`linear-gradient(90deg,${h.color||ac},${h.color||ac}88)`,borderRadius:"2px"}}/>
                 </div>
@@ -169,7 +167,13 @@ export default function Rewards() {
           ...Object.entries(CAT_LABELS).map(([v,l])=>({v,l,c:CAT_COLORS[v]})),
         ].map(f=>(
           <button key={f.v} onClick={()=>setFilter(f.v)}
-            style={{padding:"5px 13px",borderRadius:"8px",border:`1px solid ${filter===f.v?f.c:"rgba(255,255,255,0.07)"}`,background:filter===f.v?f.c:(isDark?"#121220":"transparent"),color:filter===f.v?"white":mutedColor,cursor:"pointer",fontSize:"13px",fontWeight:filter===f.v?600:400,fontFamily:"inherit",transition:"all 0.13s",WebkitTapHighlightColor:"transparent",touchAction:"manipulation"}}>
+            style={{padding:"5px 13px",borderRadius:"8px",
+              border:filter===f.v?`1px solid ${f.c}`:`1px solid var(--border)`,
+              background:filter===f.v?`${f.c}22`:"transparent",
+              color:filter===f.v?f.c:mutedColor,
+              cursor:"pointer",fontSize:"13px",fontWeight:filter===f.v?600:400,
+              fontFamily:"inherit",transition:"all 0.13s",
+              WebkitTapHighlightColor:"transparent",touchAction:"manipulation"}}>
             {f.l}
           </button>
         ))}
@@ -248,25 +252,43 @@ export default function Rewards() {
                   initial={{opacity:0,scale:0.82,y:20}} animate={{opacity:1,scale:1,y:0}} exit={{opacity:0,scale:0.82,y:20}}
                   transition={{type:"spring",damping:26,stiffness:320}}
                   onClick={e=>e.stopPropagation()}
-                  style={{width:"100%",maxWidth:"320px",background:isDark?"linear-gradient(145deg,#0D0C1A,#14132A)":"rgba(255,255,255,0.98)",backdropFilter:"blur(32px)",borderRadius:"20px",border:isEarned?"1px solid rgba(124,92,252,0.3)":`1px solid ${border}`,padding:"28px 22px 22px",textAlign:"center",fontFamily:"'Inter',sans-serif",boxShadow:isEarned?"0 28px 72px rgba(0,0,0,0.5), 0 0 0 1px rgba(124,92,252,0.15)":"0 28px 72px rgba(0,0,0,0.5)",pointerEvents:"all"}}>
+                  style={{width:"100%",maxWidth:"320px",
+                    background:"var(--surface)",
+                    backdropFilter:"blur(32px)",borderRadius:"20px",
+                    border:isEarned?"1px solid var(--accent)":`1px solid var(--border)`,
+                    boxShadow:isEarned?"0 28px 72px rgba(0,0,0,0.5), 0 0 0 1px var(--accent-subtle)":"0 28px 72px rgba(0,0,0,0.5)",
+                    padding:"28px 22px 22px",textAlign:"center",fontFamily:"var(--font-body)",
+                    pointerEvents:"all"}}>
                   <div style={{width:"80px",height:"80px",borderRadius:"20px",background:`linear-gradient(135deg,${catColor}28,${catColor}55)`,border:`1.5px solid ${catColor}66`,display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 18px",fontSize:"40px",boxShadow:`0 8px 24px ${catColor}33`}}>
                     {selected.icon}
                   </div>
                   <h3 style={{fontSize:"22px",fontWeight:700,color:textColor,margin:"0 0 7px",letterSpacing:"-0.02em"}}>{selected.name}</h3>
                   <p style={{fontSize:"13px",color:mutedColor,margin:"0 0 20px",lineHeight:1.65}}>{selected.desc}</p>
-                  <div style={{display:"inline-flex",alignItems:"center",gap:"7px",padding:"8px 18px",borderRadius:"999px",marginBottom:"14px",background:isEarned?"rgba(124,92,252,0.12)":(isDark?"rgba(255,255,255,0.06)":"rgba(0,0,0,0.05)"),color:isEarned?"#7C5CFC":mutedColor,fontSize:"13px",fontWeight:700,border:`1px solid ${isEarned?"rgba(124,92,252,0.3)":border}`,boxShadow:isEarned?"0 4px 16px rgba(124,92,252,0.2)":"none"}}>
+                  <div style={{display:"inline-flex",alignItems:"center",gap:"7px",padding:"8px 18px",borderRadius:"var(--radius-pill)",marginBottom:"14px",
+                    background:isEarned?"var(--accent-subtle)":"var(--surface-raised)",
+                    color:isEarned?"var(--accent)":mutedColor,
+                    fontSize:"13px",fontWeight:700,
+                    border:`1px solid ${isEarned?"var(--accent)":"var(--border)"}`,
+                    boxShadow:isEarned?"0 4px 16px var(--accent-glow)":"none"}}>
                     {isEarned?"✓ Earned":"🔒 Not yet earned"}
                   </div>
                   <div style={{fontSize:"11px",color:mutedColor,marginBottom:"22px"}}>Category: <span style={{color:catColor,fontWeight:700}}>{CAT_LABELS[selected.cat]}</span></div>
                   {!isEarned&&(
-                    <div style={{padding:"10px 14px",borderRadius:"10px",background:"rgba(255,255,255,0.04)",border:"1px solid rgba(255,255,255,0.07)",marginBottom:"16px"}}>
+                    <div style={{padding:"10px 14px",borderRadius:"10px",
+                      background:"var(--surface-raised)",border:"1px solid var(--border)",
+                      marginBottom:"16px"}}>
                       <p style={{fontSize:"11px",color:mutedColor,margin:0,lineHeight:1.5}}>Keep going — complete the requirement above to unlock this badge.</p>
                     </div>
                   )}
                   <button onClick={()=>setSelected(null)}
-                    style={{display:"block",width:"100%",padding:"13px",borderRadius:"12px",background:"rgba(255,255,255,0.06)",border:"1px solid rgba(255,255,255,0.07)",color:mutedColor,cursor:"pointer",fontSize:"14px",fontWeight:600,fontFamily:"inherit",WebkitTapHighlightColor:"transparent",touchAction:"manipulation",transition:"background 0.15s"}}
-                    onMouseEnter={e=>e.currentTarget.style.background="rgba(255,255,255,0.1)"}
-                    onMouseLeave={e=>e.currentTarget.style.background="rgba(255,255,255,0.06)"}>
+                    style={{display:"block",width:"100%",padding:"13px",borderRadius:"12px",
+                      background:"var(--surface-raised)",border:"1px solid var(--border)",
+                      color:"var(--text-muted)",cursor:"pointer",fontSize:"14px",
+                      fontWeight:600,fontFamily:"inherit",
+                      WebkitTapHighlightColor:"transparent",touchAction:"manipulation",
+                      transition:"background 0.15s"}}
+                    onMouseEnter={e=>e.currentTarget.style.background="var(--surface-elevated)"}
+                    onMouseLeave={e=>e.currentTarget.style.background="var(--surface-raised)"}>
                     Close
                   </button>
                 </motion.div>

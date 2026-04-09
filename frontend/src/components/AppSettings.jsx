@@ -76,7 +76,7 @@ export default function AppSettings({ isOpen, onClose }) {
 
   const rowStyle = {
     padding:"16px", display:"flex", justifyContent:"space-between",
-    alignItems:"center", borderBottom:"0.5px solid rgba(255,255,255,0.06)",
+    alignItems:"center", borderBottom:"0.5px solid var(--border)",
   };
 
   return (
@@ -301,8 +301,8 @@ export default function AppSettings({ isOpen, onClose }) {
                           </div>
                         </div>
                         <div style={{ padding:"6px 10px", borderRadius:"8px",
-                          background: pushStatus==="granted" ? "rgba(48,209,88,0.15)"
-                            : pushStatus==="denied" ? "rgba(255,69,58,0.15)"
+                          background: pushStatus==="granted" ? "var(--success-subtle)"
+                            : pushStatus==="denied" ? "var(--danger-subtle)"
                             : "var(--surface-elevated)",
                           color: pushStatus==="granted" ? "var(--success)"
                             : pushStatus==="denied" ? "var(--danger)"
@@ -373,7 +373,7 @@ export default function AppSettings({ isOpen, onClose }) {
                         style={{ display:"flex", justifyContent:"space-between", padding:"15px 16px",
                           color:"var(--text-primary)", textDecoration:"none",
                           fontSize:"15px", fontWeight:500,
-                          borderBottom: i < arr.length-1 ? "0.5px solid rgba(255,255,255,0.06)" : "none" }}>
+                          borderBottom: i < arr.length-1 ? "0.5px solid var(--border)" : "none" }}>
                         <span>{item}</span>
                         <span style={{ color:"var(--text-muted)" }}>↗</span>
                       </a>

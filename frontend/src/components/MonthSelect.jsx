@@ -29,10 +29,10 @@ export default function MonthSelect({ curr, setCurr, isDark, accent }) {
     setCurr(next);
   };
 
-  const textColor = isDark ? "#F1F5F9" : "#0F172A";
-  const mutedColor = isDark ? "rgba(241,245,249,0.5)" : "rgba(15,23,42,0.5)";
-  const btnBg = isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.04)";
-  const btnHover = isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.08)";
+  const textColor = "var(--text-primary)";
+  const mutedColor = "var(--text-muted)";
+  const btnBg = "var(--surface-raised)";
+  const btnHover = "var(--surface-elevated)";
 
   const btnStyle = {
     padding: "6px 10px",
@@ -56,7 +56,7 @@ export default function MonthSelect({ curr, setCurr, isDark, accent }) {
       justifyContent: "space-between",
       marginBottom: "20px",
       gap: "12px",
-      fontFamily: "'Inter', sans-serif"
+      fontFamily: "var(--font-body)"
     }}>
       <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
         <h2 style={{
@@ -88,7 +88,7 @@ export default function MonthSelect({ curr, setCurr, isDark, accent }) {
             onClick={() => setCurr(new Date())}
             style={{
               ...btnStyle,
-              background: isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.06)",
+              background: "var(--surface-elevated)",
               fontSize: "11px",
               fontWeight: 700,
               textTransform: "uppercase",

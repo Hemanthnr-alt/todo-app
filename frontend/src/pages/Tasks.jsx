@@ -30,13 +30,13 @@ function formatDue(d) {
 function fileIcon(m){if(m?.startsWith("image/"))return"🖼️";if(m==="application/pdf")return"📄";if(m?.includes("word"))return"📝";if(m?.includes("sheet")||m?.includes("excel"))return"📊";if(m==="text/plain")return"📃";if(m?.includes("zip"))return"📦";return"📎";}
 function fmtSize(b){if(b<1024)return b+" B";if(b<1048576)return(b/1024).toFixed(1)+" KB";return(b/1048576).toFixed(1)+" MB";}
 
-function EmptyIllustration({ color="#55546B" }) {
+function EmptyIllustration({ color="var(--text-muted)" }) {
   return (
     <svg width="72" height="72" viewBox="0 0 72 72" fill="none">
-      <rect x="10" y="6" width="52" height="60" rx="8" fill={color} fillOpacity="0.07" stroke={color} strokeOpacity="0.25" strokeWidth="1.5"/>
-      <path d="M20 24h32M20 36h24M20 48h16" stroke={color} strokeOpacity="0.45" strokeWidth="2" strokeLinecap="round"/>
-      <circle cx="54" cy="52" r="13" fill="#09090F" stroke={color} strokeOpacity="0.2" strokeWidth="1.5"/>
-      <path d="M49 52l3 3 6-6" stroke={color} strokeOpacity="0.4" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+      <rect x="10" y="6" width="52" height="60" rx="8" fill="var(--text-muted)" fillOpacity="0.07" stroke="var(--text-muted)" strokeOpacity="0.25" strokeWidth="1.5"/>
+      <path d="M20 24h32M20 36h24M20 48h16" stroke="var(--text-muted)" strokeOpacity="0.45" strokeWidth="2" strokeLinecap="round"/>
+      <circle cx="54" cy="52" r="13" fill="var(--bg)" stroke="var(--text-muted)" strokeOpacity="0.2" strokeWidth="1.5"/>
+      <path d="M49 52l3 3 6-6" stroke="var(--text-muted)" strokeOpacity="0.4" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
     </svg>
   );
 }
@@ -81,7 +81,8 @@ function TaskCard({ task, categories, onUpdate, onDelete }) {
   const dueFmt = formatDue(task.dueDate);
   const subCount = task.subtasks?.length||0;
   const subDone  = task.subtasks?.filter(s=>s.done).length||0;
-  const cardBg = overdue ? "var(--danger-subtle)" : "var(--surface)";
+  const cardBg = "var(--surface)";
+  const cardBorder = overdue ? "2px solid var(--danger)" : `1px solid ${border}`;
   const barColor = task.completed ? "var(--accent-subtle)" : pm.color;
 
   const handleComplete = () => {
@@ -101,10 +102,15 @@ function TaskCard({ task, categories, onUpdate, onDelete }) {
 
   return (
     <motion.div layout initial={{opacity:0,y:10}} animate={{opacity:1,y:0}} exit={{opacity:0,y:-6,scale:.97}}
-      style={{background:cardBg,borderRadius:"14px",
-        border:overdue?`1px solid var(--border-danger)`:"none",
-        borderLeft:`3px solid ${barColor}`,
-        overflow:"hidden",transition:"border-left-color 0.4s ease"}}>
+      style={{
+        background: cardBg,
+        borderRadius: "14px",
+        border: overdue ? "2px solid var(--danger)" : "1px solid var(--border)",
+        borderLeft: `3.5px solid ${barColor}`,
+        overflow: "hidden",
+        transition: "border 0.2s, border-left-color 0.4s ease",
+        boxShadow: overdue ? "0 8px 24px rgba(255,69,58,0.12)" : "none"
+      }}>
       <div style={{padding:"16px",display:"flex",alignItems:"flex-start",gap:"12px"}}>
         <motion.div onClick={handleComplete}
           animate={bouncing?{scale:[1,1.3,0.92,1]}:{scale:1}}
@@ -142,7 +148,7 @@ function TaskCard({ task, categories, onUpdate, onDelete }) {
       <AnimatePresence>
         {expanded&&(
           <motion.div initial={{height:0,opacity:0}} animate={{height:"auto",opacity:1}} exit={{height:0,opacity:0}} style={{overflow:"hidden"}}>
-            <div style={{padding:"0 16px 14px",borderTop:"1px solid rgba(255,255,255,0.05)",paddingTop:"12px"}}>
+            <div style={{padding:"0 16px 14px",borderTop:"1px solid var(--border)",paddingTop:"12px"}}>
               <div style={{display:"flex",gap:"7px",flexWrap:"wrap",marginBottom:"10px"}}>
                 <div style={{display:"flex",flexDirection:"column",gap:"2px"}}><label style={{fontSize:"9px",color:mutedColor,fontWeight:600,textTransform:"uppercase",letterSpacing:"0.06em"}}>Priority</label><CustomSelect value={task.priority} onChange={v=>onUpdate(task.id,{priority:v})} options={PRIORITY_OPTS} style={{fontSize:"12px",padding:"4px 8px",borderRadius:"7px"}}/></div>
                 <div style={{display:"flex",flexDirection:"column",gap:"2px"}}><label style={{fontSize:"9px",color:mutedColor,fontWeight:600,textTransform:"uppercase",letterSpacing:"0.06em"}}>Due Date</label><input type="date" value={task.dueDate||""} onChange={e=>onUpdate(task.id,{dueDate:e.target.value||null})} style={dateInput}/></div>
@@ -155,7 +161,7 @@ function TaskCard({ task, categories, onUpdate, onDelete }) {
               </div>
               <div style={{marginBottom:"10px"}}><label style={{fontSize:"9px",color:mutedColor,fontWeight:600,textTransform:"uppercase",letterSpacing:"0.06em"}}>Subtasks</label><SubTasks task={task} onUpdate={onUpdate} isDark={isDark} textColor={textColor} mutedColor={mutedColor} border={border} inputBg={inputBg}/></div>
               <div><label style={{fontSize:"9px",color:mutedColor,fontWeight:600,textTransform:"uppercase",letterSpacing:"0.06em"}}>Attachments</label>
-                {task.attachments?.length>0&&(<div style={{marginTop:"5px",display:"flex",flexDirection:"column",gap:"3px"}}>{task.attachments.map(att=>(<div key={att.id} style={{display:"flex",alignItems:"center",gap:"7px",padding:"5px 9px",borderRadius:"7px",background:"rgba(255,255,255,0.04)"}}><span>{fileIcon(att.mimeType)}</span><a href={att.url} target="_blank" rel="noreferrer" style={{flex:1,fontSize:"11px",color:"#7C5CFC",textDecoration:"none",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{att.originalName}</a><span style={{fontSize:"10px",color:mutedColor}}>{fmtSize(att.size)}</span><button onClick={()=>delAtt(att.id)} style={{background:"none",border:"none",cursor:"pointer",color:"#F05050",fontSize:"10px"}}>✕</button></div>))}</div>)}
+                {task.attachments?.length>0&&(<div style={{marginTop:"5px",display:"flex",flexDirection:"column",gap:"3px"}}>{task.attachments.map(att=>(<div key={att.id} style={{display:"flex",alignItems:"center",gap:"7px",padding:"5px 9px",borderRadius:"7px",background:"var(--surface-raised)",border:"1px solid var(--border)"}}><span>{fileIcon(att.mimeType)}</span><a href={att.url} target="_blank" rel="noreferrer" style={{flex:1,fontSize:"11px",color:"var(--accent)",textDecoration:"none",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{att.originalName}</a><span style={{fontSize:"10px",color:mutedColor}}>{fmtSize(att.size)}</span><button onClick={()=>delAtt(att.id)} style={{background:"none",border:"none",cursor:"pointer",color:"var(--danger)",fontSize:"10px"}}>✕</button></div>))}</div>)}
                 <input ref={fileRef} type="file" style={{display:"none"}} onChange={handleUpload}/>
                 <button onClick={()=>fileRef.current?.click()} disabled={uploading} style={{marginTop:"6px",padding:"4px 10px",borderRadius:"7px",background:"rgba(124,92,252,0.08)",border:"1px dashed rgba(124,92,252,0.4)",color:"#7C5CFC",cursor:"pointer",fontSize:"11px",fontFamily:"inherit",WebkitTapHighlightColor:"transparent",touchAction:"manipulation"}}>{uploading?"Uploading…":"📎 Attach file"}</button>
               </div>

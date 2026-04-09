@@ -148,7 +148,7 @@ function NotifPanel({ onClose, isDark, border, textColor, mutedColor }) {
 
 /* ── Mobile menu sheet ─────────────────────────────────────────────────────── */
 function MobileMenuSheet({ onClose, isDark, toggleTheme, border, textColor, mutedColor, user, logout, onOpenSettings, accent }) {
-  const bg = isDark ? "rgba(9,9,15,0.99)" : "rgba(248,250,252,0.99)";
+  const bg = "var(--surface)";
   const items = [
     { Icon:isDark?Icons.Sun:Icons.Moon, label:isDark?"Light Mode":"Dark Mode", action:()=>{ toggleTheme(); onClose(); } },
     { Icon:Icons.Settings, label:"Settings", action:()=>{ onOpenSettings(); onClose(); } },
@@ -164,7 +164,7 @@ function MobileMenuSheet({ onClose, isDark, toggleTheme, border, textColor, mute
         transition={{ type:"spring", damping:30, stiffness:320 }}
         style={{ position:"fixed",bottom:0,left:0,right:0,zIndex:8501,background:bg,borderRadius:"24px 24px 0 0",border:`1px solid ${border}`,paddingBottom:"calc(env(safe-area-inset-bottom,0px) + 80px)",fontFamily:"'Inter',sans-serif" }}>
         <div style={{ display:"flex",justifyContent:"center",padding:"12px 0 4px" }}>
-          <div style={{ width:"36px",height:"4px",borderRadius:"2px",background:isDark?"rgba(255,255,255,0.15)":"rgba(0,0,0,0.12)" }}/>
+          <div style={{ width:"36px",height:"4px",borderRadius:"2px",background:"var(--border-strong)" }}/>
         </div>
         {user && (
           <div style={{ display:"flex",alignItems:"center",gap:"12px",padding:"12px 20px 18px" }}>
@@ -180,7 +180,7 @@ function MobileMenuSheet({ onClose, isDark, toggleTheme, border, textColor, mute
         <div style={{ padding:"0 14px 14px",display:"flex",flexDirection:"column",gap:"8px" }}>
           {items.map(item => (
             <motion.button key={item.label} whileTap={{scale:0.98}} onClick={item.action}
-              style={{ width:"100%",padding:"15px 18px",background:isDark?"rgba(255,255,255,0.04)":"rgba(0,0,0,0.03)",border:`1px solid ${item.danger?"rgba(240,80,80,0.2)":border}`,borderRadius:"14px",color:item.danger?"#F05050":textColor,cursor:"pointer",fontSize:"14px",fontWeight:600,fontFamily:"inherit",textAlign:"left",display:"flex",alignItems:"center",gap:"14px",WebkitTapHighlightColor:"transparent",touchAction:"manipulation" }}>
+              style={{ width:"100%",padding:"15px 18px",background:"var(--surface-raised)",border:`1px solid ${item.danger?"var(--border-danger)":"var(--border)"}`,borderRadius:"14px",color:item.danger?"var(--danger)":"var(--text-primary)",cursor:"pointer",fontSize:"14px",fontWeight:600,fontFamily:"inherit",textAlign:"left",display:"flex",alignItems:"center",gap:"14px",WebkitTapHighlightColor:"transparent",touchAction:"manipulation" }}>
               <item.Icon size={20}/>
               {item.label}
             </motion.button>
@@ -249,7 +249,7 @@ export default function Navbar({ activePage, onPageChange }) {
         transition={{ type:"spring", damping:22, stiffness:220, delay:0.05 }}
         style={{ position:"sticky",top:0,zIndex:300,
           background:"var(--bg)",
-          borderBottom:`0.5px solid rgba(255,255,255,0.1)`,
+          borderBottom:`0.5px solid var(--border)`,
           fontFamily:"var(--font-body)",
           paddingTop:"env(safe-area-inset-top,0px)" }}
       >
@@ -281,14 +281,14 @@ export default function Navbar({ activePage, onPageChange }) {
               return (
                 <motion.button key={item.id} whileTap={{scale:0.94}}
                   onClick={() => onPageChange(item.id)}
-                  style={{ position:"relative",display:"flex",alignItems:"center",gap:"6px",padding:"7px 12px",borderRadius:"10px",border:"none",background:active?(isDark?`${ac}18`:`${ac}12`):"transparent",color:active?ac:mutedColor,cursor:"pointer",fontSize:"12px",fontWeight:active?700:500,transition:"all 0.16s",fontFamily:"inherit",whiteSpace:"nowrap",outline:"none" }}
-                  onMouseEnter={e=>{if(!active){e.currentTarget.style.color=textColor;e.currentTarget.style.background=isDark?"rgba(255,255,255,0.05)":"rgba(0,0,0,0.04)";}}}
-                  onMouseLeave={e=>{if(!active){e.currentTarget.style.color=mutedColor;e.currentTarget.style.background="transparent";}}}
+                  style={{ position:"relative",display:"flex",alignItems:"center",gap:"6px",padding:"7px 12px",borderRadius:"10px",border:"none",background:active?"var(--accent-subtle)":"transparent",color:active?"var(--accent)":"var(--text-muted)",cursor:"pointer",fontSize:"12px",fontWeight:active?700:500,transition:"all 0.16s",fontFamily:"inherit",whiteSpace:"nowrap",outline:"none" }}
+                  onMouseEnter={e=>{if(!active){e.currentTarget.style.color="var(--text-primary)";e.currentTarget.style.background="var(--surface-raised)";}}}
+                  onMouseLeave={e=>{if(!active){e.currentTarget.style.color="var(--text-muted)";e.currentTarget.style.background="transparent";}}}
                 >
                   <item.Icon size={14} active={active}/>
                   <span>{item.label}</span>
                   {active && (
-                    <motion.div layoutId="nav-pill" style={{ position:"absolute",bottom:"-1px",left:"50%",transform:"translateX(-50%)",width:"20px",height:"2px",background:`linear-gradient(90deg,${ac},${ac}aa)`,borderRadius:"2px" }}/>
+                    <motion.div layoutId="nav-pill" style={{ position:"absolute",bottom:"-1px",left:"50%",transform:"translateX(-50%)",width:"20px",height:"2px",background:"var(--accent)",borderRadius:"2px" }}/>
                   )}
                 </motion.button>
               );
@@ -318,7 +318,7 @@ export default function Navbar({ activePage, onPageChange }) {
               <div ref={menuRef} style={{ position:"relative" }}>
                 <motion.button whileTap={{scale:0.96}}
                   onClick={() => setShowMenu(!showMenu)}
-                  style={{ display:"flex",alignItems:"center",gap:"6px",padding:"4px 8px 4px 4px",borderRadius:"99px",border:`1px solid ${showMenu?ac+"66":border}`,background:isDark?"rgba(255,255,255,0.05)":"rgba(0,0,0,0.04)",cursor:"pointer",color:textColor,fontSize:"12px",fontWeight:600,fontFamily:"inherit",transition:"all 0.15s",WebkitTapHighlightColor:"transparent" }}>
+                  style={{ display:"flex",alignItems:"center",gap:"6px",padding:"4px 8px 4px 4px",borderRadius:"99px",border:`1px solid var(--border)`,background:"var(--surface-raised)",cursor:"pointer",color:"var(--text-primary)",fontSize:"12px",fontWeight:600,fontFamily:"inherit",transition:"all 0.15s",WebkitTapHighlightColor:"transparent" }}>
                   <div style={{ width:"26px",height:"26px",borderRadius:"50%",background:`linear-gradient(135deg,${ac},#6447E8)`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:"11px",fontWeight:800,color:"white",flexShrink:0 }}>
                     {user?.name?.charAt(0)?.toUpperCase()||"?"}
                   </div>
@@ -332,7 +332,7 @@ export default function Navbar({ activePage, onPageChange }) {
                     <motion.div
                       initial={{opacity:0,y:-6,scale:0.96}} animate={{opacity:1,y:0,scale:1}} exit={{opacity:0,y:-6,scale:0.96}}
                       transition={{duration:0.14}}
-                      style={{ position:"absolute",top:"46px",right:0,width:"220px",background:isDark?"rgba(9,9,15,0.98)":"rgba(255,255,255,0.98)",backdropFilter:"blur(24px)",borderRadius:"16px",border:`1px solid ${border}`,overflow:"hidden",boxShadow:"0 16px 48px rgba(0,0,0,0.32)",zIndex:400 }}>
+                      style={{ position:"absolute",top:"46px",right:0,width:"220px",background:"var(--surface)",backdropFilter:"blur(24px)",borderRadius:"16px",border:`1px solid var(--border)`,overflow:"hidden",boxShadow:"0 16px 48px rgba(0,0,0,0.3)",zIndex:400 }}>
                       <div style={{ padding:"13px 15px",borderBottom:`1px solid ${border}`,display:"flex",alignItems:"center",gap:"10px" }}>
                         <div style={{ width:"36px",height:"36px",borderRadius:"10px",background:`linear-gradient(135deg,${ac},#6447E8)`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:"14px",fontWeight:800,color:"white",flexShrink:0 }}>
                           {user?.name?.charAt(0)?.toUpperCase()}
