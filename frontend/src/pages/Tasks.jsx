@@ -480,15 +480,14 @@ export default function Tasks() {
 
       <style>{`
         @media (max-width: 900px) {
-          .tasks-header,
+          .tasks-header {
+            display: grid !important;
+          }
+
           .tasks-stats,
           .tasks-form-grid,
           .task-card-grid {
             grid-template-columns: 1fr !important;
-          }
-
-          .tasks-header {
-            display: grid !important;
           }
         }
       `}</style>

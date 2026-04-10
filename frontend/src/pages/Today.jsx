@@ -271,7 +271,7 @@ export default function Today({ onGoToTasks, onGoToHabits, onGoToCalendar, onGoT
               }}
             />
           </div>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "10px" }}>
+          <div className="today-progress-grid" style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "10px" }}>
             {[
               { label: "Tasks", value: dayTasks.length, color: "var(--accent)" },
               { label: "Habits", value: dayHabits.length, color: "var(--success)" },
@@ -523,13 +523,19 @@ export default function Today({ onGoToTasks, onGoToHabits, onGoToCalendar, onGoT
       <style>{`
         @media (max-width: 900px) {
           .today-sections-grid {
-            grid-template-columns: 1fr;
+            grid-template-columns: 1fr !important;
           }
         }
 
         @media (max-width: 820px) {
           .today-hero-grid {
-            grid-template-columns: 1fr;
+            grid-template-columns: 1fr !important;
+          }
+        }
+
+        @media (max-width: 520px) {
+          .today-progress-grid {
+            grid-template-columns: 1fr !important;
           }
         }
       `}</style>
