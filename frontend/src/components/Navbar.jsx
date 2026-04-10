@@ -523,19 +523,43 @@ export default function Navbar({ activePage, onPageChange }) {
                   </AnimatePresence>
                 </div>
               ) : (
-                <motion.button
-                  whileTap={{ scale: 0.97 }}
-                  onClick={() => setShowAuth(true)}
-                  className="btn-primary desktop-only"
-                  style={{ height: "42px", padding: "0 18px" }}
-                >
-                  Sign in
-                </motion.button>
+                <>
+                  <motion.button
+                    whileTap={{ scale: 0.97 }}
+                    onClick={() => setShowAuth(true)}
+                    className="btn-primary desktop-only"
+                    style={{ height: "42px", padding: "0 18px" }}
+                  >
+                    Sign in
+                  </motion.button>
+
+                  <motion.button
+                    whileTap={{ scale: 0.97 }}
+                    onClick={() => setShowAuth(true)}
+                    className="mobile-only"
+                    style={{
+                      ...toolBtn,
+                      width: "auto",
+                      minWidth: "84px",
+                      padding: "0 14px",
+                      background: `linear-gradient(135deg, ${accent}, var(--accent-hover))`,
+                      color: "#fff",
+                      border: "none",
+                      boxShadow: "var(--shadow-glow)",
+                      fontWeight: 700,
+                      fontSize: "13px",
+                    }}
+                  >
+                    Sign in
+                  </motion.button>
+                </>
               )}
 
-              <motion.button whileTap={{ scale: 0.95 }} onClick={() => setShowMobile(true)} className="mobile-only" style={toolBtn}>
-                <span style={{ fontSize: "18px", lineHeight: 1 }}>⋯</span>
-              </motion.button>
+              {isAuthenticated && (
+                <motion.button whileTap={{ scale: 0.95 }} onClick={() => setShowMobile(true)} className="mobile-only" style={toolBtn}>
+                  <span style={{ fontSize: "18px", lineHeight: 1 }}>⋯</span>
+                </motion.button>
+              )}
             </div>
           </div>
         </div>
