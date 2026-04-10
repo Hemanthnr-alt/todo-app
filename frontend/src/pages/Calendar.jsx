@@ -4,6 +4,7 @@ import toast from "react-hot-toast";
 import CenteredModal from "../components/CenteredModal";
 import CustomSelect from "../components/CustomSelect";
 import MonthSelect from "../components/MonthSelect";
+import { IconFlame, IconPlus, PremiumCompleteTitle, PremiumRoundComplete } from "../components/PremiumChrome";
 import { PremiumHabitTile, PremiumTaskMark } from "../components/PremiumMarks";
 import { useTheme } from "../context/ThemeContext";
 import { useHabits } from "../hooks/useHabits";
@@ -51,6 +52,8 @@ const PRIORITY_OPTIONS = [
   { value: "medium", label: "Medium" },
   { value: "low", label: "Low" },
 ];
+
+const TASK_CHIP = "#E84A8A";
 
 export default function Calendar() {
   const { accent, isDark } = useTheme();
@@ -199,8 +202,14 @@ export default function Calendar() {
         <div style={{ color: "var(--text-muted)", fontSize: "12px" }}>
           {new Date(`${selectedDate}T12:00:00`).toLocaleDateString("en-US", { weekday: "long", month: "short", day: "numeric" })}
         </div>
-        <button type="button" onClick={openAddTask} className="btn-primary" style={{ padding: "0 16px", height: "40px", fontSize: "13px", fontWeight: 700 }}>
-          + Task for this day
+        <button
+          type="button"
+          onClick={openAddTask}
+          className="btn-primary"
+          style={{ padding: "0 16px", height: "40px", fontSize: "13px", fontWeight: 700, display: "inline-flex", alignItems: "center", gap: "8px" }}
+        >
+          <IconPlus size={18} stroke="currentColor" />
+          Task for this day
         </button>
       </div>
 
@@ -216,7 +225,13 @@ export default function Calendar() {
                 <PremiumHabitTile emoji={habit.icon} color={habit.color} size={34} />
                 <div style={{ flex: 1 }}>
                   <div style={{ color: "var(--text-primary)", fontSize: "15px", fontWeight: 600 }}>{habit.name}</div>
-                  <div style={{ color: habit.color, fontSize: "12px", fontWeight: 600 }}>Habit · 🔥 {habit.streak ?? 0} streak</div>
+                  <div style={{ color: habit.color, fontSize: "12px", fontWeight: 700, display: "flex", alignItems: "center", gap: "6px" }}>
+                    <span>Habit</span>
+                    <span style={{ display: "inline-flex", alignItems: "center", gap: "4px", opacity: 0.95 }}>
+                      <IconFlame size={13} fill={habit.color} />
+                      {habit.streak ?? 0} streak
+                    </span>
+                  </div>
                 </div>
               </div>
             ))}
@@ -228,48 +243,27 @@ export default function Calendar() {
                   display: "flex",
                   gap: "12px",
                   alignItems: "center",
-                  padding: "14px 4px",
+                  padding: "14px 8px",
                   borderBottom: "1px solid var(--border)",
-                  borderLeft: task.completed ? "3px solid #E84A8A" : "3px solid transparent",
-                  borderRadius: "0 12px 12px 0",
-                  background: task.completed ? "linear-gradient(90deg, rgba(232,74,138,0.1), transparent 55%)" : undefined,
+                  borderLeft: task.completed ? `3px solid ${TASK_CHIP}` : "3px solid transparent",
+                  borderRadius: "0 14px 14px 0",
+                  background: task.completed ? `linear-gradient(90deg, ${TASK_CHIP}20, transparent 58%)` : undefined,
+                  boxShadow: task.completed ? `inset 0 0 22px ${TASK_CHIP}12` : "none",
                 }}
               >
                 <PremiumTaskMark size={34} />
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div
-                    style={{
-                      color: "var(--text-primary)",
-                      fontSize: "15px",
-                      fontWeight: 600,
-                      textDecoration: task.completed ? "line-through" : "none",
-                      textDecorationThickness: task.completed ? "2px" : undefined,
-                      textDecorationColor: "rgba(232,74,138,0.5)",
-                      opacity: task.completed ? 0.52 : 1,
-                    }}
-                  >
+                  <PremiumCompleteTitle complete={task.completed} lineColor={TASK_CHIP}>
                     {task.title}
-                  </div>
-                  <div style={{ color: "#E84A8A", fontSize: "12px", fontWeight: 600 }}>Task</div>
+                  </PremiumCompleteTitle>
+                  <div style={{ color: TASK_CHIP, fontSize: "11px", fontWeight: 800, letterSpacing: "0.08em", textTransform: "uppercase", marginTop: "6px" }}>Task</div>
                 </div>
-                <button
-                  type="button"
+                <PremiumRoundComplete
+                  checked={task.completed}
                   onClick={() => updateTask(task.id, { completed: !task.completed })}
-                  className="btn-reset"
-                  style={{
-                    width: "30px",
-                    height: "30px",
-                    borderRadius: "50%",
-                    background: task.completed ? "#E84A8A" : "var(--surface-raised)",
-                    border: `2px solid ${task.completed ? "#E84A8A" : "var(--border-strong)"}`,
-                    color: task.completed ? "#fff" : "transparent",
-                    flexShrink: 0,
-                    fontWeight: 700,
-                  }}
-                  aria-label={task.completed ? "Mark incomplete" : "Complete"}
-                >
-                  ✓
-                </button>
+                  color={TASK_CHIP}
+                  ariaLabel={task.completed ? "Mark incomplete" : "Complete"}
+                />
               </div>
             ))}
           </>

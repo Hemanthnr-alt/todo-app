@@ -3,25 +3,41 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useAuth }  from "../context/AuthContext";
 import { useTheme } from "../context/ThemeContext";
 import toast from "react-hot-toast";
+import { IconBell, IconClose, IconInfo, IconMoon, IconSettingsGear, IconSparkle, IconSun } from "./PremiumChrome";
 
 function Toggle({ checked, onChange, accent }) {
   return (
-    <button onClick={() => onChange(!checked)}
+    <button
+      type="button"
+      onClick={() => onChange(!checked)}
       style={{
-        width:"44px", height:"24px", borderRadius:"999px",
-        background: checked ? (accent||"var(--accent)") : "var(--surface-raised)",
-        border:"none", position:"relative", cursor:"pointer",
-        transition:"background 0.2s",
-        WebkitTapHighlightColor:"transparent", touchAction:"manipulation", flexShrink:0,
-      }}>
-      <div style={{
-        position:"absolute", top:"3px",
-        left: checked ? "23px" : "3px",
-        width:"18px", height:"18px",
-        backgroundColor:"white", borderRadius:"50%",
-        transition:"left 0.25s cubic-bezier(0.34,1.56,0.64,1)",
-        boxShadow:"0 2px 4px rgba(0,0,0,0.3)",
-      }}/>
+        width: "48px",
+        height: "26px",
+        borderRadius: "999px",
+        background: checked ? (accent || "var(--accent)") : "var(--surface-elevated)",
+        border: "1px solid var(--border)",
+        boxShadow: "inset 0 1px 3px rgba(0,0,0,0.12)",
+        position: "relative",
+        cursor: "pointer",
+        transition: "background 0.2s",
+        WebkitTapHighlightColor: "transparent",
+        touchAction: "manipulation",
+        flexShrink: 0,
+      }}
+    >
+      <div
+        style={{
+          position: "absolute",
+          top: "3px",
+          left: checked ? "25px" : "3px",
+          width: "18px",
+          height: "18px",
+          backgroundColor: "white",
+          borderRadius: "50%",
+          transition: "left 0.25s cubic-bezier(0.34,1.56,0.64,1)",
+          boxShadow: "0 2px 6px rgba(0,0,0,0.28)",
+        }}
+      />
     </button>
   );
 }
@@ -62,16 +78,16 @@ export default function AppSettings({ isOpen, onClose }) {
 
   const devMode = () => {
     setDevClicks(c => c+1);
-    if (devClicks===6) { toast("Developer mode activated 🛠", {icon:"🚀"}); localStorage.setItem("thirty_dev","true"); }
+    if (devClicks===6) { toast("Developer mode activated"); localStorage.setItem("thirty_dev","true"); }
   };
 
   if (!isOpen) return null;
 
   const TABS = [
-    { id:"general", icon:"⚙️", label:"General" },
-    { id:"look",    icon:"✨", label:"Appearance" },
-    { id:"alerts",  icon:"🔔", label:"Alerts" },
-    { id:"about",   icon:"ℹ️", label:"About" },
+    { id: "general", Icon: IconSettingsGear, label: "General" },
+    { id: "look", Icon: IconSparkle, label: "Appearance" },
+    { id: "alerts", Icon: IconBell, label: "Alerts" },
+    { id: "about", Icon: IconInfo, label: "About" },
   ];
 
   const rowStyle = {
@@ -109,12 +125,25 @@ export default function AppSettings({ isOpen, onClose }) {
           <h2 style={{ fontSize:"20px", fontWeight:700, margin:0,
             color:"var(--text-primary)", letterSpacing:"-0.02em",
             fontFamily:"var(--font-heading)" }}>Settings</h2>
-          <button onClick={onClose}
-            style={{ width:"32px", height:"32px", borderRadius:"16px",
-              background:"var(--surface-raised)", border:"1px solid var(--border)",
-              cursor:"pointer", color:"var(--text-muted)",
-              display:"flex", alignItems:"center", justifyContent:"center",
-              fontSize:"14px", WebkitTapHighlightColor:"transparent" }}>✕</button>
+          <button
+            type="button"
+            onClick={onClose}
+            style={{
+              width: "34px",
+              height: "34px",
+              borderRadius: "12px",
+              background: "var(--surface-raised)",
+              border: "1px solid var(--border)",
+              cursor: "pointer",
+              color: "var(--text-muted)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              WebkitTapHighlightColor: "transparent",
+            }}
+          >
+            <IconClose size={16} stroke="currentColor" />
+          </button>
         </div>
 
         <div style={{ display:"flex", flexDirection:"column", flex:1, overflow:"hidden" }}>
@@ -122,22 +151,39 @@ export default function AppSettings({ isOpen, onClose }) {
           {/* Tabs */}
           <div style={{ display:"flex", gap:"6px", overflowX:"auto",
             padding:"0 16px 12px", marginBottom:"8px" }} className="hide-scrollbar">
-            {TABS.map(t => (
-              <button key={t.id} onClick={() => setActiveTab(t.id)}
-                style={{
-                  padding:"8px 16px", borderRadius:"999px",
-                  border: activeTab===t.id ? `1px solid var(--accent)` : "1px solid var(--border)",
-                  background: activeTab===t.id ? "var(--accent-subtle)" : "transparent",
-                  color: activeTab===t.id ? "var(--accent)" : "var(--text-muted)",
-                  cursor:"pointer", fontSize:"13px",
-                  fontWeight: activeTab===t.id ? 600 : 500,
-                  fontFamily:"inherit", display:"flex", alignItems:"center",
-                  gap:"6px", whiteSpace:"nowrap", transition:"all 0.15s",
-                  WebkitTapHighlightColor:"transparent",
-                }}>
-                <span>{t.icon}</span>{t.label}
-              </button>
-            ))}
+            {TABS.map((t) => {
+              const active = activeTab === t.id;
+              return (
+                <button
+                  key={t.id}
+                  type="button"
+                  onClick={() => setActiveTab(t.id)}
+                  style={{
+                    padding: "8px 14px",
+                    borderRadius: "999px",
+                    border: active ? `1px solid var(--accent)` : "1px solid var(--border)",
+                    background: active ? "var(--accent-subtle)" : "transparent",
+                    color: active ? "var(--accent)" : "var(--text-muted)",
+                    cursor: "pointer",
+                    fontSize: "12px",
+                    fontWeight: active ? 700 : 500,
+                    fontFamily: "inherit",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "8px",
+                    whiteSpace: "nowrap",
+                    transition: "all 0.15s",
+                    WebkitTapHighlightColor: "transparent",
+                    boxShadow: active ? "0 4px 14px var(--accent-glow)" : "none",
+                  }}
+                >
+                  <span style={{ display: "inline-flex", opacity: active ? 1 : 0.75 }}>
+                    <t.Icon size={16} stroke="currentColor" />
+                  </span>
+                  {t.label}
+                </button>
+              );
+            })}
           </div>
 
           {/* Content */}
@@ -219,29 +265,53 @@ export default function AppSettings({ isOpen, onClose }) {
                   <div>
                     <div className="section-label" style={{ marginBottom:"10px" }}>Theme</div>
                     <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:"10px" }}>
-                      <button onClick={() => { if(!isDark) toggleTheme(); }}
-                        style={{ padding:"18px", borderRadius:"14px",
+                      <button
+                        type="button"
+                        onClick={() => { if (!isDark) toggleTheme(); }}
+                        style={{
+                          padding: "16px",
+                          borderRadius: "16px",
                           background: isDark ? "var(--accent-subtle)" : "var(--surface-raised)",
                           border: isDark ? `1.5px solid var(--accent)` : "1.5px solid var(--border)",
-                          color:"var(--text-primary)", cursor:"pointer",
-                          display:"flex", flexDirection:"column",
-                          alignItems:"center", gap:"10px", transition:"all 0.2s",
-                          WebkitTapHighlightColor:"transparent" }}>
-                        <div style={{ fontSize:"24px" }}>🌙</div>
-                        <span style={{ fontSize:"13px", fontWeight:600,
-                          color: isDark ? "var(--accent)" : "var(--text-muted)" }}>Dark</span>
+                          color: "var(--text-primary)",
+                          cursor: "pointer",
+                          display: "flex",
+                          flexDirection: "column",
+                          alignItems: "center",
+                          gap: "10px",
+                          transition: "all 0.2s",
+                          WebkitTapHighlightColor: "transparent",
+                          boxShadow: isDark ? "0 8px 24px var(--accent-glow)" : "none",
+                        }}
+                      >
+                        <span style={{ color: isDark ? "var(--accent)" : "var(--text-muted)" }}>
+                          <IconMoon size={28} stroke="currentColor" />
+                        </span>
+                        <span style={{ fontSize: "13px", fontWeight: 700, color: isDark ? "var(--accent)" : "var(--text-muted)" }}>Dark</span>
                       </button>
-                      <button onClick={() => { if(isDark) toggleTheme(); }}
-                        style={{ padding:"18px", borderRadius:"14px",
+                      <button
+                        type="button"
+                        onClick={() => { if (isDark) toggleTheme(); }}
+                        style={{
+                          padding: "16px",
+                          borderRadius: "16px",
                           background: !isDark ? "var(--accent-subtle)" : "var(--surface-raised)",
                           border: !isDark ? `1.5px solid var(--accent)` : "1.5px solid var(--border)",
-                          color:"var(--text-primary)", cursor:"pointer",
-                          display:"flex", flexDirection:"column",
-                          alignItems:"center", gap:"10px", transition:"all 0.2s",
-                          WebkitTapHighlightColor:"transparent" }}>
-                        <div style={{ fontSize:"24px" }}>☀️</div>
-                        <span style={{ fontSize:"13px", fontWeight:600,
-                          color: !isDark ? "var(--accent)" : "var(--text-muted)" }}>Light</span>
+                          color: "var(--text-primary)",
+                          cursor: "pointer",
+                          display: "flex",
+                          flexDirection: "column",
+                          alignItems: "center",
+                          gap: "10px",
+                          transition: "all 0.2s",
+                          WebkitTapHighlightColor: "transparent",
+                          boxShadow: !isDark ? "0 8px 24px var(--accent-glow)" : "none",
+                        }}
+                      >
+                        <span style={{ color: !isDark ? "var(--accent)" : "var(--text-muted)" }}>
+                          <IconSun size={28} stroke="currentColor" />
+                        </span>
+                        <span style={{ fontSize: "13px", fontWeight: 700, color: !isDark ? "var(--accent)" : "var(--text-muted)" }}>Light</span>
                       </button>
                     </div>
                   </div>
@@ -249,29 +319,57 @@ export default function AppSettings({ isOpen, onClose }) {
                   {/* Accent */}
                   <div>
                     <div className="section-label" style={{ marginBottom:"10px" }}>Accent colour</div>
-                    <div style={{ padding:"16px", borderRadius:"14px",
-                      background:"var(--surface-raised)",
-                      display:"flex", flexWrap:"wrap", gap:"14px", justifyContent:"center" }}>
-                      {ACCENT_PRESETS.map(preset => {
+                    <div
+                      style={{
+                        padding: "14px",
+                        borderRadius: "16px",
+                        background: "var(--surface-raised)",
+                        display: "grid",
+                        gridTemplateColumns: "repeat(auto-fill, minmax(72px, 1fr))",
+                        gap: "12px",
+                      }}
+                    >
+                      {ACCENT_PRESETS.map((preset) => {
                         const sel = ac === preset.value;
                         return (
-                          <button key={preset.value}
+                          <button
+                            key={preset.value}
+                            type="button"
                             onClick={() => changeAccent(preset.value)}
                             style={{
-                              width:"42px", height:"42px", borderRadius:"50%",
-                              background: preset.value, border:"none", cursor:"pointer",
-                              transition:"transform 0.15s, box-shadow 0.15s",
-                              display:"flex", alignItems:"center", justifyContent:"center",
-                              boxShadow: sel ? `0 0 0 2px var(--bg), 0 0 0 4px ${preset.value}` : "none",
-                              transform: sel ? "scale(1.1)" : "scale(1)",
-                              WebkitTapHighlightColor:"transparent",
-                            }}>
-                            {sel && (
-                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
-                                stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                                <polyline points="20 6 9 17 4 12"/>
-                              </svg>
-                            )}
+                              border: "none",
+                              cursor: "pointer",
+                              padding: "8px 4px",
+                              borderRadius: "14px",
+                              background: sel ? "var(--accent-subtle)" : "transparent",
+                              display: "flex",
+                              flexDirection: "column",
+                              alignItems: "center",
+                              gap: "8px",
+                              transition: "transform 0.15s, box-shadow 0.15s",
+                              WebkitTapHighlightColor: "transparent",
+                              boxShadow: sel ? `0 0 0 1px ${preset.value}55, 0 6px 18px ${preset.value}33` : "none",
+                            }}
+                          >
+                            <span
+                              style={{
+                                width: "40px",
+                                height: "40px",
+                                borderRadius: "50%",
+                                background: preset.value,
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                boxShadow: sel ? `0 0 0 2px var(--bg), 0 0 0 4px ${preset.value}` : `inset 0 2px 4px rgba(255,255,255,0.25)`,
+                              }}
+                            >
+                              {sel && (
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                                  <polyline points="20 6 9 17 4 12" />
+                                </svg>
+                              )}
+                            </span>
+                            <span style={{ fontSize: "10px", fontWeight: 700, color: sel ? "var(--accent)" : "var(--text-muted)", letterSpacing: "0.02em" }}>{preset.name}</span>
                           </button>
                         );
                       })}
@@ -322,7 +420,7 @@ export default function AppSettings({ isOpen, onClose }) {
                           background:"rgba(255,69,58,0.1)",
                           border:"1px solid rgba(255,69,58,0.25)",
                           display:"flex", gap:"10px", alignItems:"flex-start" }}>
-                          <div style={{ fontSize:"16px" }}>⚠️</div>
+                          <div style={{ width: 22, height: 22, borderRadius: "50%", border: "2px solid var(--danger)", color: "var(--danger)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 800, flexShrink: 0 }}>!</div>
                           <div style={{ fontSize:"12px", color:"var(--danger)", lineHeight:1.5 }}>
                             Notifications are blocked. Allow them in device settings.
                           </div>
@@ -332,7 +430,11 @@ export default function AppSettings({ isOpen, onClose }) {
                           background:"rgba(48,209,88,0.1)",
                           border:"1px solid rgba(48,209,88,0.25)",
                           display:"flex", gap:"10px", alignItems:"flex-start" }}>
-                          <div style={{ fontSize:"16px" }}>✅</div>
+                          <div style={{ width: 22, height: 22, borderRadius: "50%", background: "var(--success)", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                              <polyline points="20 6 9 17 4 12" />
+                            </svg>
+                          </div>
                           <div style={{ fontSize:"12px", color:"var(--success)", lineHeight:1.5 }}>
                             You're all set! Reminders are active.
                           </div>
@@ -381,7 +483,7 @@ export default function AppSettings({ isOpen, onClose }) {
                   </div>
 
                   <div style={{ marginTop:"32px", fontSize:"12px", color:"var(--text-muted)", opacity:0.6 }}>
-                    Made with <span style={{ color:"var(--danger)" }}>♥</span> for productivity
+                    Built for focused days — Thirty
                   </div>
                 </motion.div>
               </AnimatePresence>

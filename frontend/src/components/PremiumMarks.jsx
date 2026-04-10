@@ -1,20 +1,30 @@
 import { useId } from "react";
 
-/** Premium-style task glyph (gradient tile + check). */
-export function PremiumTaskMark({ size = 32 }) {
+/** Premium-style task glyph (gradient tile + check). Uses theme accent via CSS variables, or optional hex override. */
+export function PremiumTaskMark({ size = 32, accent }) {
   const uid = useId().replace(/:/g, "");
   const gid = `pt-${uid}`;
+  const useVar = !accent;
   return (
     <svg width={size} height={size} viewBox="0 0 32 32" fill="none" aria-hidden style={{ flexShrink: 0 }}>
       <defs>
         <linearGradient id={gid} x1="4" y1="4" x2="28" y2="28" gradientUnits="userSpaceOnUse">
-          <stop stopColor="#FF8FB8" />
-          <stop offset="0.45" stopColor="#E84A8A" />
-          <stop offset="1" stopColor="#C73E7A" />
+          {useVar ? (
+            <>
+              <stop stopColor="var(--accent)" />
+              <stop offset="0.5" stopColor="var(--accent-hover)" />
+              <stop offset="1" stopColor="var(--accent-pressed)" />
+            </>
+          ) : (
+            <>
+              <stop stopColor={accent} />
+              <stop offset="1" stopColor={accent} stopOpacity={0.75} />
+            </>
+          )}
         </linearGradient>
       </defs>
       <rect x="2" y="3" width="28" height="26" rx="9" fill={`url(#${gid})`} />
-      <rect x="2" y="3" width="28" height="26" rx="9" fill="rgba(255,255,255,0.1)" />
+      <rect x="2" y="3" width="28" height="26" rx="9" fill="rgba(255,255,255,0.12)" />
       <path
         d="M10 16.5l3.2 3.2L22 11"
         stroke="rgba(255,255,255,0.95)"

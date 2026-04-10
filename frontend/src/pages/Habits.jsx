@@ -2,6 +2,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { useCallback, useState } from "react";
 import toast from "react-hot-toast";
 import CenteredModal from "../components/CenteredModal";
+import { IconFlame, IconPlus, IconTrash, PremiumIconButton } from "../components/PremiumChrome";
 import { PremiumHabitTile } from "../components/PremiumMarks";
 import { useTheme } from "../context/ThemeContext";
 import { useHabits } from "../hooks/useHabits";
@@ -97,38 +98,44 @@ function HabitCard({ habit, onToggle, onDelete, onEdit }) {
                 style={{
                   fontSize: "11px",
                   fontWeight: 800,
-                  padding: "4px 11px",
+                  padding: "4px 11px 4px 8px",
                   borderRadius: "999px",
-                  background: `linear-gradient(135deg, ${habit.color}35, ${habit.color}18)`,
+                  background: `linear-gradient(135deg, ${habit.color}38, ${habit.color}16)`,
                   color: habit.color,
-                  border: `1px solid ${habit.color}55`,
+                  border: `1px solid ${habit.color}50`,
                   letterSpacing: "0.02em",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: "5px",
                 }}
               >
-                🔥 {streak} day{streak === 1 ? "" : "s"} streak
+                <IconFlame size={13} fill={habit.color} />
+                {streak} day{streak === 1 ? "" : "s"} streak
               </span>
             </div>
           </div>
         </div>
 
-        <div style={{ display: "flex", gap: "8px" }}>
-          <button
-            type="button"
-            onClick={() => onToggle(habit.id, today)}
-            className="btn-reset"
-            style={{
-              width: "38px",
-              height: "38px",
-              borderRadius: "12px",
-              background: habit.color,
-              color: "#111",
-              fontSize: "24px",
-              fontWeight: 800,
-            }}
-          >
-            +
-          </button>
-        </div>
+        <button
+          type="button"
+          onClick={() => onToggle(habit.id, today)}
+          className="btn-reset"
+          aria-label="Log today"
+          style={{
+            width: "40px",
+            height: "40px",
+            borderRadius: "14px",
+            background: `linear-gradient(145deg, ${habit.color}, ${habit.color}cc)`,
+            color: "#111",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            boxShadow: `0 6px 18px ${habit.color}50, inset 0 1px 0 rgba(255,255,255,0.35)`,
+            border: "1px solid rgba(255,255,255,0.25)",
+          }}
+        >
+          <IconPlus size={22} stroke="currentColor" />
+        </button>
       </div>
 
       <div style={{ display: "flex", justifyContent: "space-between", gap: "6px", marginBottom: "12px" }}>
@@ -163,22 +170,16 @@ function HabitCard({ habit, onToggle, onDelete, onEdit }) {
       </div>
 
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", color: "var(--text-muted)", fontSize: "12px" }}>
-        <div style={{ display: "flex", gap: "12px" }}>
-          <span style={{ color: habit.color }}>◌ 0</span>
-          <span style={{ color: habit.color }}>◔ {Number.isFinite(pct) ? `${pct}%` : "-"}</span>
-        </div>
         <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
-          <button
-            type="button"
-            onClick={() => onEdit(habit)}
-            className="btn-reset"
-            style={{ color: "var(--accent)", fontSize: "13px", fontWeight: 600 }}
-          >
+          <span style={{ color: habit.color, fontWeight: 700, fontSize: "11px", letterSpacing: "0.06em", textTransform: "uppercase" }}>7d · {Number.isFinite(pct) ? `${pct}%` : "—"}</span>
+        </div>
+        <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+          <button type="button" onClick={() => onEdit(habit)} className="btn-reset" style={{ color: "var(--accent)", fontSize: "12px", fontWeight: 700, letterSpacing: "0.04em", textTransform: "uppercase", padding: "8px 10px", borderRadius: "10px", background: "var(--accent-subtle)", border: "1px solid var(--accent-subtle)" }}>
             Edit
           </button>
-          <button type="button" onClick={() => onDelete(habit.id)} className="btn-reset" style={{ color: "var(--text-muted)", fontSize: "18px" }} aria-label="Delete habit">
-            🗑
-          </button>
+          <PremiumIconButton label="Delete habit" onClick={() => onDelete(habit.id)}>
+            <IconTrash size={17} stroke="currentColor" />
+          </PremiumIconButton>
         </div>
       </div>
     </motion.div>
@@ -265,6 +266,7 @@ export default function Habits() {
         type="button"
         onClick={openCreate}
         className="btn-reset"
+        aria-label="New habit"
         style={{
           position: "fixed",
           right: "18px",
@@ -272,13 +274,16 @@ export default function Habits() {
           width: "58px",
           height: "58px",
           borderRadius: "18px",
-          background: `linear-gradient(135deg, var(--accent-hover), var(--accent))`,
+          background: "linear-gradient(145deg, var(--accent-hover), var(--accent))",
           color: "#fff",
-          fontSize: "30px",
-          boxShadow: "var(--shadow-glow)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          boxShadow: "var(--shadow-glow), 0 8px 28px var(--accent-glow)",
+          border: "1px solid rgba(255,255,255,0.2)",
         }}
       >
-        +
+        <IconPlus size={26} stroke="#fff" />
       </button>
 
       <CenteredModal isOpen={showModal} onClose={handleClose} title={editingId ? "Edit habit" : "New habit"} maxWidth="380px">

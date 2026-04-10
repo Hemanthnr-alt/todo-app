@@ -12,6 +12,9 @@ export const ACCENT_PRESETS = [
   { name: "Mint", value: "#59D68D" },
   { name: "Gold", value: "#FFB547" },
   { name: "Berry", value: "#FF6F7D" },
+  { name: "Violet", value: "#8B5CF6" },
+  { name: "Ocean", value: "#0EA5E9" },
+  { name: "Rose", value: "#E11D48" },
 ];
 
 const hexToRgb = (hex) => {

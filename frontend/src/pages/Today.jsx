@@ -4,6 +4,7 @@ import { useAuth } from "../context/AuthContext";
 import { useTheme } from "../context/ThemeContext";
 import { useHabits } from "../hooks/useHabits";
 import { useTasks } from "../hooks/useTasks";
+import { PremiumCompleteTitle, PremiumRoundComplete } from "../components/PremiumChrome";
 import { PremiumHabitTile, PremiumTaskMark } from "../components/PremiumMarks";
 import { formatLocalYMD, localTodayYMD } from "../utils/date";
 
@@ -47,6 +48,7 @@ function EmptyState({ selectedIsToday, onGoToTasks }) {
 function AgendaItem({ item, accent, onToggleTask, onToggleHabit }) {
   const color = item.color || accent;
   const checked = item.done;
+  const lineColor = typeof color === "string" && color.startsWith("var(") ? "var(--accent)" : color;
 
   const isTask = item.type === "task";
 
@@ -56,57 +58,32 @@ function AgendaItem({ item, accent, onToggleTask, onToggleHabit }) {
         display: "flex",
         alignItems: "center",
         gap: "12px",
-        padding: "14px 4px",
+        padding: "14px 8px",
         borderBottom: "1px solid var(--border)",
         borderLeft: checked ? `3px solid ${color}` : "3px solid transparent",
-        borderRadius: "0 12px 12px 0",
-        background: checked ? `linear-gradient(90deg, ${color}14, transparent 60%)` : undefined,
+        borderRadius: "0 14px 14px 0",
+        background: checked ? `linear-gradient(90deg, ${color}18, transparent 58%)` : undefined,
+        boxShadow: checked ? `inset 0 0 20px ${color}0f` : "none",
       }}
     >
       {isTask ? <PremiumTaskMark size={32} /> : <PremiumHabitTile emoji={item.icon} color={color} size={32} />}
 
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div
-          style={{
-            color: "var(--text-primary)",
-            fontSize: "15px",
-            fontWeight: 600,
-            textDecoration: checked ? "line-through" : "none",
-            textDecorationThickness: checked ? "2px" : undefined,
-            textDecorationColor: checked ? `${color}99` : undefined,
-            opacity: checked ? 0.5 : 1,
-            overflow: "hidden",
-            textOverflow: "ellipsis",
-            whiteSpace: "nowrap",
-          }}
-        >
+        <PremiumCompleteTitle complete={checked} lineColor={lineColor}>
           {item.title}
-        </div>
-        <div style={{ marginTop: "4px", fontSize: "12px", color, fontWeight: 600, letterSpacing: "0.02em" }}>{item.kind}</div>
+        </PremiumCompleteTitle>
+        <div style={{ marginTop: "6px", fontSize: "11px", color, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", opacity: 0.95 }}>{item.kind}</div>
       </div>
 
-      <button
-        type="button"
+      <PremiumRoundComplete
+        checked={checked}
         onClick={() => {
           if (isTask) onToggleTask(item.id, !checked);
           else onToggleHabit(item.id, item.date);
         }}
-        className="btn-reset"
-        style={{
-          width: "30px",
-          height: "30px",
-          borderRadius: "50%",
-          background: checked ? color : "var(--surface-raised)",
-          border: `2px solid ${checked ? color : "var(--border-strong)"}`,
-          color: checked ? "#fff" : "transparent",
-          flexShrink: 0,
-          boxShadow: checked ? `0 0 0 4px ${color}1f` : "none",
-          fontWeight: 700,
-        }}
-        aria-label={checked ? "Mark incomplete" : "Mark complete"}
-      >
-        ✓
-      </button>
+        color={color}
+        ariaLabel={checked ? "Mark incomplete" : "Mark complete"}
+      />
     </div>
   );
 }
