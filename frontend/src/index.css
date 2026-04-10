@@ -78,32 +78,28 @@
 }
 
 [data-theme="light"] {
-  --bg: #f6efe6;
-  --bg-elevated: #fff8f1;
-  --surface: rgba(255, 251, 247, 0.82);
-  --surface-raised: rgba(255, 255, 255, 0.92);
-  --surface-elevated: rgba(255, 247, 239, 0.96);
-  --surface-solid: #fffdf8;
+  --bg: #f5f1eb;
+  --bg-elevated: #f0e9e1;
+  --surface: #fffdfa;
+  --surface-raised: #ffffff;
+  --surface-elevated: #efe7dd;
+  --surface-solid: #fffdfa;
 
-  --border: rgba(125, 95, 69, 0.14);
-  --border-strong: rgba(125, 95, 69, 0.22);
-  --border-hover: rgba(125, 95, 69, 0.3);
+  --border: rgba(95, 74, 55, 0.12);
+  --border-strong: rgba(95, 74, 55, 0.18);
+  --border-hover: rgba(95, 74, 55, 0.26);
   --border-active: var(--accent);
 
-  --text-primary: #20160f;
-  --text-body: rgba(43, 30, 21, 0.84);
-  --text-secondary: rgba(73, 53, 37, 0.68);
-  --text-muted: rgba(109, 85, 64, 0.5);
-  --text-tertiary: rgba(109, 85, 64, 0.3);
+  --text-primary: #211911;
+  --text-body: rgba(33, 25, 17, 0.86);
+  --text-secondary: rgba(76, 58, 43, 0.72);
+  --text-muted: rgba(108, 86, 67, 0.56);
+  --text-tertiary: rgba(108, 86, 67, 0.32);
 
-  --hero-gradient:
-    radial-gradient(circle at 18% 20%, rgba(255, 122, 89, 0.16), transparent 28%),
-    radial-gradient(circle at 84% 12%, rgba(109, 211, 255, 0.16), transparent 24%),
-    radial-gradient(circle at 56% 100%, rgba(255, 209, 102, 0.22), transparent 36%),
-    linear-gradient(180deg, #fff8f2 0%, #f8efe4 52%, #f3eadf 100%);
-  --glass-highlight: linear-gradient(135deg, rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0.26));
-  --shadow-soft: 0 20px 60px rgba(101, 72, 38, 0.1);
-  --shadow-card: 0 24px 64px rgba(101, 72, 38, 0.12);
+  --hero-gradient: linear-gradient(180deg, #f5f1eb 0%, #f2ece4 100%);
+  --glass-highlight: linear-gradient(135deg, rgba(255, 255, 255, 0.7), rgba(255, 255, 255, 0.14));
+  --shadow-soft: 0 8px 24px rgba(101, 72, 38, 0.06);
+  --shadow-card: 0 10px 30px rgba(101, 72, 38, 0.08);
 }
 
 html {
@@ -136,6 +132,10 @@ body::before {
 
 [data-theme="dark"] body::before,
 :root body::before {
+  opacity: 0;
+}
+
+[data-theme="light"] body::before {
   opacity: 0;
 }
 
@@ -178,12 +178,13 @@ h6,
 }
 
 ::-webkit-scrollbar-track {
-  background: transparent;
+  background: var(--bg-elevated);
 }
 
 ::-webkit-scrollbar-thumb {
   background: var(--border-strong);
   border-radius: 999px;
+  border: 2px solid var(--bg-elevated);
 }
 
 ::-webkit-scrollbar-thumb:hover {

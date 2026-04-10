@@ -29,6 +29,40 @@ function buildDates(startOffset, endOffset) {
   return values;
 }
 
+function getMonthData(year, month) {
+  const first = new Date(year, month, 1);
+  const last = new Date(year, month + 1, 0);
+  const startDay = (first.getDay() + 6) % 7;
+  const daysInMonth = last.getDate();
+  const prevLast = new Date(year, month, 0).getDate();
+  const result = [];
+  for (let index = startDay - 1; index >= 0; index -= 1) result.push({ dateNum: prevLast - index, isCurrentMonth: false, offset: -1 });
+  for (let index = 1; index <= daysInMonth; index += 1) result.push({ dateNum: index, isCurrentMonth: true, offset: 0 });
+  const total = result.length;
+  for (let index = 1; index <= (total % 7 === 0 ? 0 : 7 - (total % 7)); index += 1) result.push({ dateNum: index, isCurrentMonth: false, offset: 1 });
+  return result;
+}
+
+function toDateStr(year, month, day, offset) {
+  let nextYear = year;
+  let nextMonth = month;
+  if (offset === -1) {
+    nextMonth = month - 1;
+    if (nextMonth < 0) {
+      nextMonth = 11;
+      nextYear = year - 1;
+    }
+  }
+  if (offset === 1) {
+    nextMonth = month + 1;
+    if (nextMonth > 11) {
+      nextMonth = 0;
+      nextYear = year + 1;
+    }
+  }
+  return `${nextYear}-${String(nextMonth + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+}
+
 function AuthPreview({ onGoToTasks }) {
   return (
     <div style={{ maxWidth: "620px", margin: "0 auto", padding: "28px 16px 24px" }}>
@@ -131,7 +165,7 @@ function AgendaItem({ item, accent, onToggleTask, onToggleHabit }) {
   );
 }
 
-export default function Today({ onGoToTasks }) {
+export default function Today({ onGoToTasks, onGoToCalendar }) {
   const { accent } = useTheme();
   const { user, isAuthenticated } = useAuth();
   const { tasks, updateTask } = useTasks();
@@ -142,6 +176,7 @@ export default function Today({ onGoToTasks }) {
   const [rangeEnd, setRangeEnd] = useState(8);
   const [dates, setDates] = useState(() => buildDates(-5, 8));
   const [selected, setSelected] = useState(todayStr);
+  const [calendarMonth, setCalendarMonth] = useState(new Date());
   const stripRef = useRef(null);
   const datesRef = useRef(dates);
   const rangeStartRef = useRef(rangeStart);
@@ -200,6 +235,7 @@ export default function Today({ onGoToTasks }) {
 
   const selectedDate = new Date(`${selected}T00:00:00`);
   const missedMap = getMissed();
+  const monthDays = getMonthData(calendarMonth.getFullYear(), calendarMonth.getMonth());
 
   const dayTasks = tasks
     .filter((task) => task.dueDate === selected)
@@ -290,6 +326,69 @@ export default function Today({ onGoToTasks }) {
 
       <div style={{ color: "var(--text-muted)", fontSize: "12px", marginBottom: "8px" }}>
         {selectedDate.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })}
+      </div>
+
+      <div className="glass-panel" style={{ borderRadius: "18px", padding: "14px", marginBottom: "16px" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px" }}>
+          <div style={{ color: "var(--text-primary)", fontWeight: 700 }}>
+            {calendarMonth.toLocaleDateString("en-US", { month: "long", year: "numeric" })}
+          </div>
+          <div style={{ display: "flex", gap: "8px" }}>
+            <button onClick={() => setCalendarMonth(new Date(calendarMonth.getFullYear(), calendarMonth.getMonth() - 1, 1))} className="btn-reset" style={{ color: "var(--text-muted)", fontSize: "18px" }}>‹</button>
+            <button onClick={() => setCalendarMonth(new Date())} className="btn-reset" style={{ color: accent, fontSize: "12px", fontWeight: 700 }}>Today</button>
+            <button onClick={() => setCalendarMonth(new Date(calendarMonth.getFullYear(), calendarMonth.getMonth() + 1, 1))} className="btn-reset" style={{ color: "var(--text-muted)", fontSize: "18px" }}>›</button>
+          </div>
+        </div>
+
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: "6px", marginBottom: "8px" }}>
+          {["M", "T", "W", "T", "F", "S", "S"].map((label, index) => (
+            <div key={`${label}-${index}`} style={{ textAlign: "center", color: "var(--text-muted)", fontSize: "11px" }}>{label}</div>
+          ))}
+        </div>
+
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: "6px" }}>
+          {monthDays.map((day, index) => {
+            const dateStr = toDateStr(calendarMonth.getFullYear(), calendarMonth.getMonth(), day.dateNum, day.offset);
+            const isToday = dateStr === todayStr;
+            const isSelected = dateStr === selected;
+            const hasItem = dayTasks.some((task) => task.dueDate === dateStr)
+              || tasks.some((task) => task.dueDate === dateStr)
+              || habits.some((habit) => (habit.completedDates || []).includes(dateStr));
+
+            return (
+              <button
+                key={`${dateStr}-${index}`}
+                onClick={() => setSelected(dateStr)}
+                className="btn-reset"
+                style={{
+                  aspectRatio: "1",
+                  borderRadius: "12px",
+                  background: isSelected ? `${accent}22` : "var(--surface-raised)",
+                  border: `1px solid ${isSelected ? accent : "var(--border)"}`,
+                  color: isToday ? accent : "var(--text-primary)",
+                  opacity: day.isCurrentMonth ? 1 : 0.45,
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: "3px",
+                  fontSize: "13px",
+                }}
+              >
+                <span>{day.dateNum}</span>
+                {hasItem && <span style={{ width: "4px", height: "4px", borderRadius: "50%", background: isSelected ? accent : "var(--text-muted)" }} />}
+              </button>
+            );
+          })}
+        </div>
+
+        {onGoToCalendar && (
+          <div style={{ marginTop: "12px", textAlign: "right" }}>
+            <button onClick={onGoToCalendar} className="btn-reset" style={{ color: accent, fontSize: "13px", fontWeight: 700 }}>
+              Open full calendar
+            </button>
+          </div>
+        )}
       </div>
 
       <div className="glass-panel" style={{ borderRadius: "18px", padding: "0 14px" }}>
