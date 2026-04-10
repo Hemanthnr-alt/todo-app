@@ -1,5 +1,5 @@
 import { AnimatePresence } from "framer-motion";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { useTheme } from "../context/ThemeContext";
 import { useHabits } from "../hooks/useHabits";
@@ -122,16 +122,12 @@ export default function Today({ onGoToTasks, onGoToCalendar }) {
     const child = element.children[0]?.children[index];
     if (!child) return;
     const target = child.offsetLeft - element.clientWidth / 2 + child.offsetWidth / 2;
-    element.scrollTo({ left: target, behavior });
+    element.scrollTo({ left: Math.max(0, target), behavior });
   }, []);
 
-  useEffect(() => {
-    requestAnimationFrame(() => requestAnimationFrame(() => scrollToDateStr(todayStr, "auto")));
-  }, [scrollToDateStr, todayStr]);
-
-  useEffect(() => {
-    requestAnimationFrame(() => requestAnimationFrame(() => scrollToDateStr(selected, "smooth")));
-  }, [scrollToDateStr, selected]);
+  useLayoutEffect(() => {
+    scrollToDateStr(selected, "auto");
+  }, [scrollToDateStr, selected, dates]);
 
   useEffect(() => {
     const element = stripRef.current;

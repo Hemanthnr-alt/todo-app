@@ -9,8 +9,9 @@ import { motion } from "framer-motion";
  * @param {Function} setCurr - Function to update the current date
  * @param {boolean} isDark - Dark mode flag
  * @param {string} accent - Accent color hex code
+ * @param {Function} [onToday] - Called after jumping the month view to the current month (e.g. select today’s day in the parent)
  */
-export default function MonthSelect({ curr, setCurr, isDark, accent }) {
+export default function MonthSelect({ curr, setCurr, isDark, accent, onToday }) {
   const months = [
     "January", "February", "March", "April", "May", "June",
     "July", "August", "September", "October", "November", "December"
@@ -85,7 +86,10 @@ export default function MonthSelect({ curr, setCurr, isDark, accent }) {
 
           <motion.button
             whileTap={{ scale: 0.95 }}
-            onClick={() => setCurr(new Date())}
+            onClick={() => {
+              setCurr(new Date());
+              onToday?.();
+            }}
             style={{
               ...btnStyle,
               background: "var(--surface-elevated)",

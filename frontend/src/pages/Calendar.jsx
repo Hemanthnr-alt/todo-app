@@ -85,7 +85,13 @@ export default function Calendar() {
       </div>
 
       <div className="glass-panel" style={{ borderRadius: "18px", padding: "16px", marginBottom: "18px" }}>
-        <MonthSelect curr={curr} setCurr={setCurr} isDark={isDark} accent={accent} />
+        <MonthSelect
+          curr={curr}
+          setCurr={setCurr}
+          isDark={isDark}
+          accent={accent}
+          onToday={() => setSelectedDate(new Date().toISOString().split("T")[0])}
+        />
 
         <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: "6px", marginBottom: "8px" }}>
           {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((label) => (

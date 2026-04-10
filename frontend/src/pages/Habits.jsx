@@ -5,7 +5,14 @@ import CenteredModal from "../components/CenteredModal";
 import { useTheme } from "../context/ThemeContext";
 import { useHabits } from "../hooks/useHabits";
 
-const ICON_OPTIONS = ["💧", "📚", "🏃", "🎯", "🧘", "✍️", "💪", "🥗", "🌙", "☕"];
+const EMOJI_PRESETS = [
+  "💧", "📚", "🏃", "🎯", "🧘", "✍️", "💪", "🥗", "🌙", "☕",
+  "🔥", "💯", "🎉", "🌟", "⚡", "🎵", "📖", "🍎", "💤", "🚶",
+  "🧠", "💻", "🎨", "🌅", "❤️", "🌿", "🧴", "🦷", "💊", "🚰",
+  "🎮", "📝", "📅", "⏰", "🧹", "🛁", "🍳", "🥛", "🏋️", "🚴",
+  "☀️", "🌈", "🦋", "🐝", "🌸", "⚽", "🎸", "📱", "✨", "🌱",
+  "🍊", "💭", "🎧", "🧩", "📌", "🏠", "🚗", "✈️", "🧗", "🤝",
+];
 const COLOR_OPTIONS = ["#94D82D", "#FFB020", "#E84A8A", "#5CC5D4", "#FF7A59", "#8A6CFF"];
 const DAY_LABELS = ["Sat", "Sun", "Mon", "Tue", "Wed", "Thu", "Fri"];
 
@@ -21,7 +28,46 @@ function getLast7() {
   return days;
 }
 
-function HabitCard({ habit, onToggle, onDelete }) {
+function EmojiPickerGrid({ value, onChange }) {
+  return (
+    <div>
+      <div className="section-label" style={{ marginBottom: "8px" }}>Icon</div>
+      <div
+        style={{
+          display: "flex",
+          flexWrap: "wrap",
+          gap: "8px",
+          maxHeight: "160px",
+          overflowY: "auto",
+          padding: "4px 2px",
+          WebkitOverflowScrolling: "touch",
+        }}
+      >
+        {EMOJI_PRESETS.map((em, index) => (
+          <button
+            key={`${em}-${index}`}
+            type="button"
+            onClick={() => onChange(em)}
+            className="btn-reset"
+            style={{
+              width: "38px",
+              height: "38px",
+              borderRadius: "12px",
+              background: em === value ? "var(--accent-subtle)" : "var(--surface-raised)",
+              border: `1px solid ${em === value ? "var(--accent)" : "var(--border)"}`,
+              fontSize: "18px",
+              lineHeight: 1,
+            }}
+          >
+            {em}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function HabitCard({ habit, onToggle, onDelete, onEdit }) {
   const last7 = getLast7();
   const today = todayStr();
   const doneSet = new Set(habit.completedDates || []);
@@ -38,15 +84,33 @@ function HabitCard({ habit, onToggle, onDelete }) {
       style={{ borderRadius: "18px", padding: "14px", marginBottom: "12px" }}
     >
       <div style={{ display: "flex", justifyContent: "space-between", gap: "12px", alignItems: "flex-start", marginBottom: "12px" }}>
-        <div style={{ minWidth: 0 }}>
-          <div style={{ color: "var(--text-primary)", fontSize: "16px", fontWeight: 700, marginBottom: "4px" }}>
-            {habit.name}
+        <div style={{ minWidth: 0, display: "flex", gap: "12px", alignItems: "center" }}>
+          <div
+            style={{
+              width: "44px",
+              height: "44px",
+              borderRadius: "14px",
+              background: habit.color,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              fontSize: "22px",
+              flexShrink: 0,
+            }}
+          >
+            {habit.icon}
           </div>
-          <div style={{ color: habit.color, fontSize: "12px" }}>Every day</div>
+          <div style={{ minWidth: 0 }}>
+            <div style={{ color: "var(--text-primary)", fontSize: "16px", fontWeight: 700, marginBottom: "4px" }}>
+              {habit.name}
+            </div>
+            <div style={{ color: habit.color, fontSize: "12px" }}>Every day</div>
+          </div>
         </div>
 
         <div style={{ display: "flex", gap: "8px" }}>
           <button
+            type="button"
             onClick={() => onToggle(habit.id, today)}
             className="btn-reset"
             style={{
@@ -73,6 +137,7 @@ function HabitCard({ habit, onToggle, onDelete }) {
             <div key={dateStr} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "6px", flex: 1 }}>
               <span style={{ color: "var(--text-muted)", fontSize: "11px" }}>{DAY_LABELS[index]}</span>
               <button
+                type="button"
                 onClick={() => onToggle(habit.id, dateStr)}
                 className="btn-reset"
                 style={{
@@ -99,9 +164,19 @@ function HabitCard({ habit, onToggle, onDelete }) {
           <span style={{ color: habit.color }}>◌ 0</span>
           <span style={{ color: habit.color }}>◔ {Number.isFinite(pct) ? `${pct}%` : "-"}</span>
         </div>
-        <button onClick={() => onDelete(habit.id)} className="btn-reset" style={{ color: "var(--text-muted)", fontSize: "18px" }}>
-          ⋮
-        </button>
+        <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
+          <button
+            type="button"
+            onClick={() => onEdit(habit)}
+            className="btn-reset"
+            style={{ color: "var(--accent)", fontSize: "13px", fontWeight: 600 }}
+          >
+            Edit
+          </button>
+          <button type="button" onClick={() => onDelete(habit.id)} className="btn-reset" style={{ color: "var(--text-muted)", fontSize: "18px" }} aria-label="Delete habit">
+            🗑
+          </button>
+        </div>
       </div>
     </motion.div>
   );
@@ -109,23 +184,53 @@ function HabitCard({ habit, onToggle, onDelete }) {
 
 export default function Habits() {
   const { accent } = useTheme();
-  const { habits, loading, addHabit, toggleHabit, deleteHabit } = useHabits();
+  const { habits, loading, addHabit, toggleHabit, deleteHabit, updateHabit } = useHabits();
   const [showModal, setShowModal] = useState(false);
+  const [editingId, setEditingId] = useState(null);
   const [name, setName] = useState("");
   const [icon, setIcon] = useState("💧");
   const [color, setColor] = useState(accent);
 
-  const handleAdd = useCallback(async () => {
+  const resetForm = useCallback(() => {
+    setName("");
+    setIcon("💧");
+    setColor(accent);
+    setEditingId(null);
+  }, [accent]);
+
+  const openCreate = useCallback(() => {
+    resetForm();
+    setShowModal(true);
+  }, [resetForm]);
+
+  const openEdit = useCallback(
+    (habit) => {
+      setEditingId(habit.id);
+      setName(habit.name);
+      setIcon(habit.icon || "💧");
+      setColor(habit.color || accent);
+      setShowModal(true);
+    },
+    [accent],
+  );
+
+  const handleClose = useCallback(() => {
+    setShowModal(false);
+    resetForm();
+  }, [resetForm]);
+
+  const handleSave = useCallback(async () => {
     if (!name.trim()) {
       toast.error("Enter a habit name");
       return;
     }
-    await addHabit({ name: name.trim(), icon, color, frequency: "daily" });
-    setName("");
-    setIcon("💧");
-    setColor(accent);
-    setShowModal(false);
-  }, [addHabit, color, icon, name, accent]);
+    if (editingId) {
+      await updateHabit(editingId, { name: name.trim(), icon, color });
+    } else {
+      await addHabit({ name: name.trim(), icon, color, frequency: "daily" });
+    }
+    handleClose();
+  }, [addHabit, color, editingId, handleClose, icon, name, updateHabit]);
 
   return (
     <div style={{ maxWidth: "720px", margin: "0 auto", padding: "20px 16px 32px", color: "var(--text-body)" }}>
@@ -141,20 +246,21 @@ export default function Habits() {
       ) : habits.length === 0 ? (
         <div className="glass-panel" style={{ borderRadius: "18px", padding: "24px", textAlign: "center" }}>
           <div style={{ color: "var(--text-muted)", marginBottom: "16px" }}>No habits yet.</div>
-          <button onClick={() => setShowModal(true)} className="btn-primary" style={{ padding: "0 18px" }}>
+          <button type="button" onClick={openCreate} className="btn-primary" style={{ padding: "0 18px" }}>
             Create habit
           </button>
         </div>
       ) : (
         <AnimatePresence>
           {habits.map((habit) => (
-            <HabitCard key={habit.id} habit={habit} onToggle={toggleHabit} onDelete={deleteHabit} />
+            <HabitCard key={habit.id} habit={habit} onToggle={toggleHabit} onDelete={deleteHabit} onEdit={openEdit} />
           ))}
         </AnimatePresence>
       )}
 
       <button
-        onClick={() => setShowModal(true)}
+        type="button"
+        onClick={openCreate}
         className="btn-reset"
         style={{
           position: "fixed",
@@ -172,7 +278,7 @@ export default function Habits() {
         +
       </button>
 
-      <CenteredModal isOpen={showModal} onClose={() => setShowModal(false)} title="New Habit" maxWidth="380px">
+      <CenteredModal isOpen={showModal} onClose={handleClose} title={editingId ? "Edit habit" : "New habit"} maxWidth="380px">
         <div style={{ display: "grid", gap: "14px" }}>
           <input
             value={name}
@@ -181,28 +287,7 @@ export default function Habits() {
             style={{ width: "100%", padding: "12px 14px", borderRadius: "14px", border: "1px solid var(--border)", background: "var(--surface-raised)", color: "var(--text-primary)", fontFamily: "var(--font-body)" }}
           />
 
-          <div>
-            <div className="section-label" style={{ marginBottom: "8px" }}>Icon</div>
-            <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
-              {ICON_OPTIONS.map((value) => (
-                <button
-                  key={value}
-                  onClick={() => setIcon(value)}
-                  className="btn-reset"
-                  style={{
-                    width: "38px",
-                    height: "38px",
-                    borderRadius: "12px",
-                    background: value === icon ? "var(--accent-subtle)" : "var(--surface-raised)",
-                    border: `1px solid ${value === icon ? "var(--accent)" : "var(--border)"}`,
-                    fontSize: "18px",
-                  }}
-                >
-                  {value}
-                </button>
-              ))}
-            </div>
-          </div>
+          <EmojiPickerGrid value={icon} onChange={setIcon} />
 
           <div>
             <div className="section-label" style={{ marginBottom: "8px" }}>Color</div>
@@ -210,6 +295,7 @@ export default function Habits() {
               {COLOR_OPTIONS.map((value) => (
                 <button
                   key={value}
+                  type="button"
                   onClick={() => setColor(value)}
                   className="btn-reset"
                   style={{
@@ -225,11 +311,11 @@ export default function Habits() {
           </div>
 
           <div style={{ display: "flex", gap: "8px" }}>
-            <button onClick={() => setShowModal(false)} className="glass-tile" style={{ flex: 1, borderRadius: "14px", padding: "10px 14px", color: "var(--text-primary)" }}>
+            <button type="button" onClick={handleClose} className="glass-tile" style={{ flex: 1, borderRadius: "14px", padding: "10px 14px", color: "var(--text-primary)" }}>
               Cancel
             </button>
-            <button onClick={handleAdd} className="btn-primary" style={{ flex: 1 }}>
-              Create
+            <button type="button" onClick={handleSave} className="btn-primary" style={{ flex: 1 }}>
+              {editingId ? "Save" : "Create"}
             </button>
           </div>
         </div>
