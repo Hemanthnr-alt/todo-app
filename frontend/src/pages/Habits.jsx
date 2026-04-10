@@ -80,9 +80,11 @@ function HabitCard({ habit, onToggle, onDelete }) {
                   height: "34px",
                   borderRadius: "50%",
                   border: `2px solid ${isDone || isToday ? habit.color : "var(--border)"}`,
-                  background: isDone ? `${habit.color}22` : "var(--surface-raised)",
-                  color: isDone || isToday ? "#fff" : "var(--text-muted)",
+                  background: isDone ? habit.color : "var(--surface-raised)",
+                  color: isDone ? "#fff" : isToday ? habit.color : "var(--text-muted)",
+                  boxShadow: isDone ? `0 0 0 4px ${habit.color}1f` : "none",
                   fontSize: "14px",
+                  fontWeight: isDone || isToday ? 700 : 500,
                 }}
               >
                 {date.getDate()}

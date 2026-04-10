@@ -1,4 +1,4 @@
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence } from "framer-motion";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { useTheme } from "../context/ThemeContext";
@@ -29,56 +29,6 @@ function buildDates(startOffset, endOffset) {
   return values;
 }
 
-function getMonthData(year, month) {
-  const first = new Date(year, month, 1);
-  const last = new Date(year, month + 1, 0);
-  const startDay = (first.getDay() + 6) % 7;
-  const daysInMonth = last.getDate();
-  const prevLast = new Date(year, month, 0).getDate();
-  const result = [];
-  for (let index = startDay - 1; index >= 0; index -= 1) result.push({ dateNum: prevLast - index, isCurrentMonth: false, offset: -1 });
-  for (let index = 1; index <= daysInMonth; index += 1) result.push({ dateNum: index, isCurrentMonth: true, offset: 0 });
-  const total = result.length;
-  for (let index = 1; index <= (total % 7 === 0 ? 0 : 7 - (total % 7)); index += 1) result.push({ dateNum: index, isCurrentMonth: false, offset: 1 });
-  return result;
-}
-
-function toDateStr(year, month, day, offset) {
-  let nextYear = year;
-  let nextMonth = month;
-  if (offset === -1) {
-    nextMonth = month - 1;
-    if (nextMonth < 0) {
-      nextMonth = 11;
-      nextYear = year - 1;
-    }
-  }
-  if (offset === 1) {
-    nextMonth = month + 1;
-    if (nextMonth > 11) {
-      nextMonth = 0;
-      nextYear = year + 1;
-    }
-  }
-  return `${nextYear}-${String(nextMonth + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
-}
-
-function AuthPreview({ onGoToTasks }) {
-  return (
-    <div style={{ maxWidth: "620px", margin: "0 auto", padding: "28px 16px 24px" }}>
-      <div className="glass-panel" style={{ borderRadius: "20px", padding: "24px", textAlign: "center" }}>
-        <h2 style={{ fontSize: "24px", marginBottom: "8px", letterSpacing: "-0.04em" }}>Today</h2>
-        <p style={{ color: "var(--text-muted)", fontSize: "14px", marginBottom: "18px" }}>
-          Sign in to see your daily task and habit list.
-        </p>
-        <button onClick={onGoToTasks} className="btn-primary" style={{ padding: "0 18px" }}>
-          Open Tasks
-        </button>
-      </div>
-    </div>
-  );
-}
-
 function EmptyState({ selectedIsToday, onGoToTasks }) {
   return (
     <div style={{ padding: "36px 10px", textAlign: "center" }}>
@@ -97,15 +47,7 @@ function AgendaItem({ item, accent, onToggleTask, onToggleHabit }) {
   const checked = item.done;
 
   return (
-    <div
-      style={{
-        display: "flex",
-        alignItems: "center",
-        gap: "12px",
-        padding: "14px 4px",
-        borderBottom: "1px solid var(--border)",
-      }}
-    >
+    <div style={{ display: "flex", alignItems: "center", gap: "12px", padding: "14px 4px", borderBottom: "1px solid var(--border)" }}>
       <div
         style={{
           width: "32px",
@@ -123,23 +65,10 @@ function AgendaItem({ item, accent, onToggleTask, onToggleHabit }) {
       </div>
 
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div
-          style={{
-            color: "var(--text-primary)",
-            fontSize: "15px",
-            fontWeight: 600,
-            textDecoration: checked ? "line-through" : "none",
-            opacity: checked ? 0.55 : 1,
-            overflow: "hidden",
-            textOverflow: "ellipsis",
-            whiteSpace: "nowrap",
-          }}
-        >
+        <div style={{ color: "var(--text-primary)", fontSize: "15px", fontWeight: 600, textDecoration: checked ? "line-through" : "none", opacity: checked ? 0.55 : 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
           {item.title}
         </div>
-        <div style={{ marginTop: "4px", fontSize: "12px", color }}>
-          {item.kind}
-        </div>
+        <div style={{ marginTop: "4px", fontSize: "12px", color }}>{item.kind}</div>
       </div>
 
       <button
@@ -149,14 +78,15 @@ function AgendaItem({ item, accent, onToggleTask, onToggleHabit }) {
         }}
         className="btn-reset"
         style={{
-          width: "28px",
-          height: "28px",
+          width: "30px",
+          height: "30px",
           borderRadius: "50%",
           background: checked ? color : "var(--surface-raised)",
-          border: `1px solid ${checked ? color : "var(--border)"}`,
+          border: `2px solid ${checked ? color : "var(--border-strong)"}`,
           color: checked ? "#fff" : "transparent",
           flexShrink: 0,
-          boxShadow: checked ? `0 0 0 4px ${color}20` : "none",
+          boxShadow: checked ? `0 0 0 4px ${color}1f` : "none",
+          fontWeight: 700,
         }}
       >
         ✓
@@ -176,7 +106,6 @@ export default function Today({ onGoToTasks, onGoToCalendar }) {
   const [rangeEnd, setRangeEnd] = useState(8);
   const [dates, setDates] = useState(() => buildDates(-5, 8));
   const [selected, setSelected] = useState(todayStr);
-  const [calendarMonth, setCalendarMonth] = useState(new Date());
   const stripRef = useRef(null);
   const datesRef = useRef(dates);
   const rangeStartRef = useRef(rangeStart);
@@ -235,7 +164,6 @@ export default function Today({ onGoToTasks, onGoToCalendar }) {
 
   const selectedDate = new Date(`${selected}T00:00:00`);
   const missedMap = getMissed();
-  const monthDays = getMonthData(calendarMonth.getFullYear(), calendarMonth.getMonth());
 
   const dayTasks = tasks
     .filter((task) => task.dueDate === selected)
@@ -268,15 +196,23 @@ export default function Today({ onGoToTasks, onGoToCalendar }) {
       date: selected,
     }));
 
-  const items = useMemo(
-    () => [...dayHabits, ...dayTasks],
-    [dayHabits, dayTasks],
-  );
-
+  const items = useMemo(() => [...dayHabits, ...dayTasks], [dayHabits, dayTasks]);
   const completedCount = items.filter((item) => item.done).length;
 
   if (!isAuthenticated) {
-    return <AuthPreview onGoToTasks={onGoToTasks} />;
+    return (
+      <div style={{ maxWidth: "620px", margin: "0 auto", padding: "28px 16px 24px" }}>
+        <div className="glass-panel" style={{ borderRadius: "20px", padding: "24px", textAlign: "center" }}>
+          <h2 style={{ fontSize: "24px", marginBottom: "8px", letterSpacing: "-0.04em" }}>Today</h2>
+          <p style={{ color: "var(--text-muted)", fontSize: "14px", marginBottom: "18px" }}>
+            Sign in to see your daily task and habit list.
+          </p>
+          <button onClick={onGoToTasks} className="btn-primary" style={{ padding: "0 18px" }}>
+            Open Tasks
+          </button>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -288,6 +224,31 @@ export default function Today({ onGoToTasks, onGoToCalendar }) {
             {user?.name ? `${user.name.split(" ")[0]}'s list` : "Your list"} · {completedCount}/{items.length} done
           </div>
         </div>
+
+        <button
+          onClick={onGoToCalendar}
+          className="btn-reset"
+          style={{
+            width: "40px",
+            height: "40px",
+            borderRadius: "12px",
+            background: "var(--surface)",
+            border: "1px solid var(--border)",
+            color: "var(--text-primary)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            flexShrink: 0,
+          }}
+          aria-label="Open calendar"
+        >
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+            <rect x="3" y="4" width="18" height="18" rx="2" />
+            <line x1="16" y1="2" x2="16" y2="6" />
+            <line x1="8" y1="2" x2="8" y2="6" />
+            <line x1="3" y1="10" x2="21" y2="10" />
+          </svg>
+        </button>
       </div>
 
       <div ref={stripRef} className="hide-scrollbar" style={{ overflowX: "auto", marginBottom: "18px" }}>
@@ -305,8 +266,9 @@ export default function Today({ onGoToTasks, onGoToCalendar }) {
                   minWidth: "52px",
                   padding: "8px 10px",
                   borderRadius: "14px",
-                  background: isSelected ? "rgba(92, 150, 170, 0.95)" : "var(--surface)",
-                  color: "#fff",
+                  background: isSelected ? accent : "var(--surface)",
+                  color: isSelected ? "#fff" : "var(--text-primary)",
+                  border: `1px solid ${isSelected ? accent : "var(--border)"}`,
                 }}
               >
                 <div style={{ fontSize: "11px", color: isSelected ? "rgba(255,255,255,0.8)" : "var(--text-muted)", marginBottom: "6px" }}>
@@ -326,69 +288,6 @@ export default function Today({ onGoToTasks, onGoToCalendar }) {
 
       <div style={{ color: "var(--text-muted)", fontSize: "12px", marginBottom: "8px" }}>
         {selectedDate.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })}
-      </div>
-
-      <div className="glass-panel" style={{ borderRadius: "18px", padding: "14px", marginBottom: "16px" }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px" }}>
-          <div style={{ color: "var(--text-primary)", fontWeight: 700 }}>
-            {calendarMonth.toLocaleDateString("en-US", { month: "long", year: "numeric" })}
-          </div>
-          <div style={{ display: "flex", gap: "8px" }}>
-            <button onClick={() => setCalendarMonth(new Date(calendarMonth.getFullYear(), calendarMonth.getMonth() - 1, 1))} className="btn-reset" style={{ color: "var(--text-muted)", fontSize: "18px" }}>‹</button>
-            <button onClick={() => setCalendarMonth(new Date())} className="btn-reset" style={{ color: accent, fontSize: "12px", fontWeight: 700 }}>Today</button>
-            <button onClick={() => setCalendarMonth(new Date(calendarMonth.getFullYear(), calendarMonth.getMonth() + 1, 1))} className="btn-reset" style={{ color: "var(--text-muted)", fontSize: "18px" }}>›</button>
-          </div>
-        </div>
-
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: "6px", marginBottom: "8px" }}>
-          {["M", "T", "W", "T", "F", "S", "S"].map((label, index) => (
-            <div key={`${label}-${index}`} style={{ textAlign: "center", color: "var(--text-muted)", fontSize: "11px" }}>{label}</div>
-          ))}
-        </div>
-
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: "6px" }}>
-          {monthDays.map((day, index) => {
-            const dateStr = toDateStr(calendarMonth.getFullYear(), calendarMonth.getMonth(), day.dateNum, day.offset);
-            const isToday = dateStr === todayStr;
-            const isSelected = dateStr === selected;
-            const hasItem = dayTasks.some((task) => task.dueDate === dateStr)
-              || tasks.some((task) => task.dueDate === dateStr)
-              || habits.some((habit) => (habit.completedDates || []).includes(dateStr));
-
-            return (
-              <button
-                key={`${dateStr}-${index}`}
-                onClick={() => setSelected(dateStr)}
-                className="btn-reset"
-                style={{
-                  aspectRatio: "1",
-                  borderRadius: "12px",
-                  background: isSelected ? `${accent}22` : "var(--surface-raised)",
-                  border: `1px solid ${isSelected ? accent : "var(--border)"}`,
-                  color: isToday ? accent : "var(--text-primary)",
-                  opacity: day.isCurrentMonth ? 1 : 0.45,
-                  display: "flex",
-                  flexDirection: "column",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  gap: "3px",
-                  fontSize: "13px",
-                }}
-              >
-                <span>{day.dateNum}</span>
-                {hasItem && <span style={{ width: "4px", height: "4px", borderRadius: "50%", background: isSelected ? accent : "var(--text-muted)" }} />}
-              </button>
-            );
-          })}
-        </div>
-
-        {onGoToCalendar && (
-          <div style={{ marginTop: "12px", textAlign: "right" }}>
-            <button onClick={onGoToCalendar} className="btn-reset" style={{ color: accent, fontSize: "13px", fontWeight: 700 }}>
-              Open full calendar
-            </button>
-          </div>
-        )}
       </div>
 
       <div className="glass-panel" style={{ borderRadius: "18px", padding: "0 14px" }}>

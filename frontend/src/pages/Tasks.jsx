@@ -1,4 +1,4 @@
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence } from "framer-motion";
 import { useMemo, useState } from "react";
 import toast from "react-hot-toast";
 import CenteredModal from "../components/CenteredModal";
@@ -29,7 +29,7 @@ const PRIORITY_OPTIONS = [
   { value: "low", label: "Low" },
 ];
 
-function TaskRow({ task, categories, onToggle, onDelete }) {
+function TaskRow({ task, categories, onToggle, onDelete, onEdit }) {
   const category = categories.find((item) => item.id === task.categoryId);
   const priority = PRIORITIES[task.priority] || PRIORITIES.medium;
 
@@ -39,13 +39,15 @@ function TaskRow({ task, categories, onToggle, onDelete }) {
         onClick={() => onToggle(task.id, !task.completed)}
         className="btn-reset"
         style={{
-          width: "28px",
-          height: "28px",
+          width: "30px",
+          height: "30px",
           borderRadius: "50%",
           background: task.completed ? priority.color : "var(--surface-raised)",
-          border: `1px solid ${task.completed ? priority.color : "var(--border)"}`,
+          border: `2px solid ${task.completed ? priority.color : "var(--border-strong)"}`,
           color: task.completed ? "#fff" : "transparent",
           flexShrink: 0,
+          boxShadow: task.completed ? `0 0 0 4px ${priority.color}1f` : "none",
+          fontWeight: 700,
         }}
       >
         ✓
@@ -62,29 +64,39 @@ function TaskRow({ task, categories, onToggle, onDelete }) {
         </div>
       </div>
 
-      <button onClick={() => onDelete(task.id)} className="btn-reset" style={{ color: "var(--text-muted)", fontSize: "18px", flexShrink: 0 }}>
-        ⋮
-      </button>
+      <div style={{ display: "flex", gap: "6px", flexShrink: 0 }}>
+        <button onClick={() => onEdit(task)} className="btn-reset" style={{ color: "var(--text-muted)", fontSize: "16px" }} aria-label="Edit task">
+          ✎
+        </button>
+        <button onClick={() => onDelete(task.id)} className="btn-reset" style={{ color: "var(--text-muted)", fontSize: "18px" }} aria-label="Delete task">
+          ⋮
+        </button>
+      </div>
     </div>
   );
 }
 
+const blankTask = {
+  title: "",
+  description: "",
+  priority: "medium",
+  categoryId: "",
+  dueDate: "",
+};
+
 export default function Tasks() {
   const { accent } = useTheme();
   const { tasks, categories, loading, addTask, updateTask, deleteTask, addCategory } = useTasks();
-  const [newTitle, setNewTitle] = useState("");
-  const [newPriority, setNewPriority] = useState("medium");
-  const [newCategory, setNewCategory] = useState("");
-  const [newDueDate, setNewDueDate] = useState("");
-  const [newDesc, setNewDesc] = useState("");
+  const [draft, setDraft] = useState(blankTask);
   const [search, setSearch] = useState("");
   const [activeFilter, setActiveFilter] = useState("all");
-  const [showAddForm, setShowAddForm] = useState(false);
+  const [showTaskModal, setShowTaskModal] = useState(false);
+  const [editingTaskId, setEditingTaskId] = useState(null);
   const [showCatModal, setShowCatModal] = useState(false);
   const [catName, setCatName] = useState("");
   const [catColor, setCatColor] = useState(accent);
   const [catIcon, setCatIcon] = useState("📁");
-  const [addingTask, setAddingTask] = useState(false);
+  const [savingTask, setSavingTask] = useState(false);
 
   const today = todayStr();
   const weekEnd = weekEndStr();
@@ -116,30 +128,61 @@ export default function Tasks() {
     }
   }), [activeFilter, search, tasks, today, weekEnd]);
 
-  const handleAddTask = async () => {
-    if (!newTitle.trim()) {
+  const categoryOptions = [{ value: "", label: "No category" }, ...categories.map((category) => ({ value: category.id, label: `${category.icon} ${category.name}` }))];
+
+  const openCreate = () => {
+    setEditingTaskId(null);
+    setDraft(blankTask);
+    setShowTaskModal(true);
+  };
+
+  const openEdit = (task) => {
+    setEditingTaskId(task.id);
+    setDraft({
+      title: task.title || "",
+      description: task.description || "",
+      priority: task.priority || "medium",
+      categoryId: task.categoryId || "",
+      dueDate: task.dueDate || "",
+    });
+    setShowTaskModal(true);
+  };
+
+  const handleSaveTask = async () => {
+    if (!draft.title.trim()) {
       toast.error("Task title is required");
       return;
     }
 
-    setAddingTask(true);
-    const created = await addTask({
-      title: newTitle.trim(),
-      description: newDesc,
-      priority: newPriority,
-      categoryId: newCategory || null,
-      dueDate: newDueDate || null,
-    });
-    setAddingTask(false);
+    setSavingTask(true);
 
-    if (!created) return;
+    if (editingTaskId) {
+      await updateTask(editingTaskId, {
+        title: draft.title.trim(),
+        description: draft.description,
+        priority: draft.priority,
+        categoryId: draft.categoryId || null,
+        dueDate: draft.dueDate || null,
+      });
+      toast.success("Task updated.");
+    } else {
+      const created = await addTask({
+        title: draft.title.trim(),
+        description: draft.description,
+        priority: draft.priority,
+        categoryId: draft.categoryId || null,
+        dueDate: draft.dueDate || null,
+      });
+      if (!created) {
+        setSavingTask(false);
+        return;
+      }
+    }
 
-    setNewTitle("");
-    setNewDesc("");
-    setNewDueDate("");
-    setNewCategory("");
-    setNewPriority("medium");
-    setShowAddForm(false);
+    setSavingTask(false);
+    setShowTaskModal(false);
+    setEditingTaskId(null);
+    setDraft(blankTask);
   };
 
   const handleAddCategory = async () => {
@@ -150,8 +193,6 @@ export default function Tasks() {
     setCatIcon("📁");
     setShowCatModal(false);
   };
-
-  const categoryOptions = [{ value: "", label: "No category" }, ...categories.map((category) => ({ value: category.id, label: `${category.icon} ${category.name}` }))];
 
   return (
     <div style={{ maxWidth: "720px", margin: "0 auto", padding: "20px 16px 32px", color: "var(--text-body)" }}>
@@ -199,6 +240,7 @@ export default function Tasks() {
                 categories={categories}
                 onToggle={(id, completed) => updateTask(id, { completed })}
                 onDelete={deleteTask}
+                onEdit={openEdit}
               />
             ))}
           </AnimatePresence>
@@ -206,7 +248,7 @@ export default function Tasks() {
       </div>
 
       <button
-        onClick={() => setShowAddForm(true)}
+        onClick={openCreate}
         className="btn-reset"
         style={{
           position: "fixed",
@@ -224,19 +266,19 @@ export default function Tasks() {
         +
       </button>
 
-      <CenteredModal isOpen={showAddForm} onClose={() => setShowAddForm(false)} title="New Task" maxWidth="420px">
+      <CenteredModal isOpen={showTaskModal} onClose={() => setShowTaskModal(false)} title={editingTaskId ? "Edit Task" : "New Task"} maxWidth="420px">
         <div style={{ display: "grid", gap: "12px" }}>
-          <input value={newTitle} onChange={(event) => setNewTitle(event.target.value)} placeholder="Task title" style={{ width: "100%", padding: "12px 14px", borderRadius: "14px", border: "1px solid var(--border)", background: "var(--surface-raised)", color: "var(--text-primary)", fontFamily: "var(--font-body)" }} />
-          <textarea value={newDesc} onChange={(event) => setNewDesc(event.target.value)} rows={3} placeholder="Description" style={{ width: "100%", padding: "12px 14px", borderRadius: "14px", border: "1px solid var(--border)", background: "var(--surface-raised)", color: "var(--text-primary)", fontFamily: "var(--font-body)", resize: "vertical" }} />
-          <CustomSelect value={newPriority} onChange={setNewPriority} options={PRIORITY_OPTIONS} />
-          <CustomSelect value={newCategory} onChange={setNewCategory} options={categoryOptions} />
-          <input type="date" value={newDueDate} onChange={(event) => setNewDueDate(event.target.value)} style={{ width: "100%", padding: "12px 14px", borderRadius: "14px", border: "1px solid var(--border)", background: "var(--surface-raised)", color: "var(--text-primary)", fontFamily: "var(--font-body)" }} />
+          <input value={draft.title} onChange={(event) => setDraft((current) => ({ ...current, title: event.target.value }))} placeholder="Task title" style={{ width: "100%", padding: "12px 14px", borderRadius: "14px", border: "1px solid var(--border)", background: "var(--surface-raised)", color: "var(--text-primary)", fontFamily: "var(--font-body)" }} />
+          <textarea value={draft.description} onChange={(event) => setDraft((current) => ({ ...current, description: event.target.value }))} rows={3} placeholder="Description" style={{ width: "100%", padding: "12px 14px", borderRadius: "14px", border: "1px solid var(--border)", background: "var(--surface-raised)", color: "var(--text-primary)", fontFamily: "var(--font-body)", resize: "vertical" }} />
+          <CustomSelect value={draft.priority} onChange={(value) => setDraft((current) => ({ ...current, priority: value }))} options={PRIORITY_OPTIONS} />
+          <CustomSelect value={draft.categoryId} onChange={(value) => setDraft((current) => ({ ...current, categoryId: value }))} options={categoryOptions} />
+          <input type="date" value={draft.dueDate} onChange={(event) => setDraft((current) => ({ ...current, dueDate: event.target.value }))} style={{ width: "100%", padding: "12px 14px", borderRadius: "14px", border: "1px solid var(--border)", background: "var(--surface-raised)", color: "var(--text-primary)", fontFamily: "var(--font-body)" }} />
           <div style={{ display: "flex", gap: "8px" }}>
-            <button onClick={() => setShowAddForm(false)} className="glass-tile" style={{ flex: 1, borderRadius: "14px", padding: "10px 14px", color: "var(--text-primary)" }}>
+            <button onClick={() => setShowTaskModal(false)} className="glass-tile" style={{ flex: 1, borderRadius: "14px", padding: "10px 14px", color: "var(--text-primary)" }}>
               Cancel
             </button>
-            <button onClick={handleAddTask} className="btn-primary" style={{ flex: 1 }} disabled={addingTask}>
-              {addingTask ? "Adding..." : "Add"}
+            <button onClick={handleSaveTask} className="btn-primary" style={{ flex: 1 }} disabled={savingTask}>
+              {savingTask ? "Saving..." : editingTaskId ? "Save" : "Add"}
             </button>
           </div>
         </div>
