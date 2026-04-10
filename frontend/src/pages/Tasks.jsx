@@ -17,6 +17,7 @@ import {
 import { PremiumTaskMark } from "../components/PremiumMarks";
 import { useTheme } from "../context/ThemeContext";
 import { useTasks } from "../hooks/useTasks";
+import { formatTaskScheduleLabel, normalizeTimeForApi } from "../utils/time";
 
 const todayStr = () => {
   const date = new Date();
@@ -45,6 +46,7 @@ function TaskRow({ task, categories, onToggle, onDelete, onEdit }) {
   const category = categories.find((item) => item.id === task.categoryId);
   const priority = PRIORITIES[task.priority] || PRIORITIES.medium;
   const lineColor = priority.color.includes("var(") ? "var(--accent)" : priority.color;
+  const scheduleLabel = formatTaskScheduleLabel(task);
 
   return (
     <div
@@ -97,8 +99,14 @@ function TaskRow({ task, categories, onToggle, onDelete, onEdit }) {
               {category.name}
             </span>
           )}
+          {scheduleLabel ? (
+            <span style={{ color: "var(--text-muted)", fontSize: "12px", fontWeight: 700 }}>
+              {scheduleLabel}
+            </span>
+          ) : null}
           {task.dueDate && (
             <span style={{ color: "var(--text-muted)", fontSize: "12px", fontWeight: 500 }}>
+              {scheduleLabel ? " · " : ""}
               {task.dueDate === todayStr() ? "Today" : task.dueDate}
             </span>
           )}
@@ -123,6 +131,8 @@ const blankTask = {
   priority: "medium",
   categoryId: "",
   dueDate: "",
+  startTime: "",
+  endTime: "",
 };
 
 export default function Tasks() {
@@ -185,6 +195,8 @@ export default function Tasks() {
       priority: task.priority || "medium",
       categoryId: task.categoryId || "",
       dueDate: task.dueDate || "",
+      startTime: task.startTime ? String(task.startTime).slice(0, 5) : "",
+      endTime: task.endTime ? String(task.endTime).slice(0, 5) : "",
     });
     setShowTaskModal(true);
   };
@@ -204,6 +216,8 @@ export default function Tasks() {
         priority: draft.priority,
         categoryId: draft.categoryId || null,
         dueDate: draft.dueDate || null,
+        startTime: normalizeTimeForApi(draft.startTime),
+        endTime: normalizeTimeForApi(draft.endTime),
       });
       toast.success("Task updated.");
     } else {
@@ -213,6 +227,8 @@ export default function Tasks() {
         priority: draft.priority,
         categoryId: draft.categoryId || null,
         dueDate: draft.dueDate || null,
+        startTime: normalizeTimeForApi(draft.startTime),
+        endTime: normalizeTimeForApi(draft.endTime),
       });
       if (!created) {
         setSavingTask(false);
@@ -236,7 +252,7 @@ export default function Tasks() {
   };
 
   return (
-    <div style={{ maxWidth: "720px", margin: "0 auto", padding: "20px 16px 32px", color: "var(--text-body)" }}>
+    <div style={{ maxWidth: "760px", margin: "0 auto", padding: "28px 22px 40px", color: "var(--text-body)" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
         <div>
           <h1 style={{ fontSize: "28px", letterSpacing: "-0.04em", marginBottom: "4px" }}>Tasks</h1>
@@ -384,6 +400,30 @@ export default function Tasks() {
                 onChange={(event) => setDraft((current) => ({ ...current, dueDate: event.target.value }))}
                 style={{ width: "100%", padding: "12px 14px 12px 42px", borderRadius: "12px", border: "1px solid var(--border)", background: "var(--surface)", color: "var(--text-primary)", fontFamily: "var(--font-body)" }}
               />
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
+              <div>
+                <span className="section-label" style={{ marginBottom: "6px", display: "block" }}>
+                  Start
+                </span>
+                <input
+                  type="time"
+                  value={draft.startTime}
+                  onChange={(event) => setDraft((current) => ({ ...current, startTime: event.target.value }))}
+                  style={{ width: "100%", padding: "12px 14px", borderRadius: "12px", border: "1px solid var(--border)", background: "var(--surface)", color: "var(--text-primary)", fontFamily: "var(--font-body)" }}
+                />
+              </div>
+              <div>
+                <span className="section-label" style={{ marginBottom: "6px", display: "block" }}>
+                  End
+                </span>
+                <input
+                  type="time"
+                  value={draft.endTime}
+                  onChange={(event) => setDraft((current) => ({ ...current, endTime: event.target.value }))}
+                  style={{ width: "100%", padding: "12px 14px", borderRadius: "12px", border: "1px solid var(--border)", background: "var(--surface)", color: "var(--text-primary)", fontFamily: "var(--font-body)" }}
+                />
+              </div>
             </div>
           </div>
 

@@ -7,6 +7,12 @@ import { useTasks } from "../hooks/useTasks";
 import { PremiumCompleteTitle, PremiumRoundComplete } from "../components/PremiumChrome";
 import { PremiumHabitTile, PremiumTaskMark } from "../components/PremiumMarks";
 import { formatLocalYMD, localTodayYMD } from "../utils/date";
+import {
+  buildAgendaGroups,
+  formatTaskScheduleLabel,
+  getTaskScheduleMinutes,
+  HABIT_DEFAULT_SORT_MINUTES,
+} from "../utils/time";
 
 const DAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const MISSED_KEY = "thirty_missed_habits";
@@ -45,6 +51,67 @@ function EmptyState({ selectedIsToday, onGoToTasks }) {
   );
 }
 
+function LiveClockSection({ accent }) {
+  const [now, setNow] = useState(() => new Date());
+
+  useEffect(() => {
+    const id = window.setInterval(() => setNow(new Date()), 1000);
+    return () => window.clearInterval(id);
+  }, []);
+
+  const hour = now.getHours();
+  const greeting = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
+
+  return (
+    <div
+      className="glass-panel"
+      style={{
+        borderRadius: "22px",
+        padding: "22px 22px 20px",
+        marginBottom: "22px",
+        border: "1px solid var(--border)",
+        background: "linear-gradient(145deg, var(--surface-raised), var(--surface))",
+        boxShadow: "var(--shadow-soft)",
+      }}
+    >
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "16px" }}>
+        <div>
+          <div style={{ fontSize: "12px", fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--text-muted)", marginBottom: "8px" }}>
+            {greeting}
+          </div>
+          <div
+            style={{
+              fontSize: "clamp(32px, 9vw, 40px)",
+              fontFamily: "var(--font-heading)",
+              fontWeight: 800,
+              letterSpacing: "-0.05em",
+              lineHeight: 1.05,
+              color: "var(--text-primary)",
+            }}
+          >
+            {now.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit", second: "2-digit" })}
+          </div>
+          <div style={{ marginTop: "10px", fontSize: "14px", color: "var(--text-secondary)", fontWeight: 500 }}>
+            {now.toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" })}
+          </div>
+        </div>
+        <div
+          aria-hidden
+          style={{
+            width: "52px",
+            height: "52px",
+            borderRadius: "16px",
+            background: `linear-gradient(145deg, ${accent}, color-mix(in srgb, ${accent} 70%, #fff))`,
+            opacity: 0.95,
+            boxShadow: `0 10px 28px ${accent}44`,
+            flexShrink: 0,
+          }}
+        />
+      </div>
+    </div>
+  );
+}
+
 function AgendaItem({ item, accent, onToggleTask, onToggleHabit }) {
   const color = item.color || accent;
   const checked = item.done;
@@ -57,11 +124,11 @@ function AgendaItem({ item, accent, onToggleTask, onToggleHabit }) {
       style={{
         display: "flex",
         alignItems: "center",
-        gap: "12px",
-        padding: "14px 8px",
+        gap: "14px",
+        padding: "16px 10px",
         borderBottom: "1px solid var(--border)",
         borderLeft: checked ? `3px solid ${color}` : "3px solid transparent",
-        borderRadius: "0 14px 14px 0",
+        borderRadius: "0 16px 16px 0",
         background: checked ? `linear-gradient(90deg, ${color}18, transparent 58%)` : undefined,
         boxShadow: checked ? `inset 0 0 20px ${color}0f` : "none",
       }}
@@ -72,8 +139,24 @@ function AgendaItem({ item, accent, onToggleTask, onToggleHabit }) {
         <PremiumCompleteTitle complete={checked} lineColor={lineColor}>
           {item.title}
         </PremiumCompleteTitle>
-        <div style={{ marginTop: "6px", fontSize: "11px", color, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", opacity: 0.95 }}>{item.kind}</div>
+        <div style={{ marginTop: "8px", fontSize: "11px", color, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", opacity: 0.95 }}>{item.kind}</div>
       </div>
+
+      {item.timeLabel ? (
+        <div
+          style={{
+            fontSize: "12px",
+            fontWeight: 700,
+            color: "var(--text-muted)",
+            letterSpacing: "0.02em",
+            flexShrink: 0,
+            maxWidth: "42%",
+            textAlign: "right",
+          }}
+        >
+          {item.timeLabel}
+        </div>
+      ) : null}
 
       <PremiumRoundComplete
         checked={checked}
@@ -152,45 +235,57 @@ export default function Today({ onGoToTasks, onGoToCalendar }) {
   }, []);
 
   const selectedDate = new Date(`${selected}T00:00:00`);
-  const missedMap = getMissed();
 
-  const dayTasks = tasks
-    .filter((task) => task.dueDate === selected)
-    .map((task) => ({
-      type: "task",
-      id: task.id,
-      title: task.title,
-      icon: "◉",
-      color: "#E84A8A",
-      kind: "Task",
-      done: task.completed,
-    }));
+  const agendaGroups = useMemo(() => {
+    const missed = getMissed();
+    const dayTasks = tasks
+      .filter((task) => task.dueDate === selected)
+      .map((task) => ({
+        type: "task",
+        id: task.id,
+        title: task.title,
+        icon: "◉",
+        color: "#E84A8A",
+        kind: "Task",
+        done: task.completed,
+        date: selected,
+        sortMinutes: getTaskScheduleMinutes(task),
+        timeLabel: formatTaskScheduleLabel(task),
+      }));
 
-  const dayHabits = habits
-    .filter((habit) => {
-      if (habit.frequency === "daily") return true;
-      if (habit.frequency === "weekly") {
-        return (habit.recurringDays || []).includes(selectedDate.getDay());
-      }
-      return true;
-    })
-    .map((habit) => ({
-      type: "habit",
-      id: habit.id,
-      title: habit.name,
-      icon: habit.icon,
-      color: habit.color,
-      kind: missedMap[`${habit.id}_${selected}`] ? "Missed" : "Habit",
-      done: (habit.completedDates || []).includes(selected),
-      date: selected,
-    }));
+    const dayHabits = habits
+      .filter((habit) => {
+        if (habit.frequency === "daily") return true;
+        if (habit.frequency === "weekly") {
+          return (habit.recurringDays || []).includes(selectedDate.getDay());
+        }
+        return true;
+      })
+      .map((habit) => ({
+        type: "habit",
+        id: habit.id,
+        title: habit.name,
+        icon: habit.icon,
+        color: habit.color,
+        kind: missed[`${habit.id}_${selected}`] ? "Missed" : "Habit",
+        done: (habit.completedDates || []).includes(selected),
+        date: selected,
+        sortMinutes: HABIT_DEFAULT_SORT_MINUTES,
+        timeLabel: "",
+      }));
 
-  const items = useMemo(() => [...dayHabits, ...dayTasks], [dayHabits, dayTasks]);
-  const completedCount = items.filter((item) => item.done).length;
+    return buildAgendaGroups([...dayTasks, ...dayHabits]);
+  }, [tasks, habits, selected, selectedDate]);
+
+  const agendaFlat = useMemo(
+    () => agendaGroups.flatMap((group) => group.items),
+    [agendaGroups],
+  );
+  const completedCount = agendaFlat.filter((item) => item.done).length;
 
   if (!isAuthenticated) {
     return (
-      <div style={{ maxWidth: "620px", margin: "0 auto", padding: "28px 16px 24px" }}>
+      <div style={{ maxWidth: "760px", margin: "0 auto", padding: "28px 22px 32px" }}>
         <div className="glass-panel" style={{ borderRadius: "20px", padding: "24px", textAlign: "center" }}>
           <h2 style={{ fontSize: "24px", marginBottom: "8px", letterSpacing: "-0.04em" }}>Today</h2>
           <p style={{ color: "var(--text-muted)", fontSize: "14px", marginBottom: "18px" }}>
@@ -205,12 +300,12 @@ export default function Today({ onGoToTasks, onGoToCalendar }) {
   }
 
   return (
-    <div style={{ maxWidth: "720px", margin: "0 auto", padding: "20px 16px 24px", color: "var(--text-body)" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
+    <div style={{ maxWidth: "760px", margin: "0 auto", padding: "28px 22px 36px", color: "var(--text-body)" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "22px" }}>
         <div>
           <h1 style={{ fontSize: "28px", letterSpacing: "-0.04em", marginBottom: "4px" }}>Today</h1>
           <div style={{ color: "var(--text-muted)", fontSize: "13px" }}>
-            {user?.name ? `${user.name.split(" ")[0]}'s list` : "Your list"} · {completedCount}/{items.length} done
+            {user?.name ? `${user.name.split(" ")[0]}'s list` : "Your list"} · {completedCount}/{agendaFlat.length} done
           </div>
         </div>
 
@@ -240,7 +335,7 @@ export default function Today({ onGoToTasks, onGoToCalendar }) {
         </button>
       </div>
 
-      <div ref={stripRef} className="hide-scrollbar" style={{ overflowX: "auto", marginBottom: "18px" }}>
+      <div ref={stripRef} className="hide-scrollbar" style={{ overflowX: "auto", marginBottom: "20px" }}>
         <div style={{ display: "flex", gap: "8px", width: "max-content" }}>
           {dates.map((date) => {
             const dateStr = fmtDate(date);
@@ -275,23 +370,40 @@ export default function Today({ onGoToTasks, onGoToCalendar }) {
         </div>
       </div>
 
-      <div style={{ color: "var(--text-muted)", fontSize: "12px", marginBottom: "8px" }}>
-        {selectedDate.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })}
+      <LiveClockSection accent={accent} />
+
+      <div style={{ color: "var(--text-muted)", fontSize: "13px", marginBottom: "18px", fontWeight: 500 }}>
+        {selected === todayStr
+          ? "Today"
+          : `Selected · ${selectedDate.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })}`}
       </div>
 
-      <div className="glass-panel" style={{ borderRadius: "18px", padding: "0 14px" }}>
-        {items.length === 0 ? (
+      <div className="glass-panel" style={{ borderRadius: "22px", padding: "8px 18px 10px" }}>
+        {agendaFlat.length === 0 ? (
           <EmptyState selectedIsToday={selected === todayStr} onGoToTasks={onGoToTasks} />
         ) : (
           <AnimatePresence initial={false}>
-            {items.map((item) => (
-              <AgendaItem
-                key={`${item.type}-${item.id}`}
-                item={item}
-                accent={accent}
-                onToggleTask={(id, completed) => updateTask(id, { completed })}
-                onToggleHabit={(id, date) => toggleHabit(id, date)}
-              />
+            {agendaGroups.map((group) => (
+              <div key={group.bucketId}>
+                <div
+                  style={{
+                    padding: "16px 6px 10px",
+                    borderBottom: "1px solid var(--border)",
+                  }}
+                >
+                  <div style={{ fontSize: "13px", fontWeight: 800, letterSpacing: "-0.02em", color: "var(--text-primary)" }}>{group.label}</div>
+                  <div style={{ fontSize: "11px", fontWeight: 600, color: "var(--text-muted)", marginTop: "4px", letterSpacing: "0.04em" }}>{group.sub}</div>
+                </div>
+                {group.items.map((item) => (
+                  <AgendaItem
+                    key={`${item.type}-${item.id}`}
+                    item={item}
+                    accent={accent}
+                    onToggleTask={(id, completed) => updateTask(id, { completed })}
+                    onToggleHabit={(id, date) => toggleHabit(id, date)}
+                  />
+                ))}
+              </div>
             ))}
           </AnimatePresence>
         )}
