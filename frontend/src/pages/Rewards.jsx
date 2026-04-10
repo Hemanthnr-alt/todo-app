@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useTheme }  from "../context/ThemeContext";
 import { useTasks }  from "../hooks/useTasks";
 import { useHabits } from "../hooks/useHabits";
+import { formatLocalYMD, localTodayYMD } from "../utils/date";
 
 const BADGES = [
   { id:"first_task",     icon:"🎯", name:"First Step",      desc:"Complete your first task",            cat:"tasks",  check:(t)=>t.completed>=1 },
@@ -28,8 +29,12 @@ const CAT_COLORS = { tasks:"var(--danger)", habits:"var(--success)", org:"var(--
 const CAT_LABELS = { tasks:"Tasks", habits:"Habits", org:"Organisation", special:"Special" };
 
 function getLastNDays(n) {
-  const days=[];
-  for(let i=n-1;i>=0;i--){const d=new Date();d.setDate(d.getDate()-i);days.push(d.toISOString().split("T")[0]);}
+  const days = [];
+  for (let i = n - 1; i >= 0; i--) {
+    const d = new Date();
+    d.setDate(d.getDate() - i);
+    days.push(formatLocalYMD(d));
+  }
   return days;
 }
 function checkPerfectWeek(habits){
@@ -76,7 +81,7 @@ export default function Rewards() {
   const cardBg     = "var(--surface)";
   const border     = "var(--border)";
 
-  const today             = new Date().toISOString().split("T")[0];
+  const today             = localTodayYMD();
   const bestStreak        = habits.length ? Math.max(0,...habits.map(h=>h.streak||0)) : 0;
   const totalCompleted    = tasks.filter(t=>t.completed).length;
   const highPrioCompleted = tasks.filter(t=>t.completed&&t.priority==="high").length;
@@ -113,24 +118,45 @@ export default function Rewards() {
   return (
     <div style={{maxWidth:"900px",margin:"0 auto",padding:"24px 16px 40px",fontFamily:"var(--font-body)",color:textColor}}>
       {/* Header */}
-      <div style={{marginBottom:"24px"}}>
-        <h1 style={{fontSize:"28px",fontWeight:700,margin:"0 0 4px",letterSpacing:"-0.03em",fontFamily:"var(--font-heading)",color:"var(--text-primary)"}}>Rewards</h1>
-        <p style={{fontSize:"13px",color:mutedColor,margin:0}}>{earned.length}/{BADGES.length} badges earned</p>
+      <div style={{marginBottom:"22px"}}>
+        <h1 style={{fontSize:"28px",fontWeight:700,margin:"0 0 6px",letterSpacing:"-0.03em",fontFamily:"var(--font-heading)",color:"var(--text-primary)"}}>Rewards</h1>
+        <p style={{fontSize:"13px",color:mutedColor,margin:0,lineHeight:1.5}}>Unlock badges as you build habits and clear tasks · {earned.length}/{BADGES.length} earned</p>
       </div>
 
       {/* Stats row */}
-      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(130px,1fr))",gap:"10px",marginBottom:"20px"}}>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(140px,1fr))",gap:"12px",marginBottom:"22px"}}>
         {[
           { label:"Badges Earned", value:`${earned.length}/${BADGES.length}`, color:"var(--accent)",        icon:"🏆" },
           { label:"Best Streak",   value:`${bestStreak}d`,                    color:"var(--warning)", icon:"🔥" },
           { label:"Tasks Done",    value:totalCompleted,                       color:"var(--success)", icon:"✅" },
           { label:"Habit Days",    value:totalHabitDays,                       color:"var(--accent)", icon:"📅" },
         ].map(s=>(
-          <div key={s.label} style={{padding:"14px",borderRadius:"14px",background:cardBg,border:`1px solid ${border}`,display:"flex",alignItems:"center",gap:"10px"}}>
-            <div style={{width:"36px",height:"36px",borderRadius:"10px",background:`var(--surface-raised)`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:"20px",flexShrink:0}}>{s.icon}</div>
+          <div key={s.label} style={{
+            padding:"14px 14px 16px",
+            borderRadius:"16px",
+            background:`linear-gradient(145deg, var(--surface-raised), var(--surface))`,
+            border:`1px solid ${border}`,
+            boxShadow:`0 8px 28px rgba(0,0,0,0.12), 0 0 0 1px ${s.color}18`,
+            display:"flex",
+            alignItems:"center",
+            gap:"12px",
+          }}>
+            <div style={{
+              width:"40px",
+              height:"40px",
+              borderRadius:"12px",
+              background:`linear-gradient(145deg, ${s.color}35, ${s.color}12)`,
+              border:`1px solid ${s.color}44`,
+              display:"flex",
+              alignItems:"center",
+              justifyContent:"center",
+              fontSize:"20px",
+              flexShrink:0,
+              boxShadow:`0 4px 12px ${s.color}22`,
+            }}>{s.icon}</div>
             <div>
-              <div style={{fontSize:"30px",fontWeight:700,fontFamily:"var(--font-heading)",color:s.color,lineHeight:1}}>{s.value}</div>
-              <div className="section-label" style={{marginTop:"6px"}}>{s.label}</div>
+              <div style={{fontSize:"28px",fontWeight:800,fontFamily:"var(--font-heading)",color:s.color,lineHeight:1,letterSpacing:"-0.03em"}}>{s.value}</div>
+              <div className="section-label" style={{marginTop:"6px",opacity:0.95}}>{s.label}</div>
             </div>
           </div>
         ))}

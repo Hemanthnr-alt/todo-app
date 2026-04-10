@@ -520,13 +520,48 @@ function Pomodoro({ accent }) {
 }
 
 /* ────────────────────────────────────────────────
+   Tab icons (vector, matches app chrome)
+──────────────────────────────────────────────── */
+function IconStopwatch({ active }) {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={active ? 2.2 : 1.7} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <circle cx="12" cy="14" r="8" />
+      <path d="M12 6v2M9 2h6" />
+    </svg>
+  );
+}
+function IconCountdown({ active }) {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={active ? 2.2 : 1.7} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M10 2h4M12 14v4l3 3" />
+      <circle cx="12" cy="14" r="8" />
+    </svg>
+  );
+}
+function IconIntervals({ active }) {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={active ? 2.2 : 1.7} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M4 12h4l2-6 4 12 2-6h4" />
+    </svg>
+  );
+}
+function IconPomodoro({ active }) {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={active ? 2.2 : 1.7} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M12 7v5l3 2" fill="none" />
+    </svg>
+  );
+}
+
+/* ────────────────────────────────────────────────
    MAIN TIMER PAGE
 ──────────────────────────────────────────────── */
-const TABS=[
-  {id:"stopwatch", label:"Stopwatch", icon:"⏱"},
-  {id:"countdown", label:"Countdown", icon:"⏳"},
-  {id:"intervals", label:"Intervals", icon:"🔄"},
-  {id:"pomodoro",  label:"Pomodoro",  icon:"🍅"},
+const TABS = [
+  { id: "stopwatch", label: "Stopwatch", Icon: IconStopwatch },
+  { id: "countdown", label: "Countdown", Icon: IconCountdown },
+  { id: "intervals", label: "Intervals", Icon: IconIntervals },
+  { id: "pomodoro", label: "Pomodoro", Icon: IconPomodoro },
 ];
 
 export default function Timer() {
@@ -535,54 +570,83 @@ export default function Timer() {
   const ac = accent || "var(--accent)";
 
   return (
-    <div style={{maxWidth:"500px",margin:"0 auto",padding:"20px 16px",
-      fontFamily:"var(--font-body)",color:"var(--text-primary)"}}>
+    <div style={{ maxWidth: "560px", margin: "0 auto", padding: "18px 16px 28px", fontFamily: "var(--font-body)", color: "var(--text-primary)" }}>
+      <div style={{ marginBottom: "18px" }}>
+        <h1 style={{ fontSize: "28px", fontWeight: 700, margin: "0 0 6px", letterSpacing: "-0.03em", fontFamily: "var(--font-heading)", color: "var(--text-primary)" }}>Timer</h1>
+        <p style={{ fontSize: "13px", color: "var(--text-muted)", margin: 0, lineHeight: 1.55 }}>
+          Stopwatch, countdown, interval rounds, and Pomodoro — pick a mode and stay in flow.
+        </p>
+      </div>
 
-      <h1 style={{fontSize:"28px",fontWeight:700,margin:"0 0 20px",
-        letterSpacing:"-0.03em",fontFamily:"var(--font-heading)",color:"var(--text-primary)"}}>
-        Timer
-      </h1>
-
-      {/* Segmented tab bar */}
-      <div style={{display:"flex",background:"var(--surface)",borderRadius:"14px",
-        padding:"3px",marginBottom:"24px",gap:"2px"}}>
-        {TABS.map(t=>{
-          const active=tab===t.id;
-          return(
-            <button key={t.id} onClick={()=>setTab(t.id)}
-              style={{flex:1,padding:"8px 4px",borderRadius:"11px",border:"none",
-                cursor:"pointer",fontFamily:"var(--font-body)",fontSize:"11px",
-                fontWeight:active?700:500,
-                background:active?"var(--surface-raised)":"transparent",
-                color:active?"var(--text-primary)":"var(--text-muted)",
-                transition:"all 0.15s",display:"flex",alignItems:"center",
-                justifyContent:"center",gap:"4px",
-                boxShadow:active?"0 1px 6px rgba(0,0,0,0.35)":"none",
-                WebkitTapHighlightColor:"transparent"}}>
-              <span>{t.icon}</span>
-              <span style={{display:"none"}}>{t.label}</span>
+      <div
+        className="glass-panel"
+        style={{
+          borderRadius: "18px",
+          padding: "10px",
+          marginBottom: "14px",
+          display: "flex",
+          gap: "6px",
+          flexWrap: "wrap",
+          justifyContent: "stretch",
+        }}
+      >
+        {TABS.map((t) => {
+          const active = tab === t.id;
+          return (
+            <button
+              key={t.id}
+              type="button"
+              onClick={() => setTab(t.id)}
+              style={{
+                flex: "1 1 calc(25% - 6px)",
+                minWidth: "72px",
+                padding: "10px 6px",
+                borderRadius: "14px",
+                border: active ? `1px solid ${ac}55` : "1px solid var(--border)",
+                cursor: "pointer",
+                fontFamily: "var(--font-body)",
+                fontSize: "10px",
+                fontWeight: active ? 700 : 600,
+                background: active ? `linear-gradient(145deg, ${ac}22, var(--surface-raised))` : "var(--surface)",
+                color: active ? "var(--text-primary)" : "var(--text-muted)",
+                transition: "all 0.15s",
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: "6px",
+                boxShadow: active ? `0 6px 18px ${ac}22` : "none",
+                WebkitTapHighlightColor: "transparent",
+              }}
+            >
+              <span style={{ color: active ? ac : "var(--text-muted)", display: "inline-flex", filter: active ? "drop-shadow(0 0 6px var(--accent-glow))" : "none" }}>
+                <t.Icon active={active} />
+              </span>
+              <span>{t.label}</span>
             </button>
           );
         })}
       </div>
 
-      {/* Active tab label */}
-      <div style={{textAlign:"center",marginBottom:"16px"}}>
-        <span style={{fontSize:"12px",fontWeight:700,textTransform:"uppercase",
-          letterSpacing:"0.07em",color:ac}}>{TABS.find(t=>t.id===tab)?.label}</span>
-      </div>
-
-      {/* Tab content */}
-      <div style={{padding:"24px 16px",background:"var(--surface)",borderRadius:"16px",
-        border:"none",minHeight:"340px"}}>
+      <div
+        className="glass-panel"
+        style={{
+          padding: "22px 16px 26px",
+          borderRadius: "18px",
+          minHeight: "360px",
+          border: "1px solid var(--border)",
+          boxShadow: "var(--shadow-soft)",
+        }}
+      >
+        <div style={{ textAlign: "center", marginBottom: "14px" }}>
+          <span style={{ fontSize: "11px", fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.12em", color: ac }}>{TABS.find((x) => x.id === tab)?.label}</span>
+        </div>
         <AnimatePresence mode="wait">
-          <motion.div key={tab}
-            initial={{opacity:0,y:8}} animate={{opacity:1,y:0}}
-            exit={{opacity:0,y:-8}} transition={{duration:0.14}}>
-            {tab==="stopwatch"&&<Stopwatch accent={ac}/>}
-            {tab==="countdown"&&<Countdown accent={ac}/>}
-            {tab==="intervals"&&<Intervals accent={ac}/>}
-            {tab==="pomodoro" &&<Pomodoro  accent={ac}/>}
+          <motion.div key={tab} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.16 }}>
+            {tab === "stopwatch" && <Stopwatch accent={ac} />}
+            {tab === "countdown" && <Countdown accent={ac} />}
+            {tab === "intervals" && <Intervals accent={ac} />}
+            {tab === "pomodoro" && <Pomodoro accent={ac} />}
           </motion.div>
         </AnimatePresence>
       </div>

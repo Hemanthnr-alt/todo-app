@@ -3,6 +3,7 @@ import toast from "react-hot-toast";
 import { useAuth } from "../context/AuthContext";
 import api from "../services/api";
 import { isNativeApp, localCategories, localTasks } from "../services/storage";
+import { localTodayYMD } from "../utils/date";
 
 const TASKS_KEY = "30_offline_tasks";
 const CATS_KEY = "30_offline_cats";
@@ -343,7 +344,7 @@ export const useTasks = () => {
   }, [NATIVE, isAuthenticated, loadCategories, setCategories]);
 
   const stats = useMemo(() => {
-    const today = new Date().toISOString().split("T")[0];
+    const today = localTodayYMD();
     return {
       total: tasks.length,
       completed: tasks.filter((task) => task.completed).length,

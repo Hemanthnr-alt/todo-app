@@ -46,7 +46,7 @@
   --shadow-card: 0 24px 64px rgba(10, 14, 23, 0.16);
   --shadow-glow: 0 18px 44px var(--accent-glow);
 
-  --mobile-nav-height: 72px;
+  --mobile-nav-height: 64px;
   --safe-top: env(safe-area-inset-top, 0px);
   --safe-bottom: env(safe-area-inset-bottom, 0px);
   --scrollbar-track: #ece6dc;

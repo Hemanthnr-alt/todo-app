@@ -1,3 +1,5 @@
+import { addDaysToYMD, localTodayYMD } from "../utils/date";
+
 // ── Universal local storage for offline-first APK ────────────────────────────
 const isNativeApp = () => {
   try { return window?.Capacitor?.isNativePlatform?.() === true; } catch { return false; }
@@ -95,17 +97,14 @@ export const localHabits = {
       const done  = dates.includes(date);
       const newDates = done ? dates.filter(d => d !== date) : [...dates, date];
 
-      // Recalculate streak
+      // Recalculate streak (local calendar days)
       let streak = 0;
-      const today = new Date().toISOString().split("T")[0];
-      let check   = today;
+      let check = localTodayYMD();
       const sorted = [...newDates].sort().reverse();
       for (const d of sorted) {
         if (d === check) {
           streak++;
-          const prev = new Date(check);
-          prev.setDate(prev.getDate() - 1);
-          check = prev.toISOString().split("T")[0];
+          check = addDaysToYMD(check, -1);
         } else break;
       }
       return { ...h, completedDates: newDates, streak };

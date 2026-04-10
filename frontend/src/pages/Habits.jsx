@@ -2,8 +2,10 @@ import { AnimatePresence, motion } from "framer-motion";
 import { useCallback, useState } from "react";
 import toast from "react-hot-toast";
 import CenteredModal from "../components/CenteredModal";
+import { PremiumHabitTile } from "../components/PremiumMarks";
 import { useTheme } from "../context/ThemeContext";
 import { useHabits } from "../hooks/useHabits";
+import { formatLocalYMD, localTodayYMD } from "../utils/date";
 
 const EMOJI_PRESETS = [
   "💧", "📚", "🏃", "🎯", "🧘", "✍️", "💪", "🥗", "🌙", "☕",
@@ -15,8 +17,6 @@ const EMOJI_PRESETS = [
 ];
 const COLOR_OPTIONS = ["#94D82D", "#FFB020", "#E84A8A", "#5CC5D4", "#FF7A59", "#8A6CFF"];
 const DAY_LABELS = ["Sat", "Sun", "Mon", "Tue", "Wed", "Thu", "Fri"];
-
-const todayStr = () => new Date().toISOString().split("T")[0];
 
 function getLast7() {
   const days = [];
@@ -69,10 +69,11 @@ function EmojiPickerGrid({ value, onChange }) {
 
 function HabitCard({ habit, onToggle, onDelete, onEdit }) {
   const last7 = getLast7();
-  const today = todayStr();
+  const today = localTodayYMD();
   const doneSet = new Set(habit.completedDates || []);
-  const totalDone = last7.filter((date) => doneSet.has(date.toISOString().split("T")[0])).length;
+  const totalDone = last7.filter((date) => doneSet.has(formatLocalYMD(date))).length;
   const pct = Math.round((totalDone / 7) * 100);
+  const streak = habit.streak ?? 0;
 
   return (
     <motion.div
@@ -85,26 +86,28 @@ function HabitCard({ habit, onToggle, onDelete, onEdit }) {
     >
       <div style={{ display: "flex", justifyContent: "space-between", gap: "12px", alignItems: "flex-start", marginBottom: "12px" }}>
         <div style={{ minWidth: 0, display: "flex", gap: "12px", alignItems: "center" }}>
-          <div
-            style={{
-              width: "44px",
-              height: "44px",
-              borderRadius: "14px",
-              background: habit.color,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              fontSize: "22px",
-              flexShrink: 0,
-            }}
-          >
-            {habit.icon}
-          </div>
+          <PremiumHabitTile emoji={habit.icon} color={habit.color} size={46} />
           <div style={{ minWidth: 0 }}>
             <div style={{ color: "var(--text-primary)", fontSize: "16px", fontWeight: 700, marginBottom: "4px" }}>
               {habit.name}
             </div>
-            <div style={{ color: habit.color, fontSize: "12px" }}>Every day</div>
+            <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "8px" }}>
+              <span style={{ color: habit.color, fontSize: "12px", fontWeight: 600 }}>Daily</span>
+              <span
+                style={{
+                  fontSize: "11px",
+                  fontWeight: 800,
+                  padding: "4px 11px",
+                  borderRadius: "999px",
+                  background: `linear-gradient(135deg, ${habit.color}35, ${habit.color}18)`,
+                  color: habit.color,
+                  border: `1px solid ${habit.color}55`,
+                  letterSpacing: "0.02em",
+                }}
+              >
+                🔥 {streak} day{streak === 1 ? "" : "s"} streak
+              </span>
+            </div>
           </div>
         </div>
 
@@ -130,7 +133,7 @@ function HabitCard({ habit, onToggle, onDelete, onEdit }) {
 
       <div style={{ display: "flex", justifyContent: "space-between", gap: "6px", marginBottom: "12px" }}>
         {last7.map((date, index) => {
-          const dateStr = date.toISOString().split("T")[0];
+          const dateStr = formatLocalYMD(date);
           const isDone = doneSet.has(dateStr);
           const isToday = dateStr === today;
           return (

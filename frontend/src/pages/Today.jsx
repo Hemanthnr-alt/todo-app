@@ -4,11 +4,13 @@ import { useAuth } from "../context/AuthContext";
 import { useTheme } from "../context/ThemeContext";
 import { useHabits } from "../hooks/useHabits";
 import { useTasks } from "../hooks/useTasks";
+import { PremiumHabitTile, PremiumTaskMark } from "../components/PremiumMarks";
+import { formatLocalYMD, localTodayYMD } from "../utils/date";
 
 const DAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const MISSED_KEY = "thirty_missed_habits";
 
-const fmtDate = (date) => date.toISOString().split("T")[0];
+const fmtDate = formatLocalYMD;
 const getMissed = () => {
   try {
     return JSON.parse(localStorage.getItem(MISSED_KEY) || "{}");
@@ -46,34 +48,47 @@ function AgendaItem({ item, accent, onToggleTask, onToggleHabit }) {
   const color = item.color || accent;
   const checked = item.done;
 
+  const isTask = item.type === "task";
+
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: "12px", padding: "14px 4px", borderBottom: "1px solid var(--border)" }}>
-      <div
-        style={{
-          width: "32px",
-          height: "32px",
-          borderRadius: "10px",
-          background: color,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          fontSize: "16px",
-          flexShrink: 0,
-        }}
-      >
-        {item.icon}
-      </div>
+    <div
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: "12px",
+        padding: "14px 4px",
+        borderBottom: "1px solid var(--border)",
+        borderLeft: checked ? `3px solid ${color}` : "3px solid transparent",
+        borderRadius: "0 12px 12px 0",
+        background: checked ? `linear-gradient(90deg, ${color}14, transparent 60%)` : undefined,
+      }}
+    >
+      {isTask ? <PremiumTaskMark size={32} /> : <PremiumHabitTile emoji={item.icon} color={color} size={32} />}
 
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ color: "var(--text-primary)", fontSize: "15px", fontWeight: 600, textDecoration: checked ? "line-through" : "none", opacity: checked ? 0.55 : 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+        <div
+          style={{
+            color: "var(--text-primary)",
+            fontSize: "15px",
+            fontWeight: 600,
+            textDecoration: checked ? "line-through" : "none",
+            textDecorationThickness: checked ? "2px" : undefined,
+            textDecorationColor: checked ? `${color}99` : undefined,
+            opacity: checked ? 0.5 : 1,
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            whiteSpace: "nowrap",
+          }}
+        >
           {item.title}
         </div>
-        <div style={{ marginTop: "4px", fontSize: "12px", color }}>{item.kind}</div>
+        <div style={{ marginTop: "4px", fontSize: "12px", color, fontWeight: 600, letterSpacing: "0.02em" }}>{item.kind}</div>
       </div>
 
       <button
+        type="button"
         onClick={() => {
-          if (item.type === "task") onToggleTask(item.id, !checked);
+          if (isTask) onToggleTask(item.id, !checked);
           else onToggleHabit(item.id, item.date);
         }}
         className="btn-reset"
@@ -88,6 +103,7 @@ function AgendaItem({ item, accent, onToggleTask, onToggleHabit }) {
           boxShadow: checked ? `0 0 0 4px ${color}1f` : "none",
           fontWeight: 700,
         }}
+        aria-label={checked ? "Mark incomplete" : "Mark complete"}
       >
         ✓
       </button>
@@ -101,7 +117,7 @@ export default function Today({ onGoToTasks, onGoToCalendar }) {
   const { tasks, updateTask } = useTasks();
   const { habits, toggleHabit } = useHabits();
 
-  const todayStr = fmtDate(new Date());
+  const todayStr = localTodayYMD();
   const [rangeStart, setRangeStart] = useState(-5);
   const [rangeEnd, setRangeEnd] = useState(8);
   const [dates, setDates] = useState(() => buildDates(-5, 8));

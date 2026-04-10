@@ -9,26 +9,29 @@ import Portal from "./Portal";
 
 const Icons = {
   Today: ({ size = 22, active }) => (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={active ? 2.2 : 1.8} strokeLinecap="round" strokeLinejoin="round">
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={active ? 2.35 : 1.75} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M3 9.5l9-6.5 9 6.5v10.5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V9.5z" opacity={active ? 0.35 : 0.2} />
       <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
       <polyline points="9 22 9 12 15 12 15 22" />
     </svg>
   ),
   Habits: ({ size = 22, active }) => (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={active ? 2.2 : 1.8} strokeLinecap="round" strokeLinejoin="round">
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={active ? 2.35 : 1.75} strokeLinecap="round" strokeLinejoin="round">
       <circle cx="12" cy="12" r="9" />
       <path d="M12 7v5l3 3" />
       <circle cx="19" cy="5" r="2.5" fill={active ? "currentColor" : "none"} stroke="currentColor" strokeWidth="1.5" />
     </svg>
   ),
   Tasks: ({ size = 22, active }) => (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={active ? 2.2 : 1.8} strokeLinecap="round" strokeLinejoin="round">
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={active ? 2.35 : 1.75} strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3" y="3" width="18" height="18" rx="4" fill={active ? "currentColor" : "none"} fillOpacity={active ? 0.14 : 0} />
       <rect x="3" y="3" width="18" height="18" rx="3" />
       <path d="M9 12l2 2 4-4" />
     </svg>
   ),
   Timer: ({ size = 22, active }) => (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={active ? 2.2 : 1.8} strokeLinecap="round" strokeLinejoin="round">
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={active ? 2.35 : 1.75} strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="13" r="8" fill={active ? "currentColor" : "none"} fillOpacity={active ? 0.12 : 0} />
       <circle cx="12" cy="13" r="8" />
       <path d="M12 9v4l3 3" />
       <path d="M9 3h6" />
@@ -36,10 +39,10 @@ const Icons = {
     </svg>
   ),
   Trophy: ({ size = 22, active }) => (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={active ? 2.2 : 1.8} strokeLinecap="round" strokeLinejoin="round">
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={active ? 2.35 : 1.75} strokeLinecap="round" strokeLinejoin="round">
       <path d="M6 9H4a2 2 0 0 1-2-2V5h4" />
       <path d="M18 9h2a2 2 0 0 0 2-2V5h-4" />
-      <path d="M6 5h12v7a6 6 0 0 1-12 0V5z" />
+      <path d="M6 5h12v7a6 6 0 0 1-12 0V5z" fill={active ? "currentColor" : "none"} fillOpacity={active ? 0.12 : 0} stroke="currentColor" />
       <path d="M12 18v3" />
       <path d="M8 21h8" />
     </svg>
@@ -293,9 +296,9 @@ export default function Navbar({ activePage, onPageChange }) {
   }, []);
 
   const toolBtn = {
-    width: "40px",
-    height: "40px",
-    borderRadius: "14px",
+    width: "34px",
+    height: "34px",
+    borderRadius: "12px",
     border: "1px solid var(--border)",
     background: "var(--surface-raised)",
     cursor: "pointer",
@@ -322,29 +325,29 @@ export default function Navbar({ activePage, onPageChange }) {
           paddingTop: "env(safe-area-inset-top, 0px)",
         }}
       >
-        <div style={{ maxWidth: "1200px", margin: "0 auto", padding: "12px 16px 0" }}>
+        <div style={{ maxWidth: "1200px", margin: "0 auto", padding: "8px 14px 0" }}>
           <div
             className="glass-panel"
             style={{
-              borderRadius: "24px",
-              padding: "12px 14px",
+              borderRadius: "20px",
+              padding: "8px 11px",
               display: "flex",
               alignItems: "center",
-              gap: "14px",
+              gap: "10px",
               boxShadow: scrolled ? "var(--shadow-card)" : "var(--shadow-soft)",
             }}
           >
             <motion.div
               whileTap={{ scale: 0.98 }}
               onClick={() => onPageChange("today")}
-              style={{ display: "flex", alignItems: "center", gap: "10px", cursor: "pointer", flexShrink: 0 }}
+              style={{ display: "flex", alignItems: "center", gap: "8px", cursor: "pointer", flexShrink: 0 }}
             >
               <div
                 style={{
-                  width: "40px",
-                  height: "40px",
-                  borderRadius: "14px",
-                  background: `linear-gradient(135deg, ${accent}, var(--accent-hover))`,
+                  width: "34px",
+                  height: "34px",
+                  borderRadius: "12px",
+                  background: `linear-gradient(145deg, ${accent}, var(--accent-hover))`,
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
@@ -352,14 +355,15 @@ export default function Navbar({ activePage, onPageChange }) {
                   fontFamily: "var(--font-heading)",
                   fontWeight: 800,
                   letterSpacing: "-0.06em",
+                  fontSize: "13px",
                   boxShadow: "var(--shadow-glow)",
                 }}
               >
                 30
               </div>
               <div className="desktop-only">
-                <div style={{ fontFamily: "var(--font-heading)", color: "var(--text-primary)", fontSize: "17px" }}>Thirty</div>
-                <div style={{ color: "var(--text-muted)", fontSize: "11px", letterSpacing: "0.14em", textTransform: "uppercase" }}>Focus beautifully</div>
+                <div style={{ fontFamily: "var(--font-heading)", color: "var(--text-primary)", fontSize: "15px", lineHeight: 1.2 }}>Thirty</div>
+                <div style={{ color: "var(--text-muted)", fontSize: "10px", letterSpacing: "0.12em", textTransform: "uppercase" }}>Focus beautifully</div>
               </div>
             </motion.div>
 
@@ -374,14 +378,14 @@ export default function Navbar({ activePage, onPageChange }) {
                     className="btn-reset"
                     style={{
                       position: "relative",
-                      padding: "10px 14px",
-                      borderRadius: "14px",
+                      padding: "7px 11px",
+                      borderRadius: "12px",
                       color: active ? "var(--text-primary)" : "var(--text-muted)",
                       background: active ? "var(--accent-soft)" : "transparent",
                       display: "flex",
                       alignItems: "center",
-                      gap: "8px",
-                      fontSize: "13px",
+                      gap: "6px",
+                      fontSize: "12px",
                       fontWeight: active ? 700 : 600,
                     }}
                   >
@@ -397,8 +401,15 @@ export default function Navbar({ activePage, onPageChange }) {
                         }}
                       />
                     )}
-                    <span style={{ position: "relative" }}>
-                      <item.Icon size={16} active={active} />
+                    <span
+                      style={{
+                        position: "relative",
+                        display: "inline-flex",
+                        color: active ? "var(--accent)" : "var(--text-muted)",
+                        filter: active ? "drop-shadow(0 0 5px var(--accent-glow))" : "none",
+                      }}
+                    >
+                      <item.Icon size={17} active={active} />
                     </span>
                     <span style={{ position: "relative" }}>{item.label}</span>
                   </motion.button>
@@ -577,7 +588,7 @@ export default function Navbar({ activePage, onPageChange }) {
           display: "none",
         }}
       >
-        <div style={{ display: "flex", justifyContent: "space-around", alignItems: "center", height: "62px", padding: "0 4px" }}>
+        <div style={{ display: "flex", justifyContent: "space-around", alignItems: "center", height: "56px", padding: "0 4px" }}>
           {NAV_ITEMS.map((item) => {
             const active = activePage === item.id;
             return (
@@ -592,8 +603,8 @@ export default function Navbar({ activePage, onPageChange }) {
                   flexDirection: "column",
                   alignItems: "center",
                   justifyContent: "center",
-                  gap: "4px",
-                  padding: "8px 2px",
+                  gap: "3px",
+                  padding: "6px 2px",
                   color: active ? "var(--accent)" : "var(--text-muted)",
                   position: "relative",
                 }}
@@ -603,17 +614,17 @@ export default function Navbar({ activePage, onPageChange }) {
                     layoutId="mobile-pill"
                     style={{
                       position: "absolute",
-                      inset: "4px 8px",
-                      borderRadius: "16px",
+                      inset: "3px 6px",
+                      borderRadius: "14px",
                       background: "var(--accent-soft)",
                       border: "1px solid var(--accent-subtle)",
                     }}
                   />
                 )}
-                <span style={{ position: "relative" }}>
-                  <item.Icon size={20} active={active} />
+                <span style={{ position: "relative", display: "inline-flex", filter: active ? "drop-shadow(0 0 5px var(--accent-glow))" : "none" }}>
+                  <item.Icon size={19} active={active} />
                 </span>
-                <span style={{ position: "relative", fontSize: "10px", fontWeight: 700 }}>{item.label}</span>
+                <span style={{ position: "relative", fontSize: "9px", fontWeight: 700 }}>{item.label}</span>
               </motion.button>
             );
           })}

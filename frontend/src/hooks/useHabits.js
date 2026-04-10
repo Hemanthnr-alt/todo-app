@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { useAuth } from "../context/AuthContext";
 import api from "../services/api";
 import { localHabits, isNativeApp } from "../services/storage";
+import { addDaysToYMD, localTodayYMD } from "../utils/date";
 
 const HABITS_KEY = "30_habits";
 const HQUEUE_KEY = "30_habits_queue";
@@ -112,11 +113,12 @@ export const useHabits = () => {
       const done    = dates.includes(date);
       const newDates = done ? dates.filter(d=>d!==date) : [...dates, date];
       let streak = 0;
-      const today = new Date().toISOString().split("T")[0];
-      let check   = today;
+      let check = localTodayYMD();
       for (const d of [...newDates].sort().reverse()) {
-        if (d===check) { streak++; const p=new Date(check); p.setDate(p.getDate()-1); check=p.toISOString().split("T")[0]; }
-        else break;
+        if (d === check) {
+          streak++;
+          check = addDaysToYMD(check, -1);
+        } else break;
       }
       const updated = { ...h, completedDates:newDates, streak };
       if (navigator.onLine && isAuthenticated && !id.startsWith("offline_")) {

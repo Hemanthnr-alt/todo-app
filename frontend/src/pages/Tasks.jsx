@@ -3,6 +3,7 @@ import { useMemo, useState } from "react";
 import toast from "react-hot-toast";
 import CenteredModal from "../components/CenteredModal";
 import CustomSelect from "../components/CustomSelect";
+import { PremiumTaskMark } from "../components/PremiumMarks";
 import { useTheme } from "../context/ThemeContext";
 import { useTasks } from "../hooks/useTasks";
 
@@ -34,8 +35,20 @@ function TaskRow({ task, categories, onToggle, onDelete, onEdit }) {
   const priority = PRIORITIES[task.priority] || PRIORITIES.medium;
 
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: "12px", padding: "14px 4px", borderBottom: "1px solid var(--border)" }}>
+    <div
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: "12px",
+        padding: "14px 8px",
+        borderBottom: "1px solid var(--border)",
+        borderLeft: task.completed ? `3px solid ${priority.color}` : "3px solid transparent",
+        borderRadius: "0 14px 14px 0",
+        background: task.completed ? `linear-gradient(90deg, ${priority.color}12, transparent 55%)` : undefined,
+      }}
+    >
       <button
+        type="button"
         onClick={() => onToggle(task.id, !task.completed)}
         className="btn-reset"
         style={{
@@ -49,16 +62,29 @@ function TaskRow({ task, categories, onToggle, onDelete, onEdit }) {
           boxShadow: task.completed ? `0 0 0 4px ${priority.color}1f` : "none",
           fontWeight: 700,
         }}
+        aria-label={task.completed ? "Mark incomplete" : "Complete task"}
       >
         ✓
       </button>
 
+      <PremiumTaskMark size={34} />
+
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ color: "var(--text-primary)", fontSize: "15px", fontWeight: 600, textDecoration: task.completed ? "line-through" : "none", opacity: task.completed ? 0.56 : 1 }}>
+        <div
+          style={{
+            color: "var(--text-primary)",
+            fontSize: "15px",
+            fontWeight: 600,
+            textDecoration: task.completed ? "line-through" : "none",
+            textDecorationThickness: task.completed ? "2px" : undefined,
+            textDecorationColor: task.completed ? `${priority.color}aa` : undefined,
+            opacity: task.completed ? 0.52 : 1,
+          }}
+        >
           {task.title}
         </div>
         <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", marginTop: "4px" }}>
-          <span style={{ color: priority.color, fontSize: "12px" }}>{priority.label}</span>
+          <span style={{ color: priority.color, fontSize: "12px", fontWeight: 600 }}>{priority.label}</span>
           {category && <span style={{ color: category.color, fontSize: "12px" }}>{category.icon} {category.name}</span>}
           {task.dueDate && <span style={{ color: "var(--text-muted)", fontSize: "12px" }}>{task.dueDate === todayStr() ? "Today" : task.dueDate}</span>}
         </div>
