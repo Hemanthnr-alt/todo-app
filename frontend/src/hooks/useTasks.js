@@ -31,6 +31,11 @@ const isOfflineErr = (error) => !error.response && (
   || !navigator.onLine
 );
 
+const isUnsupportedRouteErr = (error) => {
+  const status = error?.response?.status;
+  return status === 404 || status === 405 || status === 501;
+};
+
 const newerWins = (localTask, serverTask) => {
   const a = new Date(localTask.updatedAt || localTask.createdAt || 0).getTime();
   const b = new Date(serverTask.updatedAt || serverTask.createdAt || 0).getTime();
@@ -162,6 +167,8 @@ export const useTasks = () => {
           setTasks((prev) => prev.map((task) => (task.id === action.id ? res.data : task)));
         } else if (action.type === "DELETE_TASK") {
           await api.delete(`/tasks/${action.id}`);
+        } else if (action.type === "PERMANENT_DELETE_TASK") {
+          await api.delete(`/tasks/${action.id}/permanent`);
         } else if (action.type === "ADD_CATEGORY") {
           const { tempId, ...data } = action.data;
           const res = await api.post("/categories", data);
@@ -293,9 +300,9 @@ export const useTasks = () => {
 
   const deleteTask = useCallback(async (id) => {
     if (NATIVE) {
-      localTasks.delete(id);
+      localTasks.trash(id);
       setTasksState(localTasks.getAll());
-      toast.success("Task deleted");
+      toast.success("Moved to trash");
       return;
     }
 
@@ -327,40 +334,122 @@ export const useTasks = () => {
   }, [NATIVE, isAuthenticated, loadTasks, setTasks]);
 
   const restoreTask = useCallback(async (id) => {
-    if (NATIVE) return;
+    if (NATIVE) {
+      localTasks.restore(id);
+      setTasksState(localTasks.getAll());
+      toast.success("Restored");
+      return;
+    }
     if (!isAuthenticated) return;
+
+    setTasks((prev) => prev.map((task) => (task.id === id
+      ? { ...task, lifecycleStatus: "active", trashedAt: null, updatedAt: new Date().toISOString() }
+      : task)));
+
+    if (!navigator.onLine) {
+      addToQueue({ type: "UPDATE_TASK", id, data: { lifecycleStatus: "active", trashedAt: null } });
+      toast.success("Restored");
+      return;
+    }
+
     try {
       const res = await api.post(`/tasks/${id}/restore`);
       setTasks((prev) => prev.map((t) => (t.id === id ? res.data : t)));
       toast.success("Restored");
-    } catch {
+    } catch (error) {
+      if (isOfflineErr(error)) {
+        addToQueue({ type: "UPDATE_TASK", id, data: { lifecycleStatus: "active", trashedAt: null } });
+        toast.success("Restored");
+        return;
+      }
+      if (isUnsupportedRouteErr(error)) {
+        const updated = await updateTask(id, { lifecycleStatus: "active", trashedAt: null });
+        if (updated) toast.success("Restored");
+        return;
+      }
       toast.error("Failed to restore");
     }
-  }, [NATIVE, isAuthenticated, setTasks]);
+  }, [NATIVE, isAuthenticated, setTasks, updateTask]);
 
   const archiveTask = useCallback(async (id) => {
-    if (NATIVE) return;
+    if (NATIVE) {
+      localTasks.archive(id);
+      setTasksState(localTasks.getAll());
+      toast.success("Archived");
+      return;
+    }
     if (!isAuthenticated) return;
+
+    setTasks((prev) => prev.map((task) => (task.id === id
+      ? { ...task, lifecycleStatus: "archived", trashedAt: null, updatedAt: new Date().toISOString() }
+      : task)));
+
+    if (!navigator.onLine) {
+      addToQueue({ type: "UPDATE_TASK", id, data: { lifecycleStatus: "archived", trashedAt: null } });
+      toast.success("Archived");
+      return;
+    }
+
     try {
       const res = await api.post(`/tasks/${id}/archive`);
       setTasks((prev) => prev.map((t) => (t.id === id ? res.data : t)));
       toast.success("Archived");
-    } catch {
-      toast.error("Failed");
+    } catch (error) {
+      if (isOfflineErr(error)) {
+        addToQueue({ type: "UPDATE_TASK", id, data: { lifecycleStatus: "archived", trashedAt: null } });
+        toast.success("Archived");
+        return;
+      }
+      if (isUnsupportedRouteErr(error)) {
+        const updated = await updateTask(id, { lifecycleStatus: "archived", trashedAt: null });
+        if (updated) toast.success("Archived");
+        return;
+      }
+      toast.error("Failed to archive");
     }
-  }, [NATIVE, isAuthenticated, setTasks]);
+  }, [NATIVE, isAuthenticated, setTasks, updateTask]);
 
   const permanentDeleteTask = useCallback(async (id) => {
-    if (NATIVE) return;
+    if (NATIVE) {
+      localTasks.delete(id);
+      setTasksState(localTasks.getAll());
+      toast.success("Deleted permanently");
+      return;
+    }
     if (!isAuthenticated) return;
+
+    const previousTasks = tasks;
+    setTasks((prev) => prev.filter((task) => task.id !== id));
+
+    if (!navigator.onLine) {
+      addToQueue({ type: "PERMANENT_DELETE_TASK", id });
+      toast.success("Deleted permanently");
+      return;
+    }
+
     try {
       await api.delete(`/tasks/${id}/permanent`);
       setTasks((prev) => prev.filter((t) => t.id !== id));
       toast.success("Deleted permanently");
-    } catch {
+    } catch (error) {
+      if (isOfflineErr(error)) {
+        addToQueue({ type: "PERMANENT_DELETE_TASK", id });
+        toast.success("Deleted permanently");
+        return;
+      }
+      if (isUnsupportedRouteErr(error)) {
+        const deleted = await api.delete(`/tasks/${id}`);
+        const restoredTask = deleted?.data?.task;
+        if (restoredTask) {
+          setTasks(previousTasks);
+          toast.error("This server only supports moving tasks to trash.");
+          return;
+        }
+      }
+      setTasks(previousTasks);
       toast.error("Failed");
     }
-  }, [NATIVE, isAuthenticated, setTasks]);
+  }, [NATIVE, isAuthenticated, setTasks, tasks]);
 
   const mergeAppliedTasks = useCallback((list) => {
     if (!list?.length) return;

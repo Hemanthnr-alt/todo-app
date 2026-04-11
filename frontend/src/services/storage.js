@@ -31,6 +31,11 @@ export const localTasks = {
       attachments: [],
       subtasks:    [],
       tags:        [],
+      completedDates: [],
+      recurringDays: [],
+      recurringSkipDates: [],
+      lifecycleStatus: "active",
+      trashedAt: null,
       createdAt:   new Date().toISOString(),
       updatedAt:   new Date().toISOString(),
       ...task,
@@ -46,6 +51,18 @@ export const localTasks = {
     localTasks.save(tasks);
     return tasks.find(t => t.id === id);
   },
+  trash: (id) => localTasks.update(id, {
+    lifecycleStatus: "trashed",
+    trashedAt: new Date().toISOString(),
+  }),
+  archive: (id) => localTasks.update(id, {
+    lifecycleStatus: "archived",
+    trashedAt: null,
+  }),
+  restore: (id) => localTasks.update(id, {
+    lifecycleStatus: "active",
+    trashedAt: null,
+  }),
   delete: (id) => {
     const tasks = localTasks.getAll().filter(t => t.id !== id);
     localTasks.save(tasks);
