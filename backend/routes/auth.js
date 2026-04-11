@@ -2,6 +2,7 @@ const express = require("express");
 const jwt     = require("jsonwebtoken");
 const { body, validationResult } = require("express-validator");
 const User    = require("../models/User");
+const { protect } = require("../middleware/auth");
 
 const router = express.Router();
 
@@ -34,7 +35,7 @@ router.post("/register", [
       success: true,
       message: "Account created successfully!",
       token,
-      user: { id: user.id, name: user.name, email: user.email },
+      user: { id: user.id, name: user.name, email: user.email, avatar: user.avatar || "" },
     });
   } catch (error) {
     console.error("Register error:", error);
@@ -66,7 +67,7 @@ router.post("/login", [
       success: true,
       message: "Login successful!",
       token,
-      user: { id: user.id, name: user.name, email: user.email },
+      user: { id: user.id, name: user.name, email: user.email, avatar: user.avatar || "" },
     });
   } catch (error) {
     console.error("Login error:", error);
@@ -85,17 +86,60 @@ router.get("/verify", async (req, res) => {
     const token   = authHeader.split(" ")[1];
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     const user    = await User.findByPk(decoded.id, {
-      attributes: ["id", "name", "email"],
+      attributes: ["id", "name", "email", "avatar"],
     });
 
     if (!user) return res.status(401).json({ error: "User not found" });
 
     res.json({
       success: true,
-      user: { id: user.id, name: user.name, email: user.email },
+      user: { id: user.id, name: user.name, email: user.email, avatar: user.avatar || "" },
     });
   } catch {
     res.status(401).json({ error: "Invalid token" });
+  }
+});
+
+router.put("/profile", protect, [
+  body("name").optional().trim().isLength({ min: 2, max: 50 }).withMessage("Name must be 2-50 characters"),
+  body("email").optional().isEmail().normalizeEmail().withMessage("Valid email required"),
+  body("avatar").optional({ nullable: true }).isString().withMessage("Avatar must be a string"),
+], async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
+
+    const user = await User.findByPk(req.user.id);
+    if (!user) return res.status(404).json({ error: "User not found" });
+
+    const { name, email, avatar } = req.body;
+    if (email && email !== user.email) {
+      const existing = await User.findOne({ where: { email } });
+      if (existing && existing.id !== user.id) {
+        return res.status(400).json({ error: "Email already registered" });
+      }
+    }
+
+    const nextAvatar = typeof avatar === "string" ? avatar.trim() : user.avatar;
+    if (nextAvatar && nextAvatar.length > 2_000_000) {
+      return res.status(400).json({ error: "Profile photo is too large" });
+    }
+
+    await user.update({
+      ...(name !== undefined ? { name: name.trim() } : {}),
+      ...(email !== undefined ? { email } : {}),
+      ...(avatar !== undefined ? { avatar: nextAvatar } : {}),
+    });
+
+    const token = signToken(user);
+    res.json({
+      success: true,
+      message: "Profile updated successfully",
+      token,
+      user: { id: user.id, name: user.name, email: user.email, avatar: user.avatar || "" },
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
   }
 });
 

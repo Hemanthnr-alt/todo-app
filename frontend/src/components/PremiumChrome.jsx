@@ -1,55 +1,69 @@
+import { motion } from "framer-motion";
+
 /**
  * Premium SVG chrome + completion styling shared across Tasks, Today, Habits, Calendar.
  */
 
 /** Strikethrough using a soft gradient bar (reads more “designed” than plain line-through). */
 export function PremiumCompleteTitle({ children, complete, lineColor, style = {} }) {
-  if (!complete) {
-    return (
-      <span
-        style={{
-          fontWeight: 600,
-          color: "var(--text-primary)",
-          overflow: "hidden",
-          textOverflow: "ellipsis",
-          whiteSpace: "nowrap",
-          display: "block",
-          ...style,
-        }}
-      >
-        {children}
-      </span>
-    );
-  }
   return (
-    <span style={{ position: "relative", display: "block", maxWidth: "100%", ...style }}>
-      <span
+    <span style={{ position: "relative", display: "block", maxWidth: "100%", overflow: "hidden", ...style }}>
+      <motion.span
+        animate={{
+          color: complete ? "var(--text-muted)" : "var(--text-primary)",
+          opacity: complete ? 0.76 : 1,
+          y: complete ? -1 : 0,
+          scale: complete ? 0.992 : 1,
+        }}
+        transition={{ duration: 0.24, ease: [0.22, 1, 0.36, 1] }}
         style={{
-          color: "var(--text-muted)",
-          fontWeight: 500,
-          letterSpacing: "0.01em",
+          fontWeight: complete ? 500 : 600,
+          letterSpacing: complete ? "0.01em" : "0",
           overflow: "hidden",
           textOverflow: "ellipsis",
           whiteSpace: "nowrap",
           display: "block",
-          opacity: 0.92,
+          transformOrigin: "left center",
         }}
       >
         {children}
-      </span>
-      <span
+      </motion.span>
+      <motion.span
         aria-hidden
+        initial={false}
+        animate={{
+          scaleX: complete ? 1 : 0,
+          opacity: complete ? 1 : 0,
+        }}
+        transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
         style={{
           position: "absolute",
           left: 0,
           right: 0,
           top: "50%",
-          height: "2px",
-          marginTop: "-1px",
-          borderRadius: "2px",
+          height: "3px",
+          marginTop: "-1.5px",
+          borderRadius: "999px",
           background: `linear-gradient(90deg, transparent 0%, ${lineColor}cc 12%, ${lineColor} 50%, ${lineColor}cc 88%, transparent 100%)`,
-          boxShadow: `0 0 10px ${lineColor}55`,
+          boxShadow: `0 0 12px ${lineColor}55`,
           pointerEvents: "none",
+          transformOrigin: "left center",
+        }}
+      />
+      <motion.span
+        aria-hidden
+        initial={false}
+        animate={{
+          opacity: complete ? 0.95 : 0,
+          x: complete ? 0 : -10,
+        }}
+        transition={{ duration: 0.34, ease: [0.22, 1, 0.36, 1] }}
+        style={{
+          position: "absolute",
+          inset: 0,
+          background: `linear-gradient(90deg, transparent 0%, ${lineColor}22 38%, transparent 76%)`,
+          pointerEvents: "none",
+          mixBlendMode: "screen",
         }}
       />
     </span>

@@ -1,9 +1,9 @@
 import { AnimatePresence, motion } from "framer-motion";
-import { useCallback, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useState } from "react";
 import toast from "react-hot-toast";
 import CenteredModal from "../components/CenteredModal";
 import CustomSelect from "../components/CustomSelect";
-import { IconFlame, IconPlus, IconTrash, PremiumIconButton } from "../components/PremiumChrome";
+import { IconFlame, IconPlus, IconTrash, PremiumCompleteTitle, PremiumIconButton } from "../components/PremiumChrome";
 import { PremiumHabitTile } from "../components/PremiumMarks";
 import { useTheme } from "../context/ThemeContext";
 import { useHabits } from "../hooks/useHabits";
@@ -46,52 +46,88 @@ function getLast7() {
   return days;
 }
 
-function EmojiPickerGrid({ value, onChange }) {
+const EmojiPickerGrid = memo(function EmojiPickerGrid({ value, onChange, isExpanded, onToggle }) {
   return (
     <div>
       <div className="section-label" style={{ marginBottom: "8px" }}>Icon</div>
-      <div
+      <button
+        type="button"
+        onClick={onToggle}
+        className="glass-tile"
         style={{
+          width: "100%",
+          borderRadius: "16px",
+          padding: "12px 14px",
           display: "flex",
-          flexWrap: "wrap",
-          gap: "8px",
-          maxHeight: "160px",
-          overflowY: "auto",
-          padding: "4px 2px",
-          WebkitOverflowScrolling: "touch",
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: "12px",
+          color: "var(--text-primary)",
+          fontWeight: 600,
+          marginBottom: isExpanded ? "12px" : 0,
         }}
       >
-        {EMOJI_PRESETS.map((em, index) => (
-          <button
-            key={`${em}-${index}`}
-            type="button"
-            onClick={() => onChange(em)}
-            className="btn-reset"
-            style={{
-              width: "38px",
-              height: "38px",
-              borderRadius: "12px",
-              background: em === value ? "var(--accent-subtle)" : "var(--surface-raised)",
-              border: `1px solid ${em === value ? "var(--accent)" : "var(--border)"}`,
-              fontSize: "18px",
-              lineHeight: 1,
-            }}
-          >
-            {em}
-          </button>
-        ))}
-      </div>
+        <span style={{ display: "inline-flex", alignItems: "center", gap: "10px" }}>
+          <span style={{ fontSize: "22px", lineHeight: 1 }}>{value}</span>
+          {isExpanded ? "Hide icons" : "Choose icon"}
+        </span>
+        <span style={{ color: "var(--text-muted)", fontSize: "12px", fontWeight: 700 }}>
+          {isExpanded ? "Collapse" : "Open"}
+        </span>
+      </button>
+      {isExpanded && (
+        <div
+          style={{
+            display: "flex",
+            flexWrap: "wrap",
+            gap: "8px",
+            maxHeight: "160px",
+            overflowY: "auto",
+            padding: "4px 2px",
+            WebkitOverflowScrolling: "touch",
+          }}
+        >
+          {EMOJI_PRESETS.map((em, index) => (
+            <button
+              key={`${em}-${index}`}
+              type="button"
+              onClick={() => onChange(em)}
+              className="btn-reset"
+              style={{
+                width: "38px",
+                height: "38px",
+                borderRadius: "12px",
+                background: em === value ? "var(--accent-subtle)" : "var(--surface-raised)",
+                border: `1px solid ${em === value ? "var(--accent)" : "var(--border)"}`,
+                fontSize: "18px",
+                lineHeight: 1,
+              }}
+            >
+              {em}
+            </button>
+          ))}
+        </div>
+      )}
     </div>
+  );
+});
+
+function HabitTitle({ habit, completeToday }) {
+  return (
+    <PremiumCompleteTitle complete={completeToday} lineColor={habit.color}>
+      {habit.name}
+    </PremiumCompleteTitle>
   );
 }
 
 function HabitCard({ habit, onToggle, onDelete, onEdit }) {
-  const last7 = getLast7();
+  const last7 = useMemo(() => getLast7(), []);
   const today = localTodayYMD();
   const doneSet = new Set(habit.completedDates || []);
   const totalDone = last7.filter((date) => doneSet.has(formatLocalYMD(date))).length;
   const pct = Math.round((totalDone / 7) * 100);
   const streak = habit.streak ?? 0;
+  const completeToday = doneSet.has(today);
 
   return (
     <motion.div
@@ -106,8 +142,8 @@ function HabitCard({ habit, onToggle, onDelete, onEdit }) {
         <div style={{ minWidth: 0, display: "flex", gap: "12px", alignItems: "center" }}>
           <PremiumHabitTile emoji={habit.icon} color={habit.color} size={46} />
           <div style={{ minWidth: 0 }}>
-            <div style={{ color: "var(--text-primary)", fontSize: "16px", fontWeight: 700, marginBottom: "4px" }}>
-              {habit.name}
+            <div style={{ fontSize: "16px", marginBottom: "4px" }}>
+              <HabitTitle habit={habit} completeToday={completeToday} />
             </div>
             <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "8px" }}>
               <span style={{ color: habit.color, fontSize: "12px", fontWeight: 600 }}>{scheduleLabel(habit)}</span>
@@ -142,13 +178,16 @@ function HabitCard({ habit, onToggle, onDelete, onEdit }) {
             width: "40px",
             height: "40px",
             borderRadius: "14px",
-            background: `linear-gradient(145deg, ${habit.color}, ${habit.color}cc)`,
-            color: "#111",
+            background: completeToday ? "var(--surface-raised)" : `linear-gradient(145deg, ${habit.color}, ${habit.color}cc)`,
+            color: completeToday ? habit.color : "#111",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            boxShadow: `0 6px 18px ${habit.color}50, inset 0 1px 0 rgba(255,255,255,0.35)`,
-            border: "1px solid rgba(255,255,255,0.25)",
+            boxShadow: completeToday
+              ? `0 0 0 1px ${habit.color}40 inset`
+              : `0 6px 18px ${habit.color}50, inset 0 1px 0 rgba(255,255,255,0.35)`,
+            border: completeToday ? `1px solid ${habit.color}55` : "1px solid rgba(255,255,255,0.25)",
+            transition: "all 180ms var(--easing-default)",
           }}
         >
           <IconPlus size={22} stroke="currentColor" />
@@ -219,6 +258,8 @@ export default function Habits() {
   const [goalMaxPerDay, setGoalMaxPerDay] = useState("");
   const [reminderEnabled, setReminderEnabled] = useState(false);
   const [reminderTime, setReminderTime] = useState("09:00");
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [canRenderEmojiPicker, setCanRenderEmojiPicker] = useState(false);
 
   const resetForm = useCallback(() => {
     setName("");
@@ -233,6 +274,8 @@ export default function Habits() {
     setGoalMaxPerDay("");
     setReminderEnabled(false);
     setReminderTime("09:00");
+    setShowEmojiPicker(false);
+    setCanRenderEmojiPicker(false);
   }, [accent]);
 
   const openCreate = useCallback(() => {
@@ -264,6 +307,15 @@ export default function Habits() {
     setShowModal(false);
     resetForm();
   }, [resetForm]);
+
+  useEffect(() => {
+    if (!showModal) {
+      setCanRenderEmojiPicker(false);
+      return undefined;
+    }
+    const timer = window.setTimeout(() => setCanRenderEmojiPicker(true), 120);
+    return () => window.clearTimeout(timer);
+  }, [showModal]);
 
   const buildHabitPayload = useCallback(() => {
     const recurringDays = frequency === "weekly"
@@ -358,7 +410,15 @@ export default function Habits() {
             style={{ width: "100%", padding: "12px 14px", borderRadius: "14px", border: "1px solid var(--border)", background: "var(--surface-raised)", color: "var(--text-primary)", fontFamily: "var(--font-body)" }}
           />
 
-          <EmojiPickerGrid value={icon} onChange={setIcon} />
+          <EmojiPickerGrid
+            value={icon}
+            onChange={setIcon}
+            isExpanded={showEmojiPicker && canRenderEmojiPicker}
+            onToggle={() => {
+              if (!canRenderEmojiPicker) return;
+              setShowEmojiPicker((current) => !current);
+            }}
+          />
 
           <div>
             <div className="section-label" style={{ marginBottom: "8px" }}>Color</div>

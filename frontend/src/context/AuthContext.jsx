@@ -81,10 +81,55 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  const updateProfile = async (updates) => {
+    try {
+      const res = await fetch(`${API_URL}/auth/profile`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(updates),
+      });
+      const data = await res.json();
+      if (data.success) {
+        if (data.token) {
+          localStorage.setItem("token", data.token);
+          setToken(data.token);
+        }
+        setUser(data.user);
+        return { success: true, message: data.message, user: data.user };
+      }
+      return { success: false, error: data.error || data.errors?.[0]?.msg || "Profile update failed" };
+    } catch {
+      return { success: false, error: "Network error" };
+    }
+  };
+
+  const changePassword = async (currentPassword, newPassword) => {
+    try {
+      const res = await fetch(`${API_URL}/auth/change-password`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ currentPassword, newPassword }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        return { success: true, message: data.message };
+      }
+      return { success: false, error: data.error || data.errors?.[0]?.msg || "Password change failed" };
+    } catch {
+      return { success: false, error: "Network error" };
+    }
+  };
+
   return (
     <AuthContext.Provider value={{
       user, token, loading,
-      register, login, logout,
+      register, login, logout, updateProfile, changePassword,
       isAuthenticated: !!user,
     }}>
       {children}

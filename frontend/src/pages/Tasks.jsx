@@ -1,5 +1,5 @@
 import { AnimatePresence } from "framer-motion";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import toast from "react-hot-toast";
 import CenteredModal from "../components/CenteredModal";
 import CustomSelect from "../components/CustomSelect";
@@ -124,7 +124,7 @@ function TaskRow({
             </span>
           )}
           {tags.slice(0, 4).map((tag) => (
-            <span key={tag} style={{ fontSize: "11px", fontWeight: 700, color: "var(--text-muted)" }}>#{tag}</span>
+            <span key={tag} style={{ fontSize: "11px", fontWeight: 700, color: "var(--text-muted)" }}>{tag}</span>
           ))}
           {task.dueDate && (
             <span style={{ color: "var(--text-muted)", fontSize: "12px", fontWeight: 500 }}>
@@ -193,8 +193,6 @@ const blankTask = {
   weeklyDays: "1,3,5",
 };
 
-const SAVED_FILTERS_KEY = "thirty_saved_task_filters";
-
 export default function Tasks() {
   const { accent } = useTheme();
   const {
@@ -222,19 +220,6 @@ export default function Tasks() {
   const [catColor, setCatColor] = useState(accent);
   const [catIcon, setCatIcon] = useState("");
   const [savingTask, setSavingTask] = useState(false);
-  const [savedFilters, setSavedFilters] = useState([]);
-
-  const refreshSavedFilters = () => {
-    try {
-      setSavedFilters(JSON.parse(localStorage.getItem(SAVED_FILTERS_KEY) || "[]"));
-    } catch {
-      setSavedFilters([]);
-    }
-  };
-
-  useEffect(() => {
-    refreshSavedFilters();
-  }, []);
 
   const today = todayStr();
   const weekEnd = weekEndStr();
@@ -434,41 +419,9 @@ export default function Tasks() {
         <input
           value={tagFilter}
           onChange={(e) => setTagFilter(e.target.value)}
-          placeholder="Filter by tag (no # needed)"
+          placeholder="Filter by tag"
           style={{ width: "100%", boxSizing: "border-box", padding: "10px 12px", borderRadius: "12px", border: "1px solid var(--border)", background: "var(--surface)", color: "var(--text-primary)", fontFamily: "var(--font-body)", fontSize: "13px" }}
         />
-      </div>
-      <div style={{ marginBottom: "12px", display: "flex", gap: "8px", flexWrap: "wrap" }}>
-        <button
-          type="button"
-          className="glass-tile"
-          style={{ borderRadius: "10px", padding: "6px 12px", fontSize: "12px", fontWeight: 600 }}
-          onClick={() => {
-            if (!tagFilter.trim()) return;
-            try {
-              const cur = JSON.parse(localStorage.getItem(SAVED_FILTERS_KEY) || "[]");
-              const entry = { tag: tagFilter.replace(/^#/, "").trim() };
-              if (!cur.some((c) => c.tag === entry.tag)) {
-                cur.push(entry);
-                localStorage.setItem(SAVED_FILTERS_KEY, JSON.stringify(cur));
-                refreshSavedFilters();
-                toast.success("Saved filter");
-              }
-            } catch { /* ignore */ }
-          }}
-        >
-          Save filter
-        </button>
-        {savedFilters.map((sf, i) => (
-          <button
-            key={`${sf.tag}-${i}`}
-            type="button"
-            className="pill-filter"
-            onClick={() => setTagFilter(sf.tag || "")}
-          >
-            #{sf.tag || "tag"}
-          </button>
-        ))}
       </div>
 
       <div className="glass-panel" style={{ borderRadius: "18px", padding: "0 14px" }}>

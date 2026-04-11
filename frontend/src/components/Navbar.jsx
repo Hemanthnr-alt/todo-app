@@ -211,23 +211,38 @@ function MobileMenuSheet({ onClose, user, logout, toggleTheme, isDark, onOpenSet
     <Sheet onClose={onClose}>
       {user && (
         <div style={{ display: "flex", gap: "12px", alignItems: "center", padding: "8px 20px 16px" }}>
-          <div
-            style={{
-              width: "54px",
-              height: "54px",
-              borderRadius: "18px",
-              background: `linear-gradient(135deg, ${accent}, var(--accent-hover))`,
-              color: "#fff",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              fontFamily: "var(--font-heading)",
-              fontWeight: 800,
-              boxShadow: "var(--shadow-glow)",
-            }}
-          >
-            {user.name?.charAt(0)?.toUpperCase()}
-          </div>
+          {user?.avatar ? (
+            <img
+              src={user.avatar}
+              alt={user.name}
+              style={{
+                width: "54px",
+                height: "54px",
+                borderRadius: "18px",
+                objectFit: "cover",
+                border: "1px solid var(--border)",
+                boxShadow: "var(--shadow-glow)",
+              }}
+            />
+          ) : (
+            <div
+              style={{
+                width: "54px",
+                height: "54px",
+                borderRadius: "18px",
+                background: `linear-gradient(135deg, ${accent}, var(--accent-hover))`,
+                color: "#fff",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                fontFamily: "var(--font-heading)",
+                fontWeight: 800,
+                boxShadow: "var(--shadow-glow)",
+              }}
+            >
+              {user.name?.charAt(0)?.toUpperCase()}
+            </div>
+          )}
           <div>
             <div style={{ color: "var(--text-primary)", fontWeight: 700 }}>{user.name}</div>
             <div style={{ color: "var(--text-muted)", fontSize: "13px" }}>{user.email}</div>
@@ -470,22 +485,37 @@ export default function Navbar({ activePage, onPageChange }) {
                       cursor: "pointer",
                     }}
                   >
-                    <div
-                      style={{
-                        width: "32px",
-                        height: "32px",
-                        borderRadius: "50%",
-                        background: `linear-gradient(135deg, ${accent}, var(--accent-hover))`,
-                        color: "#fff",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        fontWeight: 800,
-                        boxShadow: "var(--shadow-glow)",
-                      }}
-                    >
-                      {user?.name?.charAt(0)?.toUpperCase() || "?"}
-                    </div>
+                    {user?.avatar ? (
+                      <img
+                        src={user.avatar}
+                        alt={user?.name || "Profile"}
+                        style={{
+                          width: "32px",
+                          height: "32px",
+                          borderRadius: "50%",
+                          objectFit: "cover",
+                          border: "1px solid var(--border)",
+                          boxShadow: "var(--shadow-glow)",
+                        }}
+                      />
+                    ) : (
+                      <div
+                        style={{
+                          width: "32px",
+                          height: "32px",
+                          borderRadius: "50%",
+                          background: `linear-gradient(135deg, ${accent}, var(--accent-hover))`,
+                          color: "#fff",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          fontWeight: 800,
+                          boxShadow: "var(--shadow-glow)",
+                        }}
+                      >
+                        {user?.name?.charAt(0)?.toUpperCase() || "?"}
+                      </div>
+                    )}
                     <span style={{ color: "var(--text-primary)", fontSize: "13px", fontWeight: 700, paddingRight: "8px" }}>
                       {user?.name?.split(" ")[0]}
                     </span>
