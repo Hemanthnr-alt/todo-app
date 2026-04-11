@@ -31,11 +31,6 @@ const weekEndStr = () => {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
 };
 
-const parseTags = (raw) => String(raw || "")
-  .split(/[,\s]+/)
-  .map((t) => t.replace(/^#/, "").trim())
-  .filter(Boolean);
-
 const PRIORITIES = {
   high: { color: "var(--danger)", bg: "var(--danger-subtle)", label: "High" },
   medium: { color: "var(--warning)", bg: "var(--warning-subtle)", label: "Medium" },
@@ -63,8 +58,6 @@ function TaskRow({
   const category = categories.find((item) => item.id === task.categoryId);
   const priority = PRIORITIES[task.priority] || PRIORITIES.medium;
   const lineColor = priority.color.includes("var(") ? "var(--accent)" : priority.color;
-  const tags = task.tags || [];
-
   return (
     <div
       style={{
@@ -123,9 +116,6 @@ function TaskRow({
               {category.name}
             </span>
           )}
-          {tags.slice(0, 4).map((tag) => (
-            <span key={tag} style={{ fontSize: "11px", fontWeight: 700, color: "var(--text-muted)" }}>{tag}</span>
-          ))}
           {task.dueDate && (
             <span style={{ color: "var(--text-muted)", fontSize: "12px", fontWeight: 500 }}>
               {task.dueDate === todayStr() ? "Today" : task.dueDate}
@@ -186,7 +176,6 @@ const blankTask = {
   priority: "medium",
   categoryId: "",
   dueDate: "",
-  tagsInput: "",
   isRecurring: false,
   recurringFrequency: "daily",
   recurringInterval: 2,
@@ -212,7 +201,6 @@ export default function Tasks() {
   const [search, setSearch] = useState("");
   const [activeFilter, setActiveFilter] = useState("all");
   const [lifecycleTab, setLifecycleTab] = useState("active");
-  const [tagFilter, setTagFilter] = useState("");
   const [showTaskModal, setShowTaskModal] = useState(false);
   const [editingTaskId, setEditingTaskId] = useState(null);
   const [showCatModal, setShowCatModal] = useState(false);
@@ -239,10 +227,6 @@ export default function Tasks() {
     if (lifecycleTab === "archive" && life !== "archived") return false;
     if (lifecycleTab === "trash" && life !== "trashed") return false;
     if (search && !task.title.toLowerCase().includes(search.toLowerCase())) return false;
-    if (tagFilter) {
-      const tgs = task.tags || [];
-      if (!tgs.map((x) => String(x).toLowerCase()).includes(tagFilter.toLowerCase().replace(/^#/, ""))) return false;
-    }
     switch (activeFilter) {
       case "today":
         return task.dueDate === today;
@@ -257,7 +241,7 @@ export default function Tasks() {
       default:
         return true;
     }
-  }), [activeFilter, search, tasks, today, weekEnd, lifecycleTab, tagFilter]);
+  }), [activeFilter, search, tasks, today, weekEnd, lifecycleTab]);
 
   const handleTaskToggle = async (task, completed) => {
     if (completed && task.isRecurring) {
@@ -299,7 +283,6 @@ export default function Tasks() {
       priority: task.priority || "medium",
       categoryId: task.categoryId || "",
       dueDate: task.dueDate || "",
-      tagsInput: (task.tags || []).join(", "),
       isRecurring: !!task.isRecurring,
       recurringFrequency: task.recurringFrequency || "daily",
       recurringInterval: task.recurringInterval || 2,
@@ -309,7 +292,6 @@ export default function Tasks() {
   };
 
   const buildPayload = () => {
-    const tags = parseTags(draft.tagsInput);
     const recurringDays = draft.recurringFrequency === "weekly"
       ? draft.weeklyDays.split(/[,\s]+/).map((x) => Number.parseInt(x, 10)).filter((n) => !Number.isNaN(n) && n >= 0 && n <= 6)
       : [];
@@ -322,7 +304,6 @@ export default function Tasks() {
       categoryId: draft.categoryId || null,
       projectId: null,
       dueDate: anchorDue || null,
-      tags,
       isRecurring: !!draft.isRecurring,
       recurringFrequency: draft.isRecurring ? draft.recurringFrequency : null,
       recurringInterval: draft.isRecurring && draft.recurringFrequency === "custom"
@@ -413,15 +394,6 @@ export default function Tasks() {
             + Category
           </button>
         </div>
-      </div>
-
-      <div style={{ marginBottom: "12px" }}>
-        <input
-          value={tagFilter}
-          onChange={(e) => setTagFilter(e.target.value)}
-          placeholder="Filter by tag"
-          style={{ width: "100%", boxSizing: "border-box", padding: "10px 12px", borderRadius: "12px", border: "1px solid var(--border)", background: "var(--surface)", color: "var(--text-primary)", fontFamily: "var(--font-body)", fontSize: "13px" }}
-        />
       </div>
 
       <div className="glass-panel" style={{ borderRadius: "18px", padding: "0 14px" }}>
@@ -529,17 +501,6 @@ export default function Tasks() {
                 Category
               </span>
               <CustomSelect value={draft.categoryId} onChange={(value) => setDraft((current) => ({ ...current, categoryId: value }))} options={categoryOptions} />
-            </div>
-            <div style={{ marginTop: "4px" }}>
-              <span className="section-label" style={{ marginBottom: "8px", display: "block" }}>
-                Tags
-              </span>
-              <input
-                value={draft.tagsInput}
-                onChange={(e) => setDraft((c) => ({ ...c, tagsInput: e.target.value }))}
-                placeholder="work, deep-focus (comma-separated)"
-                style={{ width: "100%", padding: "12px 14px", borderRadius: "12px", border: "1px solid var(--border)", background: "var(--surface)", color: "var(--text-primary)", fontFamily: "var(--font-body)", fontSize: "13px" }}
-              />
             </div>
           </div>
 

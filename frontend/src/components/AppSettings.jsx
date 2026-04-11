@@ -93,8 +93,6 @@ export default function AppSettings({ isOpen, onClose }) {
     }
   }, [isOpen, user]);
 
-  if (!isOpen) return null;
-
   const reqPush = async () => {
     if (!("Notification" in window)) { toast.error("Push not supported here"); return; }
     try {
@@ -227,6 +225,8 @@ export default function AppSettings({ isOpen, onClose }) {
       body: "By using Thirty, you agree to use the app lawfully and not upload harmful, illegal, or abusive content. You remain responsible for your account security and the content you store in the app.",
     },
   ]), []);
+
+  if (!isOpen) return null;
 
   return (
     <>
