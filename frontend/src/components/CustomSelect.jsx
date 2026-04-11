@@ -101,7 +101,7 @@ export default function CustomSelect({ value, onChange, options, style = {}, pla
         onMouseEnter={e => e.currentTarget.style.borderColor = "var(--accent)"}
         onMouseLeave={e => e.currentTarget.style.borderColor = border}
       >
-        <span>{selected ? selected.label : <span style={{ color: mutedColor }}>{placeholder}</span>}</span>
+        <span style={{ minWidth: 0, flex: 1, textAlign: "left", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{selected ? selected.label : <span style={{ color: mutedColor }}>{placeholder}</span>}</span>
         <motion.span
           animate={{ rotate: open ? 180 : 0 }}
           transition={{ duration: 0.18 }}
@@ -123,7 +123,8 @@ export default function CustomSelect({ value, onChange, options, style = {}, pla
                 position: "fixed",
                 top: dropPos.top,
                 left: dropPos.left,
-                width: dropPos.width,
+                width: Math.max(dropPos.width || 0, 220),
+                maxWidth: "min(100vw - 24px, 420px)",
                 background: bg,
                 borderRadius: "12px",
                 border: `1px solid ${border}`,

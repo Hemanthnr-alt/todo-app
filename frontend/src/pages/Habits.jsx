@@ -381,7 +381,7 @@ export default function Habits() {
             </div>
           </div>
 
-          <div className="glass-tile" style={{ borderRadius: "16px", padding: "14px", border: "1px solid var(--border)", display: "grid", gap: "12px" }}>
+          <div className="glass-tile" style={{ borderRadius: "16px", padding: "14px", border: "1px solid var(--border)", display: "grid", gap: "12px", minWidth: 0, overflow: "visible" }}>
             <span className="section-label">Schedule</span>
             <CustomSelect
               value={frequency}
@@ -416,47 +416,49 @@ export default function Habits() {
                 />
               </label>
             )}
-            <label style={{ display: "grid", gap: "6px", fontSize: "12px", fontWeight: 600, color: "var(--text-muted)" }}>
-              Target times per week (optional cap)
+            <label style={{ display: "grid", gap: "8px", minWidth: 0 }}>
+              <span style={{ fontSize: "12px", fontWeight: 600, color: "var(--text-muted)", lineHeight: 1.35 }}>
+                Target / week (optional)
+              </span>
               <input
                 value={targetTimesPerWeek}
                 onChange={(e) => setTargetTimesPerWeek(e.target.value)}
                 placeholder="e.g. 5"
-                style={{ padding: "10px 12px", borderRadius: "12px", border: "1px solid var(--border)", background: "var(--surface)", color: "var(--text-primary)", fontSize: "13px" }}
+                style={{ width: "100%", padding: "10px 12px", borderRadius: "12px", border: "1px solid var(--border)", background: "var(--surface)", color: "var(--text-primary)", fontSize: "13px", boxSizing: "border-box" }}
               />
             </label>
           </div>
 
-          <div className="glass-tile" style={{ borderRadius: "16px", padding: "14px", border: "1px solid var(--border)", display: "grid", gap: "12px" }}>
+          <div className="glass-tile" style={{ borderRadius: "16px", padding: "14px", border: "1px solid var(--border)", display: "grid", gap: "12px", minWidth: 0, overflow: "visible" }}>
             <span className="section-label">Goals (optional)</span>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
-              <label style={{ display: "grid", gap: "6px", fontSize: "11px", fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase" }}>
-                Min minutes
+            <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: "12px" }}>
+              <label style={{ display: "grid", gap: "8px", minWidth: 0 }}>
+                <span style={{ fontSize: "12px", fontWeight: 600, color: "var(--text-muted)" }}>Min minutes</span>
                 <input
                   value={goalMinMinutes}
                   onChange={(e) => setGoalMinMinutes(e.target.value)}
                   placeholder="—"
                   inputMode="numeric"
-                  style={{ padding: "10px 12px", borderRadius: "12px", border: "1px solid var(--border)", background: "var(--surface)", color: "var(--text-primary)" }}
+                  style={{ width: "100%", padding: "10px 12px", borderRadius: "12px", border: "1px solid var(--border)", background: "var(--surface)", color: "var(--text-primary)", boxSizing: "border-box" }}
                 />
               </label>
-              <label style={{ display: "grid", gap: "6px", fontSize: "11px", fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase" }}>
-                Max / day
+              <label style={{ display: "grid", gap: "8px", minWidth: 0 }}>
+                <span style={{ fontSize: "12px", fontWeight: 600, color: "var(--text-muted)" }}>Max per day</span>
                 <input
                   value={goalMaxPerDay}
                   onChange={(e) => setGoalMaxPerDay(e.target.value)}
                   placeholder="—"
                   inputMode="numeric"
-                  style={{ padding: "10px 12px", borderRadius: "12px", border: "1px solid var(--border)", background: "var(--surface)", color: "var(--text-primary)" }}
+                  style={{ width: "100%", padding: "10px 12px", borderRadius: "12px", border: "1px solid var(--border)", background: "var(--surface)", color: "var(--text-primary)", boxSizing: "border-box" }}
                 />
               </label>
             </div>
           </div>
 
-          <div className="glass-tile" style={{ borderRadius: "16px", padding: "14px", border: "1px solid var(--border)", display: "grid", gap: "10px" }}>
-            <label style={{ display: "flex", alignItems: "center", gap: "10px", fontSize: "13px", fontWeight: 600, cursor: "pointer" }}>
-              <input type="checkbox" checked={reminderEnabled} onChange={(e) => setReminderEnabled(e.target.checked)} />
-              Daily reminder (in-app feed)
+          <div className="glass-tile" style={{ borderRadius: "16px", padding: "14px", border: "1px solid var(--border)", display: "grid", gap: "10px", minWidth: 0, overflow: "visible" }}>
+            <label style={{ display: "flex", alignItems: "flex-start", gap: "10px", fontSize: "13px", fontWeight: 600, cursor: "pointer", lineHeight: 1.4 }}>
+              <input type="checkbox" checked={reminderEnabled} onChange={(e) => setReminderEnabled(e.target.checked)} style={{ marginTop: 3, flexShrink: 0 }} />
+              <span>Reminder in app (daily ping at the time below)</span>
             </label>
             {reminderEnabled && (
               <input

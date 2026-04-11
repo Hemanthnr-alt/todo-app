@@ -504,7 +504,7 @@ export default function AppSettings({ isOpen, onClose }) {
                 <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.14 }} style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
                   <div className="section-label">Backup &amp; restore</div>
                   <p style={{ fontSize: "13px", color: "var(--text-muted)", lineHeight: 1.5, margin: 0 }}>
-                    Exports cached tasks, categories, habits, projects, and templates from this device (localStorage). Sign in and sync for server copies.
+                    Exports cached tasks, categories, and habits from this device (localStorage). Older backup files may still list legacy project or template entries. Sign in and sync for server copies.
                   </p>
                   <button type="button" className="btn-primary" style={{ height: "46px", fontWeight: 700 }} onClick={exportBackup}>
                     Download JSON backup

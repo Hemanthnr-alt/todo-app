@@ -49,11 +49,14 @@ export default function CenteredModal({ isOpen, onClose, title, children, maxWid
                   width: "100%", maxWidth,
                   maxHeight: "calc(100dvh - 48px)",
                   overflowY: "auto",
+                  overflowX: "hidden",
+                  WebkitOverflowScrolling: "touch",
                   background: "var(--surface)",
                   borderRadius: "20px",
-                  padding: "24px",
+                  padding: "22px 18px 24px",
                   border: isDark ? "none" : "1px solid var(--border)",
                   boxShadow: "0 32px 80px rgba(0,0,0,0.6)",
+                  boxSizing: "border-box",
                 }}
               >
                 {/* Header */}

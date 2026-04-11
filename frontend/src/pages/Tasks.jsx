@@ -15,10 +15,7 @@ import {
   PremiumRoundComplete,
 } from "../components/PremiumChrome";
 import { PremiumTaskMark } from "../components/PremiumMarks";
-import { useAuth } from "../context/AuthContext";
 import { useTheme } from "../context/ThemeContext";
-import { useProjects } from "../hooks/useProjects";
-import { useTaskTemplates } from "../hooks/useTaskTemplates";
 import { useTasks } from "../hooks/useTasks";
 import { localTodayYMD } from "../utils/date";
 import { computeNextDueDate, lifecycleOf } from "../utils/recurringTask";
@@ -54,7 +51,6 @@ const PRIORITY_OPTIONS = [
 function TaskRow({
   task,
   categories,
-  projects,
   lifecycleTab,
   onToggle,
   onDelete,
@@ -65,7 +61,6 @@ function TaskRow({
   onSkipRecurring,
 }) {
   const category = categories.find((item) => item.id === task.categoryId);
-  const project = projects.find((p) => p.id === task.projectId);
   const priority = PRIORITIES[task.priority] || PRIORITIES.medium;
   const lineColor = priority.color.includes("var(") ? "var(--accent)" : priority.color;
   const tags = task.tags || [];
@@ -127,9 +122,6 @@ function TaskRow({
               </span>
               {category.name}
             </span>
-          )}
-          {project && (
-            <span style={{ color: "var(--text-muted)", fontSize: "12px", fontWeight: 600 }}>{project.icon} {project.name}</span>
           )}
           {tags.slice(0, 4).map((tag) => (
             <span key={tag} style={{ fontSize: "11px", fontWeight: 700, color: "var(--text-muted)" }}>#{tag}</span>
@@ -193,7 +185,6 @@ const blankTask = {
   description: "",
   priority: "medium",
   categoryId: "",
-  projectId: "",
   dueDate: "",
   tagsInput: "",
   isRecurring: false,
@@ -206,7 +197,6 @@ const SAVED_FILTERS_KEY = "thirty_saved_task_filters";
 
 export default function Tasks() {
   const { accent } = useTheme();
-  const { isAuthenticated } = useAuth();
   const {
     tasks,
     categories,
@@ -217,24 +207,17 @@ export default function Tasks() {
     restoreTask,
     archiveTask,
     permanentDeleteTask,
-    mergeAppliedTasks,
     addCategory,
   } = useTasks();
-  const { projects } = useProjects();
-  const { templates, applyTemplate, saveTemplate } = useTaskTemplates();
 
   const [draft, setDraft] = useState(blankTask);
   const [search, setSearch] = useState("");
   const [activeFilter, setActiveFilter] = useState("all");
   const [lifecycleTab, setLifecycleTab] = useState("active");
   const [tagFilter, setTagFilter] = useState("");
-  const [projectFilter, setProjectFilter] = useState("");
   const [showTaskModal, setShowTaskModal] = useState(false);
   const [editingTaskId, setEditingTaskId] = useState(null);
   const [showCatModal, setShowCatModal] = useState(false);
-  const [showTplModal, setShowTplModal] = useState(false);
-  const [tplName, setTplName] = useState("");
-  const [applyTplId, setApplyTplId] = useState("");
   const [catName, setCatName] = useState("");
   const [catColor, setCatColor] = useState(accent);
   const [catIcon, setCatIcon] = useState("");
@@ -275,7 +258,6 @@ export default function Tasks() {
       const tgs = task.tags || [];
       if (!tgs.map((x) => String(x).toLowerCase()).includes(tagFilter.toLowerCase().replace(/^#/, ""))) return false;
     }
-    if (projectFilter && task.projectId !== projectFilter) return false;
     switch (activeFilter) {
       case "today":
         return task.dueDate === today;
@@ -290,7 +272,7 @@ export default function Tasks() {
       default:
         return true;
     }
-  }), [activeFilter, search, tasks, today, weekEnd, lifecycleTab, tagFilter, projectFilter]);
+  }), [activeFilter, search, tasks, today, weekEnd, lifecycleTab, tagFilter]);
 
   const handleTaskToggle = async (task, completed) => {
     if (completed && task.isRecurring) {
@@ -317,7 +299,6 @@ export default function Tasks() {
   };
 
   const categoryOptions = [{ value: "", label: "No category" }, ...categories.map((category) => ({ value: category.id, label: `${category.icon} ${category.name}` }))];
-  const projectOptions = [{ value: "", label: "No project" }, ...projects.map((p) => ({ value: p.id, label: `${p.icon || "◇"} ${p.name}` }))];
 
   const openCreate = () => {
     setEditingTaskId(null);
@@ -332,13 +313,12 @@ export default function Tasks() {
       description: task.description || "",
       priority: task.priority || "medium",
       categoryId: task.categoryId || "",
-      projectId: task.projectId || "",
       dueDate: task.dueDate || "",
       tagsInput: (task.tags || []).join(", "),
       isRecurring: !!task.isRecurring,
       recurringFrequency: task.recurringFrequency || "daily",
       recurringInterval: task.recurringInterval || 2,
-      weeklyDays: (task.recurringDays || []).join(","),
+      weeklyDays: (task.recurringDays || []).map((d) => Number(d)).filter((n) => !Number.isNaN(n)).join(","),
     });
     setShowTaskModal(true);
   };
@@ -348,13 +328,15 @@ export default function Tasks() {
     const recurringDays = draft.recurringFrequency === "weekly"
       ? draft.weeklyDays.split(/[,\s]+/).map((x) => Number.parseInt(x, 10)).filter((n) => !Number.isNaN(n) && n >= 0 && n <= 6)
       : [];
+    const dueRaw = typeof draft.dueDate === "string" && draft.dueDate.trim() ? draft.dueDate.trim() : "";
+    const anchorDue = dueRaw || (draft.isRecurring ? today : "");
     return {
       title: draft.title.trim(),
       description: draft.description,
       priority: draft.priority,
       categoryId: draft.categoryId || null,
-      projectId: draft.projectId || null,
-      dueDate: draft.dueDate || null,
+      projectId: null,
+      dueDate: anchorDue || null,
       tags,
       isRecurring: !!draft.isRecurring,
       recurringFrequency: draft.isRecurring ? draft.recurringFrequency : null,
@@ -389,33 +371,6 @@ export default function Tasks() {
     setShowTaskModal(false);
     setEditingTaskId(null);
     setDraft({ ...blankTask });
-  };
-
-  const handleApplyTemplate = async () => {
-    if (!applyTplId) return;
-    const list = await applyTemplate(applyTplId, today);
-    if (list.length) mergeAppliedTasks(list);
-    setShowTplModal(false);
-    setApplyTplId("");
-  };
-
-  const handleSaveQuickTemplate = async () => {
-    if (!tplName.trim()) {
-      toast.error("Template name required");
-      return;
-    }
-    if (!draft.title.trim()) {
-      toast.error("Add a task title first");
-      return;
-    }
-    await saveTemplate(tplName.trim(), [{
-      title: draft.title.trim(),
-      priority: draft.priority,
-      tags: parseTags(draft.tagsInput),
-      categoryId: draft.categoryId || null,
-      projectId: draft.projectId || null,
-    }]);
-    setTplName("");
   };
 
   const handleAddCategory = async () => {
@@ -472,25 +427,15 @@ export default function Tasks() {
           <button onClick={() => setShowCatModal(true)} className="glass-tile" style={{ borderRadius: "999px", padding: "0 14px", height: "36px", color: "var(--accent)", fontWeight: 700 }}>
             + Category
           </button>
-          {isAuthenticated && (
-            <button type="button" onClick={() => setShowTplModal(true)} className="glass-tile" style={{ borderRadius: "999px", padding: "0 14px", height: "36px", color: "var(--accent)", fontWeight: 700 }}>
-              Templates
-            </button>
-          )}
         </div>
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px", marginBottom: "12px" }}>
+      <div style={{ marginBottom: "12px" }}>
         <input
           value={tagFilter}
           onChange={(e) => setTagFilter(e.target.value)}
-          placeholder="Filter #tag"
-          style={{ padding: "10px 12px", borderRadius: "12px", border: "1px solid var(--border)", background: "var(--surface)", color: "var(--text-primary)", fontFamily: "var(--font-body)", fontSize: "13px" }}
-        />
-        <CustomSelect
-          value={projectFilter}
-          onChange={setProjectFilter}
-          options={[{ value: "", label: "All projects" }, ...projects.map((p) => ({ value: p.id, label: `${p.icon || "◇"} ${p.name}` }))]}
+          placeholder="Filter by tag (no # needed)"
+          style={{ width: "100%", boxSizing: "border-box", padding: "10px 12px", borderRadius: "12px", border: "1px solid var(--border)", background: "var(--surface)", color: "var(--text-primary)", fontFamily: "var(--font-body)", fontSize: "13px" }}
         />
       </div>
       <div style={{ marginBottom: "12px", display: "flex", gap: "8px", flexWrap: "wrap" }}>
@@ -499,11 +444,11 @@ export default function Tasks() {
           className="glass-tile"
           style={{ borderRadius: "10px", padding: "6px 12px", fontSize: "12px", fontWeight: 600 }}
           onClick={() => {
-            if (!tagFilter.trim() && !projectFilter) return;
+            if (!tagFilter.trim()) return;
             try {
               const cur = JSON.parse(localStorage.getItem(SAVED_FILTERS_KEY) || "[]");
-              const entry = { tag: tagFilter.replace(/^#/, "").trim(), projectId: projectFilter || "" };
-              if (!cur.some((c) => c.tag === entry.tag && c.projectId === entry.projectId)) {
+              const entry = { tag: tagFilter.replace(/^#/, "").trim() };
+              if (!cur.some((c) => c.tag === entry.tag)) {
                 cur.push(entry);
                 localStorage.setItem(SAVED_FILTERS_KEY, JSON.stringify(cur));
                 refreshSavedFilters();
@@ -514,22 +459,16 @@ export default function Tasks() {
         >
           Save filter
         </button>
-        {savedFilters.map((sf, i) => {
-          const proj = sf.projectId ? projects.find((p) => p.id === sf.projectId) : null;
-          return (
-            <button
-              key={`${sf.tag}-${sf.projectId}-${i}`}
-              type="button"
-              className="pill-filter"
-              onClick={() => {
-                setTagFilter(sf.tag || "");
-                setProjectFilter(sf.projectId || "");
-              }}
-            >
-              {sf.tag ? `#${sf.tag}` : "Tag: any"}{proj ? ` · ${proj.name}` : sf.projectId ? " · project" : ""}
-            </button>
-          );
-        })}
+        {savedFilters.map((sf, i) => (
+          <button
+            key={`${sf.tag}-${i}`}
+            type="button"
+            className="pill-filter"
+            onClick={() => setTagFilter(sf.tag || "")}
+          >
+            #{sf.tag || "tag"}
+          </button>
+        ))}
       </div>
 
       <div className="glass-panel" style={{ borderRadius: "18px", padding: "0 14px" }}>
@@ -544,7 +483,6 @@ export default function Tasks() {
                 key={task.id}
                 task={task}
                 categories={categories}
-                projects={projects}
                 lifecycleTab={lifecycleTab}
                 onToggle={handleTaskToggle}
                 onDelete={deleteTask}
@@ -639,14 +577,6 @@ export default function Tasks() {
               </span>
               <CustomSelect value={draft.categoryId} onChange={(value) => setDraft((current) => ({ ...current, categoryId: value }))} options={categoryOptions} />
             </div>
-            {isAuthenticated && (
-              <div style={{ marginTop: "4px" }}>
-                <span className="section-label" style={{ marginBottom: "8px", display: "block" }}>
-                  Project
-                </span>
-                <CustomSelect value={draft.projectId} onChange={(value) => setDraft((current) => ({ ...current, projectId: value }))} options={projectOptions} />
-              </div>
-            )}
             <div style={{ marginTop: "4px" }}>
               <span className="section-label" style={{ marginBottom: "8px", display: "block" }}>
                 Tags
@@ -688,7 +618,7 @@ export default function Tasks() {
                   onChange={(value) => setDraft((c) => ({ ...c, recurringFrequency: value }))}
                   options={[
                     { value: "daily", label: "Daily" },
-                    { value: "weekly", label: "Weekly (pick days)" },
+                    { value: "weekly", label: "Weekly · pick weekdays" },
                     { value: "monthly", label: "Monthly" },
                     { value: "custom", label: "Every N days" },
                   ]}
@@ -719,12 +649,6 @@ export default function Tasks() {
               </>
             )}
           </div>
-
-          {isAuthenticated && editingTaskId === null && (
-            <div className="glass-tile" style={{ borderRadius: "16px", padding: "12px 14px", border: "1px dashed var(--border)", fontSize: "12px", color: "var(--text-muted)" }}>
-              Save the current fields as a reusable template from <strong style={{ color: "var(--text-primary)" }}>Templates</strong> (toolbar).
-            </div>
-          )}
 
           <div style={{ display: "flex", gap: "10px" }}>
             <button type="button" onClick={() => setShowTaskModal(false)} className="glass-tile" style={{ flex: 1, borderRadius: "14px", padding: "12px 14px", color: "var(--text-primary)", fontWeight: 600 }}>
@@ -767,34 +691,6 @@ export default function Tasks() {
         </div>
       </CenteredModal>
 
-      <CenteredModal isOpen={showTplModal} onClose={() => setShowTplModal(false)} title="Templates" maxWidth="420px">
-        <div style={{ display: "grid", gap: "16px" }}>
-          <div className="glass-tile" style={{ borderRadius: "16px", padding: "14px", display: "grid", gap: "10px", border: "1px solid var(--border)" }}>
-            <span className="section-label">Apply template</span>
-            <CustomSelect
-              value={applyTplId}
-              onChange={setApplyTplId}
-              options={[{ value: "", label: "Choose…" }, ...templates.map((t) => ({ value: t.id, label: t.name }))]}
-            />
-            <button type="button" className="btn-primary" style={{ fontWeight: 700 }} onClick={handleApplyTemplate} disabled={!applyTplId}>
-              Add tasks to list
-            </button>
-            <p style={{ margin: 0, fontSize: "12px", color: "var(--text-muted)" }}>New tasks use today&apos;s date when the template sets a due date.</p>
-          </div>
-          <div className="glass-tile" style={{ borderRadius: "16px", padding: "14px", display: "grid", gap: "10px", border: "1px solid var(--border)" }}>
-            <span className="section-label">Save from task form</span>
-            <input
-              value={tplName}
-              onChange={(e) => setTplName(e.target.value)}
-              placeholder="Template name"
-              style={{ width: "100%", padding: "12px 14px", borderRadius: "12px", border: "1px solid var(--border)", background: "var(--surface)", color: "var(--text-primary)", fontFamily: "var(--font-body)" }}
-            />
-            <button type="button" className="glass-tile" style={{ borderRadius: "12px", padding: "12px", fontWeight: 700 }} onClick={handleSaveQuickTemplate}>
-              Save current title, tags, category &amp; project
-            </button>
-          </div>
-        </div>
-      </CenteredModal>
     </div>
   );
 }
