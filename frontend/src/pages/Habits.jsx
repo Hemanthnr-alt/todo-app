@@ -2,6 +2,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { useCallback, useState } from "react";
 import toast from "react-hot-toast";
 import CenteredModal from "../components/CenteredModal";
+import CustomSelect from "../components/CustomSelect";
 import { IconFlame, IconPlus, IconTrash, PremiumIconButton } from "../components/PremiumChrome";
 import { PremiumHabitTile } from "../components/PremiumMarks";
 import { useTheme } from "../context/ThemeContext";
@@ -18,6 +19,22 @@ const EMOJI_PRESETS = [
 ];
 const COLOR_OPTIONS = ["#94D82D", "#FFB020", "#E84A8A", "#5CC5D4", "#FF7A59", "#8A6CFF"];
 const DAY_LABELS = ["Sat", "Sun", "Mon", "Tue", "Wed", "Thu", "Fri"];
+
+const WEEKDAY_SHORT = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+function scheduleLabel(h) {
+  const f = h.frequency || "daily";
+  const days = h.recurringDays || [];
+  if (f === "interval" && h.everyNDays) return `Every ${h.everyNDays} days`;
+  if (f === "weekly" && days.length) {
+    const label = [...days].sort((a, b) => a - b).map((d) => WEEKDAY_SHORT[d] ?? d).join(", ");
+    return `Weekly · ${label}`;
+  }
+  if (h.targetTimesPerWeek >= 1) return `${h.targetTimesPerWeek}× / week`;
+  if (f === "monthly") return "Monthly";
+  if (f === "daily") return "Daily";
+  return f.charAt(0).toUpperCase() + f.slice(1);
+}
 
 function getLast7() {
   const days = [];
@@ -93,7 +110,7 @@ function HabitCard({ habit, onToggle, onDelete, onEdit }) {
               {habit.name}
             </div>
             <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "8px" }}>
-              <span style={{ color: habit.color, fontSize: "12px", fontWeight: 600 }}>Daily</span>
+              <span style={{ color: habit.color, fontSize: "12px", fontWeight: 600 }}>{scheduleLabel(habit)}</span>
               <span
                 style={{
                   fontSize: "11px",
@@ -194,12 +211,28 @@ export default function Habits() {
   const [name, setName] = useState("");
   const [icon, setIcon] = useState("💧");
   const [color, setColor] = useState(accent);
+  const [frequency, setFrequency] = useState("daily");
+  const [recurringDaysStr, setRecurringDaysStr] = useState("1,2,3,4,5");
+  const [everyNDays, setEveryNDays] = useState(2);
+  const [targetTimesPerWeek, setTargetTimesPerWeek] = useState("");
+  const [goalMinMinutes, setGoalMinMinutes] = useState("");
+  const [goalMaxPerDay, setGoalMaxPerDay] = useState("");
+  const [reminderEnabled, setReminderEnabled] = useState(false);
+  const [reminderTime, setReminderTime] = useState("09:00");
 
   const resetForm = useCallback(() => {
     setName("");
     setIcon("💧");
     setColor(accent);
     setEditingId(null);
+    setFrequency("daily");
+    setRecurringDaysStr("1,2,3,4,5");
+    setEveryNDays(2);
+    setTargetTimesPerWeek("");
+    setGoalMinMinutes("");
+    setGoalMaxPerDay("");
+    setReminderEnabled(false);
+    setReminderTime("09:00");
   }, [accent]);
 
   const openCreate = useCallback(() => {
@@ -213,6 +246,15 @@ export default function Habits() {
       setName(habit.name);
       setIcon(habit.icon || "💧");
       setColor(habit.color || accent);
+      setFrequency(habit.frequency || "daily");
+      setRecurringDaysStr((habit.recurringDays || []).length ? habit.recurringDays.join(",") : "1,2,3,4,5");
+      setEveryNDays(habit.everyNDays ?? 2);
+      setTargetTimesPerWeek(habit.targetTimesPerWeek != null ? String(habit.targetTimesPerWeek) : "");
+      setGoalMinMinutes(habit.goalMinMinutes != null ? String(habit.goalMinMinutes) : "");
+      setGoalMaxPerDay(habit.goalMaxPerDay != null ? String(habit.goalMaxPerDay) : "");
+      setReminderEnabled(!!habit.reminderEnabled);
+      const rt = habit.reminderTime;
+      setReminderTime(typeof rt === "string" && rt.length >= 5 ? rt.slice(0, 5) : "09:00");
       setShowModal(true);
     },
     [accent],
@@ -223,18 +265,39 @@ export default function Habits() {
     resetForm();
   }, [resetForm]);
 
+  const buildHabitPayload = useCallback(() => {
+    const recurringDays = frequency === "weekly"
+      ? recurringDaysStr.split(/[,\s]+/).map((x) => Number.parseInt(x, 10)).filter((n) => !Number.isNaN(n) && n >= 0 && n <= 6)
+      : [];
+    const targetWeek = String(targetTimesPerWeek).trim();
+    return {
+      name: name.trim(),
+      icon,
+      color,
+      frequency,
+      recurringDays: frequency === "weekly" ? recurringDays : [],
+      everyNDays: frequency === "interval" ? Math.max(1, Number(everyNDays) || 2) : null,
+      targetTimesPerWeek: targetWeek ? Math.min(7, Math.max(1, Number(targetWeek))) : null,
+      goalMinMinutes: String(goalMinMinutes).trim() === "" ? null : Math.max(0, Number(goalMinMinutes) || 0),
+      goalMaxPerDay: String(goalMaxPerDay).trim() === "" ? null : Math.max(0, Number(goalMaxPerDay) || 0),
+      reminderEnabled,
+      reminderTime: reminderEnabled ? reminderTime : null,
+    };
+  }, [color, everyNDays, frequency, goalMaxPerDay, goalMinMinutes, icon, name, recurringDaysStr, reminderEnabled, reminderTime, targetTimesPerWeek]);
+
   const handleSave = useCallback(async () => {
     if (!name.trim()) {
       toast.error("Enter a habit name");
       return;
     }
+    const payload = buildHabitPayload();
     if (editingId) {
-      await updateHabit(editingId, { name: name.trim(), icon, color });
+      await updateHabit(editingId, payload);
     } else {
-      await addHabit({ name: name.trim(), icon, color, frequency: "daily" });
+      await addHabit(payload);
     }
     handleClose();
-  }, [addHabit, color, editingId, handleClose, icon, name, updateHabit]);
+  }, [addHabit, buildHabitPayload, editingId, handleClose, updateHabit]);
 
   return (
     <div style={{ maxWidth: "720px", margin: "0 auto", padding: "20px 16px 32px", color: "var(--text-body)" }}>
@@ -286,7 +349,7 @@ export default function Habits() {
         <IconPlus size={26} stroke="#fff" />
       </button>
 
-      <CenteredModal isOpen={showModal} onClose={handleClose} title={editingId ? "Edit habit" : "New habit"} maxWidth="380px">
+      <CenteredModal isOpen={showModal} onClose={handleClose} title={editingId ? "Edit habit" : "New habit"} maxWidth="440px">
         <div style={{ display: "grid", gap: "14px" }}>
           <input
             value={name}
@@ -316,6 +379,93 @@ export default function Habits() {
                 />
               ))}
             </div>
+          </div>
+
+          <div className="glass-tile" style={{ borderRadius: "16px", padding: "14px", border: "1px solid var(--border)", display: "grid", gap: "12px" }}>
+            <span className="section-label">Schedule</span>
+            <CustomSelect
+              value={frequency}
+              onChange={setFrequency}
+              options={[
+                { value: "daily", label: "Daily" },
+                { value: "weekly", label: "Weekly (pick days)" },
+                { value: "interval", label: "Every N days" },
+                { value: "monthly", label: "Monthly" },
+              ]}
+            />
+            {frequency === "weekly" && (
+              <div>
+                <span className="section-label" style={{ marginBottom: "6px", display: "block" }}>Days 0–6 (Sun–Sat)</span>
+                <input
+                  value={recurringDaysStr}
+                  onChange={(e) => setRecurringDaysStr(e.target.value)}
+                  placeholder="1,2,3,4,5"
+                  style={{ width: "100%", padding: "10px 12px", borderRadius: "12px", border: "1px solid var(--border)", background: "var(--surface)", color: "var(--text-primary)", fontFamily: "var(--font-body)", fontSize: "13px" }}
+                />
+              </div>
+            )}
+            {frequency === "interval" && (
+              <label style={{ display: "grid", gap: "6px", fontSize: "12px", fontWeight: 600, color: "var(--text-muted)" }}>
+                Repeat every N days
+                <input
+                  type="number"
+                  min={1}
+                  value={everyNDays}
+                  onChange={(e) => setEveryNDays(Math.max(1, Number(e.target.value) || 1))}
+                  style={{ padding: "10px 12px", borderRadius: "12px", border: "1px solid var(--border)", background: "var(--surface)", color: "var(--text-primary)", fontWeight: 700 }}
+                />
+              </label>
+            )}
+            <label style={{ display: "grid", gap: "6px", fontSize: "12px", fontWeight: 600, color: "var(--text-muted)" }}>
+              Target times per week (optional cap)
+              <input
+                value={targetTimesPerWeek}
+                onChange={(e) => setTargetTimesPerWeek(e.target.value)}
+                placeholder="e.g. 5"
+                style={{ padding: "10px 12px", borderRadius: "12px", border: "1px solid var(--border)", background: "var(--surface)", color: "var(--text-primary)", fontSize: "13px" }}
+              />
+            </label>
+          </div>
+
+          <div className="glass-tile" style={{ borderRadius: "16px", padding: "14px", border: "1px solid var(--border)", display: "grid", gap: "12px" }}>
+            <span className="section-label">Goals (optional)</span>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
+              <label style={{ display: "grid", gap: "6px", fontSize: "11px", fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase" }}>
+                Min minutes
+                <input
+                  value={goalMinMinutes}
+                  onChange={(e) => setGoalMinMinutes(e.target.value)}
+                  placeholder="—"
+                  inputMode="numeric"
+                  style={{ padding: "10px 12px", borderRadius: "12px", border: "1px solid var(--border)", background: "var(--surface)", color: "var(--text-primary)" }}
+                />
+              </label>
+              <label style={{ display: "grid", gap: "6px", fontSize: "11px", fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase" }}>
+                Max / day
+                <input
+                  value={goalMaxPerDay}
+                  onChange={(e) => setGoalMaxPerDay(e.target.value)}
+                  placeholder="—"
+                  inputMode="numeric"
+                  style={{ padding: "10px 12px", borderRadius: "12px", border: "1px solid var(--border)", background: "var(--surface)", color: "var(--text-primary)" }}
+                />
+              </label>
+            </div>
+          </div>
+
+          <div className="glass-tile" style={{ borderRadius: "16px", padding: "14px", border: "1px solid var(--border)", display: "grid", gap: "10px" }}>
+            <label style={{ display: "flex", alignItems: "center", gap: "10px", fontSize: "13px", fontWeight: 600, cursor: "pointer" }}>
+              <input type="checkbox" checked={reminderEnabled} onChange={(e) => setReminderEnabled(e.target.checked)} />
+              Daily reminder (in-app feed)
+            </label>
+            {reminderEnabled && (
+              <input
+                type="time"
+                value={reminderTime}
+                onChange={(e) => setReminderTime(e.target.value)}
+                style={{ padding: "10px 12px", borderRadius: "12px", border: "1px solid var(--border)", background: "var(--surface)", color: "var(--text-primary)", fontFamily: "var(--font-body)" }}
+              />
+            )}
           </div>
 
           <div style={{ display: "flex", gap: "8px" }}>

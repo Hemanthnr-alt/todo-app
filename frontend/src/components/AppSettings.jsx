@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useAuth }  from "../context/AuthContext";
 import { useTheme } from "../context/ThemeContext";
 import toast from "react-hot-toast";
-import { IconBell, IconClose, IconInfo, IconMoon, IconSettingsGear, IconSparkle, IconSun } from "./PremiumChrome";
+import { IconBell, IconClose, IconFolder, IconInfo, IconMoon, IconSettingsGear, IconSparkle, IconSun } from "./PremiumChrome";
 
 function Toggle({ checked, onChange, accent }) {
   return (
@@ -44,7 +44,7 @@ function Toggle({ checked, onChange, accent }) {
 
 export default function AppSettings({ isOpen, onClose }) {
   const { user } = useAuth();
-  const { isDark, toggleTheme, accent, changeAccent, ACCENT_PRESETS } = useTheme();
+  const { isDark, toggleTheme, accent, changeAccent, ACCENT_PRESETS, isAccentUnlocked } = useTheme();
   const [activeTab, setActiveTab] = useState("general");
   const [pushStatus, setPushStatus] = useState("unknown");
   const [devClicks, setDevClicks] = useState(0);
@@ -83,10 +83,52 @@ export default function AppSettings({ isOpen, onClose }) {
 
   if (!isOpen) return null;
 
+  const exportBackup = () => {
+    try {
+      const payload = {
+        exportedAt: new Date().toISOString(),
+        tasks: JSON.parse(localStorage.getItem("30_offline_tasks") || "[]"),
+        categories: JSON.parse(localStorage.getItem("30_offline_cats") || "[]"),
+        habits: JSON.parse(localStorage.getItem("30_habits") || "[]"),
+        projects: JSON.parse(localStorage.getItem("30_offline_projects") || "[]"),
+        templates: JSON.parse(localStorage.getItem("30_offline_templates") || "[]"),
+      };
+      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = `thirty-backup-${new Date().toISOString().slice(0, 10)}.json`;
+      a.click();
+      URL.revokeObjectURL(a.href);
+      toast.success("Backup downloaded");
+    } catch {
+      toast.error("Export failed");
+    }
+  };
+
+  const importBackup = (file) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const data = JSON.parse(reader.result);
+        if (data.tasks) localStorage.setItem("30_offline_tasks", JSON.stringify(data.tasks));
+        if (data.categories) localStorage.setItem("30_offline_cats", JSON.stringify(data.categories));
+        if (data.habits) localStorage.setItem("30_habits", JSON.stringify(data.habits));
+        if (data.projects) localStorage.setItem("30_offline_projects", JSON.stringify(data.projects));
+        if (data.templates) localStorage.setItem("30_offline_templates", JSON.stringify(data.templates));
+        toast.success("Imported — reload to apply");
+        setTimeout(() => window.location.reload(), 800);
+      } catch {
+        toast.error("Invalid backup file");
+      }
+    };
+    reader.readAsText(file);
+  };
+
   const TABS = [
     { id: "general", Icon: IconSettingsGear, label: "General" },
     { id: "look", Icon: IconSparkle, label: "Appearance" },
     { id: "alerts", Icon: IconBell, label: "Alerts" },
+    { id: "data", Icon: IconFolder, label: "Data" },
     { id: "about", Icon: IconInfo, label: "About" },
   ];
 
@@ -331,14 +373,22 @@ export default function AppSettings({ isOpen, onClose }) {
                     >
                       {ACCENT_PRESETS.map((preset) => {
                         const sel = ac === preset.value;
+                        const locked = typeof isAccentUnlocked === "function" && !isAccentUnlocked(preset);
                         return (
                           <button
                             key={preset.value}
                             type="button"
-                            onClick={() => changeAccent(preset.value)}
+                            onClick={() => {
+                              if (locked) {
+                                toast(`Unlock at ${preset.unlockStreak}-day streak (Rewards)`);
+                                return;
+                              }
+                              changeAccent(preset.value);
+                            }}
                             style={{
                               border: "none",
-                              cursor: "pointer",
+                              cursor: locked ? "not-allowed" : "pointer",
+                              opacity: locked ? 0.45 : 1,
                               padding: "8px 4px",
                               borderRadius: "14px",
                               background: sel ? "var(--accent-subtle)" : "transparent",
@@ -369,7 +419,9 @@ export default function AppSettings({ isOpen, onClose }) {
                                 </svg>
                               )}
                             </span>
-                            <span style={{ fontSize: "10px", fontWeight: 700, color: sel ? "var(--accent)" : "var(--text-muted)", letterSpacing: "0.02em" }}>{preset.name}</span>
+                            <span style={{ fontSize: "10px", fontWeight: 700, color: sel ? "var(--accent)" : "var(--text-muted)", letterSpacing: "0.02em" }}>
+                              {locked ? `${preset.name} · 🔒` : preset.name}
+                            </span>
                           </button>
                         );
                       })}
@@ -442,6 +494,25 @@ export default function AppSettings({ isOpen, onClose }) {
                       )}
                     </div>
                   </div>
+                </motion.div>
+              </AnimatePresence>
+            )}
+
+            {/* DATA */}
+            {activeTab === "data" && (
+              <AnimatePresence mode="wait">
+                <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.14 }} style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+                  <div className="section-label">Backup &amp; restore</div>
+                  <p style={{ fontSize: "13px", color: "var(--text-muted)", lineHeight: 1.5, margin: 0 }}>
+                    Exports cached tasks, categories, habits, projects, and templates from this device (localStorage). Sign in and sync for server copies.
+                  </p>
+                  <button type="button" className="btn-primary" style={{ height: "46px", fontWeight: 700 }} onClick={exportBackup}>
+                    Download JSON backup
+                  </button>
+                  <label className="glass-tile" style={{ display: "block", borderRadius: "14px", padding: "14px", cursor: "pointer", textAlign: "center", fontWeight: 600, fontSize: "14px" }}>
+                    <input type="file" accept="application/json,.json" style={{ display: "none" }} onChange={(e) => { const f = e.target.files?.[0]; if (f) importBackup(f); e.target.value = ""; }} />
+                    Restore from JSON file
+                  </label>
                 </motion.div>
               </AnimatePresence>
             )}

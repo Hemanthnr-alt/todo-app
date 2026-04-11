@@ -12,10 +12,31 @@ export const ACCENT_PRESETS = [
   { name: "Mint", value: "#59D68D" },
   { name: "Gold", value: "#FFB547" },
   { name: "Berry", value: "#FF6F7D" },
-  { name: "Violet", value: "#8B5CF6" },
-  { name: "Ocean", value: "#0EA5E9" },
-  { name: "Rose", value: "#E11D48" },
+  { name: "Violet", value: "#8B5CF6", unlockStreak: 3 },
+  { name: "Ocean", value: "#0EA5E9", unlockStreak: 7 },
+  { name: "Rose", value: "#E11D48", unlockStreak: 14 },
 ];
+
+const unlockStorageKey = (hex) => `thirty_unlock_${hex.replace("#", "")}`;
+
+export function isAccentUnlocked(preset) {
+  if (!preset?.unlockStreak) return true;
+  try {
+    return localStorage.getItem(unlockStorageKey(preset.value)) === "1";
+  } catch {
+    return false;
+  }
+}
+
+export function unlockAccentForStreak(bestStreak) {
+  ACCENT_PRESETS.forEach((p) => {
+    if (p.unlockStreak && bestStreak >= p.unlockStreak) {
+      try {
+        localStorage.setItem(unlockStorageKey(p.value), "1");
+      } catch { /* ignore */ }
+    }
+  });
+}
 
 const hexToRgb = (hex) => {
   const value = hex.replace("#", "");
@@ -96,6 +117,7 @@ export const ThemeProvider = ({ children }) => {
         changeAccent,
         setAccent: changeAccent,
         ACCENT_PRESETS,
+        isAccentUnlocked,
       }}
     >
       {children}

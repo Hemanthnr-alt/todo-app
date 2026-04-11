@@ -22,6 +22,8 @@ const connectDB = async () => {
 
     const User     = require("./models/User");
     const Category = require("./models/Category");
+    const Project  = require("./models/Project");
+    const TaskTemplate = require("./models/TaskTemplate");
     const Task     = require("./models/Task");
     const Habit    = require("./models/Habit");
 
@@ -31,8 +33,17 @@ const connectDB = async () => {
     User.hasMany(Category,     { foreignKey: "userId",     onDelete: "CASCADE" });
     Category.belongsTo(User,   { foreignKey: "userId" });
 
+    User.hasMany(Project, { foreignKey: "userId", onDelete: "CASCADE" });
+    Project.belongsTo(User, { foreignKey: "userId" });
+
+    User.hasMany(TaskTemplate, { foreignKey: "userId", onDelete: "CASCADE" });
+    TaskTemplate.belongsTo(User, { foreignKey: "userId" });
+
     Category.hasMany(Task, { foreignKey: "categoryId", onDelete: "SET NULL" });
     Task.belongsTo(Category,   { foreignKey: "categoryId" });
+
+    Project.hasMany(Task, { foreignKey: "projectId", onDelete: "SET NULL" });
+    Task.belongsTo(Project, { foreignKey: "projectId" });
 
     User.hasMany(Habit,    { foreignKey: "userId",     onDelete: "CASCADE" });
     Habit.belongsTo(User,  { foreignKey: "userId" });

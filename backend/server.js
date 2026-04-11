@@ -11,6 +11,8 @@ const authRoutes = require("./routes/auth");
 const taskRoutes = require("./routes/tasks");
 const categoryRoutes = require("./routes/categories");
 const habitRoutes = require("./routes/habits");
+const projectRoutes = require("./routes/projects");
+const taskTemplateRoutes = require("./routes/taskTemplates");
 
 const { startNotificationScheduler } = require("./services/notificationScheduler");
 
@@ -55,6 +57,8 @@ app.use("/api/auth", authRoutes);
 app.use("/api/tasks", protect, taskRoutes);
 app.use("/api/categories", protect, categoryRoutes);
 app.use("/api/habits", protect, habitRoutes);
+app.use("/api/projects", protect, projectRoutes);
+app.use("/api/task-templates", protect, taskTemplateRoutes);
 
 app.put("/api/user/notifications", protect, async (req, res) => {
   try {

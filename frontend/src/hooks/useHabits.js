@@ -17,6 +17,8 @@ export const useHabits = () => {
   const [habits,  setHabitsState] = useState(() => NATIVE ? localHabits.getAll() : (load(HABITS_KEY)||[]));
   const [loading, setLoading]     = useState(!NATIVE);
   const syncing = useRef(false);
+  const habitsRef = useRef(habits);
+  habitsRef.current = habits;
 
   const setHabits = useCallback((fn) => {
     setHabitsState(prev => {
@@ -90,7 +92,8 @@ export const useHabits = () => {
 
     if (navigator.onLine && isAuthenticated) {
       try {
-        const res = await api.post("/habits", data);
+        const { name: habitName, ...rest } = data;
+        const res = await api.post("/habits", { name: habitName?.trim?.() || habitName, ...rest });
         setHabits(prev => prev.map(h => h.id===localId ? res.data : h));
         return res.data;
       } catch {}
@@ -156,6 +159,37 @@ export const useHabits = () => {
     } else {
       addToQueue({ type:"UPDATE", id, data });
     }
+  }, [NATIVE, isAuthenticated]);
+
+  useEffect(() => {
+    if (NATIVE || !isAuthenticated) return undefined;
+    const tick = () => {
+      const now = new Date();
+      const hm = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
+      habitsRef.current.forEach((h) => {
+        if (!h.reminderEnabled || !h.reminderTime) return;
+        const rt = String(h.reminderTime).slice(0, 5);
+        if (rt !== hm) return;
+        const today = localTodayYMD();
+        if ((h.completedDates || []).includes(today)) return;
+        try {
+          const notifs = JSON.parse(localStorage.getItem("notifs") || "[]");
+          const nid = `habit_${h.id}_${today}_${hm}`;
+          if (notifs.some((n) => n.id === nid)) return;
+          notifs.unshift({
+            id: nid,
+            title: "Habit reminder",
+            body: `${h.name} — keep your streak going today.`,
+            time: hm,
+            read: false,
+          });
+          localStorage.setItem("notifs", JSON.stringify(notifs.slice(0, 40)));
+        } catch { /* ignore */ }
+      });
+    };
+    const id = setInterval(tick, 55 * 1000);
+    tick();
+    return () => clearInterval(id);
   }, [NATIVE, isAuthenticated]);
 
   return { habits, loading, addHabit, toggleHabit, deleteHabit, updateHabit };

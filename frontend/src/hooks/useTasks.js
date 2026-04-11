@@ -4,6 +4,7 @@ import { useAuth } from "../context/AuthContext";
 import api from "../services/api";
 import { isNativeApp, localCategories, localTasks } from "../services/storage";
 import { localTodayYMD } from "../utils/date";
+import { lifecycleOf } from "../utils/recurringTask";
 
 const TASKS_KEY = "30_offline_tasks";
 const CATS_KEY = "30_offline_cats";
@@ -29,6 +30,12 @@ const isOfflineErr = (error) => !error.response && (
   || error.message?.includes("Network Error")
   || !navigator.onLine
 );
+
+const newerWins = (localTask, serverTask) => {
+  const a = new Date(localTask.updatedAt || localTask.createdAt || 0).getTime();
+  const b = new Date(serverTask.updatedAt || serverTask.createdAt || 0).getTime();
+  return b >= a ? serverTask : localTask;
+};
 
 export const useTasks = () => {
   const { isAuthenticated } = useAuth();
@@ -57,7 +64,7 @@ export const useTasks = () => {
     });
   }, [NATIVE]);
 
-  const loadTasks = useCallback(async () => {
+  const loadTasks = useCallback(async (opts = {}) => {
     if (NATIVE) {
       setLoading(false);
       return;
@@ -78,11 +85,26 @@ export const useTasks = () => {
     }
 
     try {
-      const res = await api.get("/tasks");
-      setTasksState(res.data);
-      saveLocal(TASKS_KEY, res.data);
+      const params = { view: opts.view ?? "all" };
+      if (opts.tag) params.tag = opts.tag.replace(/^#/, "");
+      if (opts.projectId) params.projectId = opts.projectId;
+      const res = await api.get("/tasks", { params });
+      setTasksState((prev) => {
+        const server = res.data;
+        const merged = new Map(server.map((t) => [t.id, t]));
+        for (const t of prev) {
+          if (t._offline && !merged.has(t.id)) merged.set(t.id, t);
+          else if (merged.has(t.id) && t.updatedAt) {
+            const s = merged.get(t.id);
+            merged.set(t.id, newerWins(t, s));
+          }
+        }
+        const arr = [...merged.values()];
+        if (!NATIVE) saveLocal(TASKS_KEY, arr);
+        return arr;
+      });
     } catch {
-      // Keep cached data.
+      /* keep cache */
     } finally {
       setLoading(false);
     }
@@ -109,7 +131,7 @@ export const useTasks = () => {
   }, [NATIVE, isAuthenticated]);
 
   useEffect(() => {
-    loadTasks();
+    loadTasks({ view: "all" });
     loadCategories();
   }, [loadTasks, loadCategories]);
 
@@ -147,8 +169,12 @@ export const useTasks = () => {
         } else if (action.type === "DELETE_CATEGORY") {
           await api.delete(`/categories/${action.id}`);
         }
-      } catch {
-        failed.push(action);
+      } catch (err) {
+        if (err.response?.status === 404 && action.type === "UPDATE_TASK") {
+          /* dropped stale update */
+        } else {
+          failed.push(action);
+        }
       }
     }
 
@@ -157,7 +183,7 @@ export const useTasks = () => {
 
     if (!failed.length && queue.length) {
       toast.success("Synced successfully.");
-      loadTasks();
+      loadTasks({ view: "all" });
       loadCategories();
     }
   }, [NATIVE, isAuthenticated, loadCategories, loadTasks, setCategories, setTasks]);
@@ -181,9 +207,11 @@ export const useTasks = () => {
       ...taskData,
       completed: false,
       attachments: [],
-      subtasks: [],
-      tags: [],
+      subtasks: taskData.subtasks || [],
+      tags: taskData.tags || [],
+      lifecycleStatus: taskData.lifecycleStatus || "active",
       createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
       _offline: true,
     };
     setTasks((prev) => [task, ...prev]);
@@ -215,6 +243,23 @@ export const useTasks = () => {
     }
   }, [NATIVE, isAuthenticated, createOfflineTask, setTasks]);
 
+  const bulkAddTasks = useCallback(async (list, dueDate) => {
+    if (!isAuthenticated || NATIVE) return [];
+    if (!navigator.onLine) {
+      list.forEach((item) => createOfflineTask({ ...item, dueDate: item.dueDate || dueDate || null }));
+      return [];
+    }
+    try {
+      const res = await api.post("/tasks/bulk", { tasks: list, dueDate: dueDate || null });
+      setTasks((prev) => [...res.data, ...prev]);
+      toast.success(`Created ${res.data.length} tasks`);
+      return res.data;
+    } catch (e) {
+      toast.error(e.response?.data?.error || "Bulk create failed");
+      return [];
+    }
+  }, [NATIVE, isAuthenticated, createOfflineTask, setTasks]);
+
   const updateTask = useCallback(async (id, updates) => {
     if (NATIVE) {
       const task = localTasks.update(id, updates);
@@ -224,7 +269,8 @@ export const useTasks = () => {
 
     if (!isAuthenticated) return null;
 
-    setTasks((prev) => prev.map((task) => (task.id === id ? { ...task, ...updates } : task)));
+    const optimistic = { ...updates, updatedAt: new Date().toISOString() };
+    setTasks((prev) => prev.map((task) => (task.id === id ? { ...task, ...optimistic } : task)));
 
     if (!navigator.onLine) {
       addToQueue({ type: "UPDATE_TASK", id, data: updates });
@@ -255,25 +301,74 @@ export const useTasks = () => {
 
     if (!isAuthenticated) return;
 
-    setTasks((prev) => prev.filter((task) => task.id !== id));
+    setTasks((prev) => prev.map((task) => (task.id === id
+      ? { ...task, lifecycleStatus: "trashed", trashedAt: new Date().toISOString() }
+      : task)));
 
     if (!navigator.onLine) {
       addToQueue({ type: "DELETE_TASK", id });
+      toast.success("Moved to trash (offline)");
       return;
     }
 
     try {
-      await api.delete(`/tasks/${id}`);
-      toast.success("Task deleted");
+      const res = await api.delete(`/tasks/${id}`);
+      const t = res.data?.task;
+      if (t) setTasks((prev) => prev.map((task) => (task.id === id ? t : task)));
+      toast.success("Moved to trash");
     } catch (error) {
       if (isOfflineErr(error)) {
         addToQueue({ type: "DELETE_TASK", id });
         return;
       }
-      loadTasks();
+      loadTasks({ view: "all" });
       toast.error("Failed to delete task");
     }
   }, [NATIVE, isAuthenticated, loadTasks, setTasks]);
+
+  const restoreTask = useCallback(async (id) => {
+    if (NATIVE) return;
+    if (!isAuthenticated) return;
+    try {
+      const res = await api.post(`/tasks/${id}/restore`);
+      setTasks((prev) => prev.map((t) => (t.id === id ? res.data : t)));
+      toast.success("Restored");
+    } catch {
+      toast.error("Failed to restore");
+    }
+  }, [NATIVE, isAuthenticated, setTasks]);
+
+  const archiveTask = useCallback(async (id) => {
+    if (NATIVE) return;
+    if (!isAuthenticated) return;
+    try {
+      const res = await api.post(`/tasks/${id}/archive`);
+      setTasks((prev) => prev.map((t) => (t.id === id ? res.data : t)));
+      toast.success("Archived");
+    } catch {
+      toast.error("Failed");
+    }
+  }, [NATIVE, isAuthenticated, setTasks]);
+
+  const permanentDeleteTask = useCallback(async (id) => {
+    if (NATIVE) return;
+    if (!isAuthenticated) return;
+    try {
+      await api.delete(`/tasks/${id}/permanent`);
+      setTasks((prev) => prev.filter((t) => t.id !== id));
+      toast.success("Deleted permanently");
+    } catch {
+      toast.error("Failed");
+    }
+  }, [NATIVE, isAuthenticated, setTasks]);
+
+  const mergeAppliedTasks = useCallback((list) => {
+    if (!list?.length) return;
+    setTasks((prev) => {
+      const ids = new Set(list.map((t) => t.id));
+      return [...list, ...prev.filter((t) => !ids.has(t.id))];
+    });
+  }, [setTasks]);
 
   const toggleComplete = useCallback(async (task) => {
     const updated = await updateTask(task.id, { completed: !task.completed });
@@ -345,13 +440,14 @@ export const useTasks = () => {
 
   const stats = useMemo(() => {
     const today = localTodayYMD();
+    const active = tasks.filter((t) => lifecycleOf(t) === "active");
     return {
-      total: tasks.length,
-      completed: tasks.filter((task) => task.completed).length,
-      pending: tasks.filter((task) => !task.completed).length,
-      highPriority: tasks.filter((task) => task.priority === "high" && !task.completed).length,
-      dueToday: tasks.filter((task) => task.dueDate === today).length,
-      overdue: tasks.filter((task) => task.dueDate && task.dueDate < today && !task.completed).length,
+      total: active.length,
+      completed: active.filter((task) => task.completed).length,
+      pending: active.filter((task) => !task.completed).length,
+      highPriority: active.filter((task) => task.priority === "high" && !task.completed).length,
+      dueToday: active.filter((task) => task.dueDate === today).length,
+      overdue: active.filter((task) => task.dueDate && task.dueDate < today && !task.completed).length,
     };
   }, [tasks]);
 
@@ -363,8 +459,13 @@ export const useTasks = () => {
     loadTasks,
     loadCategories,
     addTask,
+    bulkAddTasks,
     updateTask,
     deleteTask,
+    restoreTask,
+    archiveTask,
+    permanentDeleteTask,
+    mergeAppliedTasks,
     toggleComplete,
     addCategory,
     deleteCategory,

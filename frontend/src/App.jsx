@@ -11,6 +11,7 @@ import Rewards from "./pages/Rewards";
 import Tasks from "./pages/Tasks";
 import Timer from "./pages/Timer";
 import Today from "./pages/Today";
+import WeeklySummary from "./pages/WeeklySummary";
 import { isNativeApp } from "./services/storage";
 
 if ("serviceWorker" in navigator) {
@@ -215,6 +216,7 @@ function AppContent() {
           {page === "categories" && <Categories />}
           {page === "timer" && <Timer />}
           {page === "rewards" && <Rewards />}
+          {page === "summary" && <WeeklySummary />}
         </div>
       </div>
     </div>

@@ -32,6 +32,34 @@ const Habit = sequelize.define("Habit", {
     type: DataTypes.INTEGER,
     defaultValue: 0,
   },
+  recurringDays: {
+    type: DataTypes.ARRAY(DataTypes.INTEGER),
+    defaultValue: [],
+  },
+  everyNDays: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+  },
+  targetTimesPerWeek: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+  },
+  goalMinMinutes: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+  },
+  goalMaxPerDay: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+  },
+  reminderTime: {
+    type: DataTypes.TIME,
+    allowNull: true,
+  },
+  reminderEnabled: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: false,
+  },
   userId: {
     type: DataTypes.UUID,
     allowNull: false,

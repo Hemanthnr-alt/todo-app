@@ -73,6 +73,28 @@ const Task = sequelize.define("Task", {
     type: DataTypes.ARRAY(DataTypes.STRING), // dates completed for recurring
     defaultValue: [],
   },
+  recurringInterval: {
+    type: DataTypes.INTEGER,
+    allowNull: true, // every N days when recurringFrequency === "custom"
+  },
+  recurringSkipDates: {
+    type: DataTypes.ARRAY(DataTypes.STRING),
+    defaultValue: [],
+  },
+  lifecycleStatus: {
+    type: DataTypes.STRING,
+    defaultValue: "active", // active | archived | trashed
+  },
+  trashedAt: {
+    type: DataTypes.DATE,
+    allowNull: true,
+  },
+  projectId: {
+    type: DataTypes.UUID,
+    allowNull: true,
+    references: { model: "Project", key: "id" },
+    onDelete: "SET NULL",
+  },
   userId: {
     type: DataTypes.UUID,
     allowNull: false,

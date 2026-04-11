@@ -38,6 +38,16 @@ const Icons = {
       <path d="M12 3v2" />
     </svg>
   ),
+  Insights: ({ size = 22, active }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={active ? 2.35 : 1.75} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M3 3v18h18" opacity={active ? 0.35 : 0.2} />
+      <path d="M7 16l4-6 4 3 5-7" />
+      <circle cx="7" cy="16" r="1.5" fill={active ? "currentColor" : "none"} />
+      <circle cx="11" cy="10" r="1.5" fill={active ? "currentColor" : "none"} />
+      <circle cx="15" cy="13" r="1.5" fill={active ? "currentColor" : "none"} />
+      <circle cx="20" cy="6" r="1.5" fill={active ? "currentColor" : "none"} />
+    </svg>
+  ),
   Trophy: ({ size = 22, active }) => (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={active ? 2.35 : 1.75} strokeLinecap="round" strokeLinejoin="round">
       <path d="M6 9H4a2 2 0 0 1-2-2V5h4" />
@@ -90,6 +100,7 @@ const NAV_ITEMS = [
   { id: "today", label: "Today", Icon: Icons.Today },
   { id: "habits", label: "Habits", Icon: Icons.Habits },
   { id: "tasks", label: "Tasks", Icon: Icons.Tasks },
+  { id: "summary", label: "Insights", Icon: Icons.Insights },
   { id: "timer", label: "Timer", Icon: Icons.Timer },
   { id: "rewards", label: "Rewards", Icon: Icons.Trophy },
 ];

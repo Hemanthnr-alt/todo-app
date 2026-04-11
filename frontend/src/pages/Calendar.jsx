@@ -10,7 +10,6 @@ import { useTheme } from "../context/ThemeContext";
 import { useHabits } from "../hooks/useHabits";
 import { useTasks } from "../hooks/useTasks";
 import { localTodayYMD } from "../utils/date";
-import { formatTaskScheduleLabel, getTaskScheduleMinutes, normalizeTimeForApi } from "../utils/time";
 
 function getMonthData(year, month) {
   const first = new Date(year, month, 1);
@@ -73,8 +72,6 @@ export default function Calendar() {
     priority: "medium",
     categoryId: "",
     dueDate: "",
-    startTime: "",
-    endTime: "",
   });
 
   const days = getMonthData(year, month);
@@ -100,17 +97,7 @@ export default function Calendar() {
     return map;
   }, [habits]);
 
-  const selectedTasks = useMemo(() => {
-    const list = tasksByDate[selectedDate] || [];
-    return [...list].sort((a, b) => {
-      const ma = getTaskScheduleMinutes(a);
-      const mb = getTaskScheduleMinutes(b);
-      if (ma == null && mb == null) return 0;
-      if (ma == null) return 1;
-      if (mb == null) return -1;
-      return ma - mb;
-    });
-  }, [tasksByDate, selectedDate]);
+  const selectedTasks = tasksByDate[selectedDate] || [];
   const selectedHabits = habitsByDate[selectedDate] || [];
 
   const categoryOptions = [{ value: "", label: "No category" }, ...categories.map((c) => ({ value: c.id, label: `${c.icon} ${c.name}` }))];
@@ -122,8 +109,6 @@ export default function Calendar() {
       priority: "medium",
       categoryId: "",
       dueDate: selectedDate,
-      startTime: "",
-      endTime: "",
     });
     setShowAddTask(true);
   }, [selectedDate]);
@@ -140,8 +125,6 @@ export default function Calendar() {
       priority: taskDraft.priority,
       categoryId: taskDraft.categoryId || null,
       dueDate: taskDraft.dueDate || null,
-      startTime: normalizeTimeForApi(taskDraft.startTime),
-      endTime: normalizeTimeForApi(taskDraft.endTime),
     });
     setSavingTask(false);
     if (!created) return;
@@ -149,7 +132,7 @@ export default function Calendar() {
   };
 
   return (
-    <div style={{ maxWidth: "760px", margin: "0 auto", padding: "28px 22px 40px", color: "var(--text-body)" }}>
+    <div style={{ maxWidth: "720px", margin: "0 auto", padding: "20px 16px 32px", color: "var(--text-body)" }}>
       <div style={{ marginBottom: "16px" }}>
         <h1 style={{ fontSize: "28px", letterSpacing: "-0.04em", marginBottom: "4px" }}>Calendar</h1>
         <div style={{ color: "var(--text-muted)", fontSize: "13px" }}>Plan tasks and see habits at a glance</div>
@@ -253,9 +236,7 @@ export default function Calendar() {
               </div>
             ))}
 
-            {selectedTasks.map((task) => {
-              const sched = formatTaskScheduleLabel(task);
-              return (
+            {selectedTasks.map((task) => (
               <div
                 key={`task-${task.id}`}
                 style={{
@@ -275,12 +256,7 @@ export default function Calendar() {
                   <PremiumCompleteTitle complete={task.completed} lineColor={TASK_CHIP}>
                     {task.title}
                   </PremiumCompleteTitle>
-                  <div style={{ display: "flex", flexWrap: "wrap", gap: "8px", alignItems: "center", marginTop: "6px" }}>
-                    <span style={{ color: TASK_CHIP, fontSize: "11px", fontWeight: 800, letterSpacing: "0.08em", textTransform: "uppercase" }}>Task</span>
-                    {sched ? (
-                      <span style={{ color: "var(--text-muted)", fontSize: "12px", fontWeight: 700 }}>{sched}</span>
-                    ) : null}
-                  </div>
+                  <div style={{ color: TASK_CHIP, fontSize: "11px", fontWeight: 800, letterSpacing: "0.08em", textTransform: "uppercase", marginTop: "6px" }}>Task</div>
                 </div>
                 <PremiumRoundComplete
                   checked={task.completed}
@@ -289,8 +265,7 @@ export default function Calendar() {
                   ariaLabel={task.completed ? "Mark incomplete" : "Complete"}
                 />
               </div>
-            );
-            })}
+            ))}
           </>
         )}
       </div>
@@ -320,26 +295,6 @@ export default function Calendar() {
               onChange={(e) => setTaskDraft((c) => ({ ...c, dueDate: e.target.value }))}
               style={{ width: "100%", padding: "12px 14px", borderRadius: "14px", border: "1px solid var(--border)", background: "var(--surface-raised)", color: "var(--text-primary)", fontFamily: "var(--font-body)" }}
             />
-          </div>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
-            <div>
-              <div className="section-label" style={{ marginBottom: "6px" }}>Start</div>
-              <input
-                type="time"
-                value={taskDraft.startTime}
-                onChange={(e) => setTaskDraft((c) => ({ ...c, startTime: e.target.value }))}
-                style={{ width: "100%", padding: "12px 14px", borderRadius: "14px", border: "1px solid var(--border)", background: "var(--surface-raised)", color: "var(--text-primary)", fontFamily: "var(--font-body)" }}
-              />
-            </div>
-            <div>
-              <div className="section-label" style={{ marginBottom: "6px" }}>End</div>
-              <input
-                type="time"
-                value={taskDraft.endTime}
-                onChange={(e) => setTaskDraft((c) => ({ ...c, endTime: e.target.value }))}
-                style={{ width: "100%", padding: "12px 14px", borderRadius: "14px", border: "1px solid var(--border)", background: "var(--surface-raised)", color: "var(--text-primary)", fontFamily: "var(--font-body)" }}
-              />
-            </div>
           </div>
           <div style={{ display: "flex", gap: "8px" }}>
             <button type="button" onClick={() => setShowAddTask(false)} className="glass-tile" style={{ flex: 1, borderRadius: "14px", padding: "10px 14px", color: "var(--text-primary)" }}>

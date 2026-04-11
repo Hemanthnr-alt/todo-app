@@ -38,7 +38,7 @@
   --radius-pill: 999px;
   --radius-panel: 30px;
 
-  --card-pad: 22px;
+  --card-pad: 18px;
   --motion-duration: 180ms;
   --easing-default: cubic-bezier(0.22, 1, 0.36, 1);
 
@@ -211,13 +211,11 @@ h6,
 
 .mobile-page-content {
   padding-bottom: 0;
-  padding-left: max(16px, env(safe-area-inset-left, 0px));
-  padding-right: max(16px, env(safe-area-inset-right, 0px));
 }
 
 @media (max-width: 768px) {
   .mobile-page-content {
-    padding-bottom: calc(var(--mobile-nav-height) + max(var(--safe-bottom), 8px) + 22px);
+    padding-bottom: calc(var(--mobile-nav-height) + max(var(--safe-bottom), 8px) + 18px);
   }
 }
 

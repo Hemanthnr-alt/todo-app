@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useTheme }  from "../context/ThemeContext";
+import { useTheme, unlockAccentForStreak } from "../context/ThemeContext";
 import { useTasks }  from "../hooks/useTasks";
 import { useHabits } from "../hooks/useHabits";
 import { formatLocalYMD, localTodayYMD } from "../utils/date";
@@ -101,6 +101,10 @@ export default function Rewards() {
     const h=new Date().getHours();
     if(totalCompleted>0){if(h<9)localStorage.setItem("thirty_flag_earlyBird","true");if(h>=22)localStorage.setItem("thirty_flag_nightOwl","true");}
   },[totalCompleted]);
+
+  useEffect(() => {
+    unlockAccentForStreak(bestStreak);
+  }, [bestStreak]);
 
   const earned = useMemo(()=>BADGES.filter(b=>b.check(ctx)),[totalCompleted,habits,categories,dueToday,completedToday]);
   const locked  = useMemo(()=>BADGES.filter(b=>!b.check(ctx)),[totalCompleted,habits,categories,dueToday,completedToday]);

@@ -1,7 +1,11 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import CustomSelect from "../components/CustomSelect";
+import { useAuth } from "../context/AuthContext";
 import { useTheme } from "../context/ThemeContext";
+import { useTasks } from "../hooks/useTasks";
 import { playTimerSound, sendNotification } from "../services/notifications";
+import { lifecycleOf } from "../utils/recurringTask";
 
 /* ── Helpers ── */
 function pad(n) { return String(Math.floor(Math.abs(n))).padStart(2,"0"); }
@@ -418,102 +422,206 @@ function Intervals({ accent }) {
   );
 }
 
+const POMO_MINS_KEY = "thirty_pomodoro_mins";
+
 /* ────────────────────────────────────────────────
    POMODORO
 ──────────────────────────────────────────────── */
-function Pomodoro({ accent }) {
-  const PHASES=[
-    {id:"focus",  label:"Focus",       mins:25, color:accent},
-    {id:"short",  label:"Short Break", mins:5,  color:"var(--success)"},
-    {id:"long",   label:"Long Break",  mins:15, color:"var(--info)"},
-  ];
-  const [phaseIdx,setPhaseIdx]=useState(0);
-  const [running,setRunning]=useState(false);
-  const [remaining,setRemaining]=useState(PHASES[0].mins*60*1000);
-  const [sessions,setSessions]=useState(0);
-  const interval=useRef(null);
-  const phase=PHASES[phaseIdx];
-  const totalMs=phase.mins*60*1000;
-  const pct=((totalMs-remaining)/totalMs)*100;
+function Pomodoro({ accent, linkedTaskId, onLinkedTaskId, taskOptions, showTaskLink }) {
+  const defaultMins = { focus: 25, short: 5, long: 15 };
+  const [mins, setMins] = useState(() => {
+    try {
+      const j = JSON.parse(localStorage.getItem(POMO_MINS_KEY) || "{}");
+      return { ...defaultMins, ...j };
+    } catch {
+      return defaultMins;
+    }
+  });
 
-  const switchPhase=idx=>{
-    setPhaseIdx(idx); setRunning(false);
-    setRemaining(PHASES[idx].mins*60*1000);
+  useEffect(() => {
+    try {
+      localStorage.setItem(POMO_MINS_KEY, JSON.stringify(mins));
+    } catch { /* ignore */ }
+  }, [mins]);
+
+  const phases = useMemo(() => [
+    { id: "focus", label: "Focus", mins: mins.focus, color: accent },
+    { id: "short", label: "Short Break", mins: mins.short, color: "var(--success)" },
+    { id: "long", label: "Long Break", mins: mins.long, color: "var(--info)" },
+  ], [mins, accent]);
+
+  const [phaseIdx, setPhaseIdx] = useState(0);
+  const [running, setRunning] = useState(false);
+  const [remaining, setRemaining] = useState(() => defaultMins.focus * 60 * 1000);
+  const [sessions, setSessions] = useState(0);
+  const interval = useRef(null);
+  const phase = phases[phaseIdx];
+  const totalMs = phase.mins * 60 * 1000;
+  const pct = ((totalMs - remaining) / totalMs) * 100;
+
+  useEffect(() => {
+    if (!running) setRemaining(phases[phaseIdx].mins * 60 * 1000);
+  }, [mins, phaseIdx, running, phases]);
+
+  const switchPhase = (idx) => {
+    setPhaseIdx(idx);
+    setRunning(false);
+    setRemaining(phases[idx].mins * 60 * 1000);
     clearInterval(interval.current);
   };
 
-  useEffect(()=>{
-    if(!running){ clearInterval(interval.current); return; }
-    interval.current=setInterval(()=>{
-      setRemaining(r=>{
-        if(r<=100){
-          clearInterval(interval.current); setRunning(false);
+  useEffect(() => {
+    if (!running) {
+      clearInterval(interval.current);
+      return undefined;
+    }
+    interval.current = setInterval(() => {
+      setRemaining((r) => {
+        if (r <= 100) {
+          clearInterval(interval.current);
+          setRunning(false);
           playTimerSound("complete");
-          if(phaseIdx===0){
-            setSessions(s=>s+1);
-            sendNotification({title:"🍅 Focus session done!",body:"Time for a break!",sound:true});
+          if (phaseIdx === 0) {
+            sendNotification({ title: "🍅 Focus session done!", body: "Time for a break!", sound: true });
           }
-          const nextSessions=phaseIdx===0?sessions+1:sessions;
-          const next=phaseIdx===0?(nextSessions%4===0?2:1):0;
-          setPhaseIdx(next); setRemaining(PHASES[next].mins*60*1000); return 0;
+          setSessions((s) => {
+            const nextS = phaseIdx === 0 ? s + 1 : s;
+            const next = phaseIdx === 0 ? (nextS % 4 === 0 ? 2 : 1) : 0;
+            const nextMins = next === 0 ? mins.focus : next === 1 ? mins.short : mins.long;
+            setPhaseIdx(next);
+            setRemaining(nextMins * 60 * 1000);
+            return nextS;
+          });
+          return 0;
         }
-        if(r<=60000&&r>59900) playTimerSound("warning");
-        return r-100;
+        if (r <= 60000 && r > 59900) playTimerSound("warning");
+        return r - 100;
       });
-    },100);
-    return()=>clearInterval(interval.current);
-  },[running,phaseIdx,sessions]);
+    }, 100);
+    return () => clearInterval(interval.current);
+  }, [running, phaseIdx, mins]);
+
+  const linkedLabel = taskOptions.find((o) => o.value === linkedTaskId)?.label;
 
   return (
-    <div style={{textAlign:"center"}}>
+    <div style={{ textAlign: "center" }}>
+      {showTaskLink && taskOptions.length > 0 && (
+        <div style={{ marginBottom: "16px", textAlign: "left" }}>
+          <div style={{ fontSize: "10px", fontWeight: 800, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--text-muted)", marginBottom: "6px" }}>
+            Link to task
+          </div>
+          <CustomSelect
+            value={linkedTaskId || ""}
+            onChange={onLinkedTaskId}
+            options={[{ value: "", label: "None" }, ...taskOptions]}
+            placeholder="Optional"
+          />
+          {linkedLabel && (
+            <div style={{ marginTop: "8px", fontSize: "12px", color: "var(--text-muted)" }}>
+              Focusing for: <strong style={{ color: "var(--text-primary)" }}>{linkedLabel}</strong>
+            </div>
+          )}
+        </div>
+      )}
+
+      {!running && (
+        <div className="glass-tile" style={{ borderRadius: "14px", padding: "12px", marginBottom: "16px", border: "1px solid var(--border)", display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "10px" }}>
+          {[
+            { key: "focus", label: "Focus (min)" },
+            { key: "short", label: "Short (min)" },
+            { key: "long", label: "Long (min)" },
+          ].map(({ key, label }) => (
+            <label key={key} style={{ display: "grid", gap: "4px", fontSize: "10px", fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase" }}>
+              {label}
+              <input
+                type="number"
+                min={1}
+                max={180}
+                value={mins[key]}
+                onChange={(e) => setMins((prev) => ({ ...prev, [key]: Math.min(180, Math.max(1, Number(e.target.value) || 1)) }))}
+                style={{ padding: "8px", borderRadius: "10px", border: "1px solid var(--border)", background: "var(--surface)", color: "var(--text-primary)", fontWeight: 700 }}
+              />
+            </label>
+          ))}
+        </div>
+      )}
+
       {/* Phase selector pills */}
-      <div style={{display:"flex",gap:"6px",justifyContent:"center",marginBottom:"20px"}}>
-        {PHASES.map((p,i)=>(
-          <button key={p.id} onClick={()=>switchPhase(i)}
-            style={{padding:"8px 16px",borderRadius:"12px",
-              border:phaseIdx===i?`1.5px solid ${typeof p.color==="string"&&p.color.startsWith("var")?p.color:p.color}`:"1.5px solid var(--border)",
-              background:phaseIdx===i?"var(--accent)":"var(--surface-raised)",
-              color:phaseIdx===i?"#fff":"var(--text-muted)",
-              cursor:"pointer",fontSize:"12px",fontWeight:phaseIdx===i?700:600,
-              fontFamily:"var(--font-body)",transition:"all 0.15s",
-              WebkitTapHighlightColor:"transparent"}}>
+      <div style={{ display: "flex", gap: "6px", justifyContent: "center", marginBottom: "20px", flexWrap: "wrap" }}>
+        {phases.map((p, i) => (
+          <button
+            key={p.id}
+            type="button"
+            onClick={() => switchPhase(i)}
+            style={{
+              padding: "8px 16px",
+              borderRadius: "12px",
+              border: phaseIdx === i ? `1.5px solid ${typeof p.color === "string" && p.color.startsWith("var") ? p.color : p.color}` : "1.5px solid var(--border)",
+              background: phaseIdx === i ? "var(--accent)" : "var(--surface-raised)",
+              color: phaseIdx === i ? "#fff" : "var(--text-muted)",
+              cursor: "pointer",
+              fontSize: "12px",
+              fontWeight: phaseIdx === i ? 700 : 600,
+              fontFamily: "var(--font-body)",
+              transition: "all 0.15s",
+              WebkitTapHighlightColor: "transparent",
+            }}
+          >
             {p.label}
           </button>
         ))}
       </div>
 
       {/* Session dots (4 per cycle) */}
-      <div style={{display:"flex",gap:"6px",justifyContent:"center",marginBottom:"16px"}}>
-        {[0,1,2,3].map(i=>(
-          <div key={i} style={{width:"10px",height:"10px",borderRadius:"50%",
-            background:i<sessions%4?accent:"var(--surface-elevated)",transition:"all 0.3s"}}/>
+      <div style={{ display: "flex", gap: "6px", justifyContent: "center", marginBottom: "16px" }}>
+        {[0, 1, 2, 3].map((i) => (
+          <div
+            key={i}
+            style={{
+              width: "10px",
+              height: "10px",
+              borderRadius: "50%",
+              background: i < sessions % 4 ? accent : "var(--surface-elevated)",
+              transition: "all 0.3s",
+            }}
+          />
         ))}
       </div>
 
       <Ring pct={pct} color={phase.color} size={240} stroke={14}>
-        <div style={{fontSize:"64px",fontWeight:800,color:"var(--text-primary)",
-          fontVariantNumeric:"tabular-nums",fontFamily:"var(--font-heading)"}}>
+        <div style={{ fontSize: "64px", fontWeight: 800, color: "var(--text-primary)", fontVariantNumeric: "tabular-nums", fontFamily: "var(--font-heading)" }}>
           {fmtMs(remaining)}
         </div>
-        <div style={{fontSize:"12px",color:phase.color,marginTop:"4px",
-          fontWeight:700,letterSpacing:"0.06em",textTransform:"uppercase"}}>
+        <div style={{ fontSize: "12px", color: phase.color, marginTop: "4px", fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase" }}>
           {phase.label}
         </div>
       </Ring>
 
-      <div style={{display:"flex",gap:"10px",justifyContent:"center"}}>
-        <motion.button whileTap={{scale:0.95}} onClick={()=>setRunning(r=>!r)}
+      <div style={{ display: "flex", gap: "10px", justifyContent: "center" }}>
+        <motion.button
+          whileTap={{ scale: 0.95 }}
+          onClick={() => setRunning((r) => !r)}
           className="btn-primary"
-          style={{padding:"0 44px",background:running?"var(--danger)":"var(--accent)",
-            boxShadow:running?"0 4px 20px rgba(255,69,58,0.4)":"0 4px 20px var(--accent-glow)"}}>
-          {running?"Pause":remaining===totalMs?"Start":"Resume"}
+          style={{
+            padding: "0 44px",
+            background: running ? "var(--danger)" : "var(--accent)",
+            boxShadow: running ? "0 4px 20px rgba(255,69,58,0.4)" : "0 4px 20px var(--accent-glow)",
+          }}
+        >
+          {running ? "Pause" : remaining === totalMs ? "Start" : "Resume"}
         </motion.button>
-        <PillBtn onClick={()=>{setRunning(false);setRemaining(phase.mins*60*1000);clearInterval(interval.current);}}>
+        <PillBtn
+          onClick={() => {
+            setRunning(false);
+            setRemaining(phase.mins * 60 * 1000);
+            clearInterval(interval.current);
+          }}
+        >
           Reset
         </PillBtn>
       </div>
-      <div style={{marginTop:"18px",fontSize:"13px",color:"var(--text-muted)"}}>
-        Sessions: <strong style={{color:accent,fontFamily:"var(--font-heading)"}}>{sessions}</strong>
+      <div style={{ marginTop: "18px", fontSize: "13px", color: "var(--text-muted)" }}>
+        Sessions: <strong style={{ color: accent, fontFamily: "var(--font-heading)" }}>{sessions}</strong>
       </div>
     </div>
   );
@@ -564,9 +672,36 @@ const TABS = [
   { id: "pomodoro", label: "Pomodoro", Icon: IconPomodoro },
 ];
 
+const TIMER_TASK_KEY = "thirty_timer_linked_task";
+
 export default function Timer() {
   const { accent } = useTheme();
+  const { isAuthenticated } = useAuth();
+  const { tasks } = useTasks();
   const [tab, setTab] = useState("stopwatch");
+  const [linkedTaskId, setLinkedTaskId] = useState("");
+
+  useEffect(() => {
+    try {
+      const v = localStorage.getItem(TIMER_TASK_KEY);
+      if (v) setLinkedTaskId(v);
+    } catch { /* ignore */ }
+  }, []);
+
+  useEffect(() => {
+    try {
+      if (linkedTaskId) localStorage.setItem(TIMER_TASK_KEY, linkedTaskId);
+      else localStorage.removeItem(TIMER_TASK_KEY);
+    } catch { /* ignore */ }
+  }, [linkedTaskId]);
+
+  const taskSelectOptions = useMemo(
+    () => tasks
+      .filter((t) => lifecycleOf(t) === "active" && !t.completed)
+      .map((t) => ({ value: t.id, label: (t.title || "Untitled").slice(0, 72) })),
+    [tasks],
+  );
+
   const ac = accent || "var(--accent)";
 
   return (
@@ -646,7 +781,15 @@ export default function Timer() {
             {tab === "stopwatch" && <Stopwatch accent={ac} />}
             {tab === "countdown" && <Countdown accent={ac} />}
             {tab === "intervals" && <Intervals accent={ac} />}
-            {tab === "pomodoro" && <Pomodoro accent={ac} />}
+            {tab === "pomodoro" && (
+              <Pomodoro
+                accent={ac}
+                linkedTaskId={linkedTaskId}
+                onLinkedTaskId={setLinkedTaskId}
+                taskOptions={taskSelectOptions}
+                showTaskLink={isAuthenticated}
+              />
+            )}
           </motion.div>
         </AnimatePresence>
       </div>

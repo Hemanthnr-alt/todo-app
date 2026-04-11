@@ -1,5 +1,5 @@
 import { AnimatePresence } from "framer-motion";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import toast from "react-hot-toast";
 import CenteredModal from "../components/CenteredModal";
 import CustomSelect from "../components/CustomSelect";
@@ -15,9 +15,13 @@ import {
   PremiumRoundComplete,
 } from "../components/PremiumChrome";
 import { PremiumTaskMark } from "../components/PremiumMarks";
+import { useAuth } from "../context/AuthContext";
 import { useTheme } from "../context/ThemeContext";
+import { useProjects } from "../hooks/useProjects";
+import { useTaskTemplates } from "../hooks/useTaskTemplates";
 import { useTasks } from "../hooks/useTasks";
-import { formatTaskScheduleLabel, normalizeTimeForApi } from "../utils/time";
+import { localTodayYMD } from "../utils/date";
+import { computeNextDueDate, lifecycleOf } from "../utils/recurringTask";
 
 const todayStr = () => {
   const date = new Date();
@@ -29,6 +33,11 @@ const weekEndStr = () => {
   date.setDate(date.getDate() + 7);
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
 };
+
+const parseTags = (raw) => String(raw || "")
+  .split(/[,\s]+/)
+  .map((t) => t.replace(/^#/, "").trim())
+  .filter(Boolean);
 
 const PRIORITIES = {
   high: { color: "var(--danger)", bg: "var(--danger-subtle)", label: "High" },
@@ -42,11 +51,24 @@ const PRIORITY_OPTIONS = [
   { value: "low", label: "Low" },
 ];
 
-function TaskRow({ task, categories, onToggle, onDelete, onEdit }) {
+function TaskRow({
+  task,
+  categories,
+  projects,
+  lifecycleTab,
+  onToggle,
+  onDelete,
+  onEdit,
+  onRestore,
+  onArchive,
+  onPermanent,
+  onSkipRecurring,
+}) {
   const category = categories.find((item) => item.id === task.categoryId);
+  const project = projects.find((p) => p.id === task.projectId);
   const priority = PRIORITIES[task.priority] || PRIORITIES.medium;
   const lineColor = priority.color.includes("var(") ? "var(--accent)" : priority.color;
-  const scheduleLabel = formatTaskScheduleLabel(task);
+  const tags = task.tags || [];
 
   return (
     <div
@@ -62,12 +84,16 @@ function TaskRow({ task, categories, onToggle, onDelete, onEdit }) {
         boxShadow: task.completed ? `inset 0 0 24px ${priority.color}0d` : "none",
       }}
     >
-      <PremiumRoundComplete
-        checked={task.completed}
-        onClick={() => onToggle(task.id, !task.completed)}
-        color={priority.color.includes("var(") ? "var(--accent)" : priority.color}
-        ariaLabel={task.completed ? "Mark incomplete" : "Complete task"}
-      />
+      {lifecycleTab === "active" ? (
+        <PremiumRoundComplete
+          checked={task.completed}
+          onClick={() => onToggle(task, !task.completed)}
+          color={priority.color.includes("var(") ? "var(--accent)" : priority.color}
+          ariaLabel={task.completed ? "Mark incomplete" : "Complete task"}
+        />
+      ) : (
+        <div style={{ width: 40 }} />
+      )}
 
       <PremiumTaskMark size={34} />
 
@@ -91,6 +117,9 @@ function TaskRow({ task, categories, onToggle, onDelete, onEdit }) {
           >
             {priority.label}
           </span>
+          {task.isRecurring && (
+            <span style={{ fontSize: "10px", fontWeight: 800, color: "var(--accent)", textTransform: "uppercase" }}>Recurring</span>
+          )}
           {category && (
             <span style={{ color: category.color, fontSize: "12px", fontWeight: 600, display: "inline-flex", alignItems: "center", gap: "4px" }}>
               <span aria-hidden style={{ opacity: 0.9 }}>
@@ -99,27 +128,61 @@ function TaskRow({ task, categories, onToggle, onDelete, onEdit }) {
               {category.name}
             </span>
           )}
-          {scheduleLabel ? (
-            <span style={{ color: "var(--text-muted)", fontSize: "12px", fontWeight: 700 }}>
-              {scheduleLabel}
-            </span>
-          ) : null}
+          {project && (
+            <span style={{ color: "var(--text-muted)", fontSize: "12px", fontWeight: 600 }}>{project.icon} {project.name}</span>
+          )}
+          {tags.slice(0, 4).map((tag) => (
+            <span key={tag} style={{ fontSize: "11px", fontWeight: 700, color: "var(--text-muted)" }}>#{tag}</span>
+          ))}
           {task.dueDate && (
             <span style={{ color: "var(--text-muted)", fontSize: "12px", fontWeight: 500 }}>
-              {scheduleLabel ? " · " : ""}
               {task.dueDate === todayStr() ? "Today" : task.dueDate}
             </span>
           )}
         </div>
       </div>
 
-      <div style={{ display: "flex", gap: "6px", flexShrink: 0 }}>
-        <PremiumIconButton label="Edit task" onClick={() => onEdit(task)}>
-          <IconPencil size={17} stroke="currentColor" />
-        </PremiumIconButton>
-        <PremiumIconButton label="Delete task" onClick={() => onDelete(task.id)}>
-          <IconTrash size={17} stroke="currentColor" />
-        </PremiumIconButton>
+      <div style={{ display: "flex", gap: "4px", flexShrink: 0, flexWrap: "wrap", justifyContent: "flex-end", maxWidth: "140px" }}>
+        {lifecycleTab === "active" && task.isRecurring && (
+          <button type="button" className="btn-reset" onClick={() => onSkipRecurring(task)} style={{ fontSize: "10px", fontWeight: 700, color: "var(--text-muted)", padding: "6px 8px" }}>
+            Skip
+          </button>
+        )}
+        {lifecycleTab === "active" && (
+          <PremiumIconButton label="Archive" onClick={() => onArchive(task.id)}>
+            <span style={{ fontSize: "12px", fontWeight: 800 }}>A</span>
+          </PremiumIconButton>
+        )}
+        {lifecycleTab === "active" && (
+          <PremiumIconButton label="Edit task" onClick={() => onEdit(task)}>
+            <IconPencil size={17} stroke="currentColor" />
+          </PremiumIconButton>
+        )}
+        {lifecycleTab === "active" && (
+          <PremiumIconButton label="Move to trash" onClick={() => onDelete(task.id)}>
+            <IconTrash size={17} stroke="currentColor" />
+          </PremiumIconButton>
+        )}
+        {lifecycleTab === "trash" && (
+          <>
+            <button type="button" className="glass-tile" style={{ padding: "6px 10px", borderRadius: "10px", fontSize: "11px", fontWeight: 700 }} onClick={() => onRestore(task.id)}>
+              Restore
+            </button>
+            <button type="button" className="btn-reset" style={{ padding: "6px 10px", color: "var(--danger)", fontSize: "11px", fontWeight: 700 }} onClick={() => onPermanent(task.id)}>
+              Delete
+            </button>
+          </>
+        )}
+        {lifecycleTab === "archive" && (
+          <>
+            <button type="button" className="glass-tile" style={{ padding: "6px 10px", borderRadius: "10px", fontSize: "11px", fontWeight: 700 }} onClick={() => onRestore(task.id)}>
+              Unarchive
+            </button>
+            <PremiumIconButton label="Trash" onClick={() => onDelete(task.id)}>
+              <IconTrash size={17} stroke="currentColor" />
+            </PremiumIconButton>
+          </>
+        )}
       </div>
     </div>
   );
@@ -130,24 +193,65 @@ const blankTask = {
   description: "",
   priority: "medium",
   categoryId: "",
+  projectId: "",
   dueDate: "",
-  startTime: "",
-  endTime: "",
+  tagsInput: "",
+  isRecurring: false,
+  recurringFrequency: "daily",
+  recurringInterval: 2,
+  weeklyDays: "1,3,5",
 };
+
+const SAVED_FILTERS_KEY = "thirty_saved_task_filters";
 
 export default function Tasks() {
   const { accent } = useTheme();
-  const { tasks, categories, loading, addTask, updateTask, deleteTask, addCategory } = useTasks();
+  const { isAuthenticated } = useAuth();
+  const {
+    tasks,
+    categories,
+    loading,
+    addTask,
+    updateTask,
+    deleteTask,
+    restoreTask,
+    archiveTask,
+    permanentDeleteTask,
+    mergeAppliedTasks,
+    addCategory,
+  } = useTasks();
+  const { projects } = useProjects();
+  const { templates, applyTemplate, saveTemplate } = useTaskTemplates();
+
   const [draft, setDraft] = useState(blankTask);
   const [search, setSearch] = useState("");
   const [activeFilter, setActiveFilter] = useState("all");
+  const [lifecycleTab, setLifecycleTab] = useState("active");
+  const [tagFilter, setTagFilter] = useState("");
+  const [projectFilter, setProjectFilter] = useState("");
   const [showTaskModal, setShowTaskModal] = useState(false);
   const [editingTaskId, setEditingTaskId] = useState(null);
   const [showCatModal, setShowCatModal] = useState(false);
+  const [showTplModal, setShowTplModal] = useState(false);
+  const [tplName, setTplName] = useState("");
+  const [applyTplId, setApplyTplId] = useState("");
   const [catName, setCatName] = useState("");
   const [catColor, setCatColor] = useState(accent);
   const [catIcon, setCatIcon] = useState("");
   const [savingTask, setSavingTask] = useState(false);
+  const [savedFilters, setSavedFilters] = useState([]);
+
+  const refreshSavedFilters = () => {
+    try {
+      setSavedFilters(JSON.parse(localStorage.getItem(SAVED_FILTERS_KEY) || "[]"));
+    } catch {
+      setSavedFilters([]);
+    }
+  };
+
+  useEffect(() => {
+    refreshSavedFilters();
+  }, []);
 
   const today = todayStr();
   const weekEnd = weekEndStr();
@@ -162,7 +266,16 @@ export default function Tasks() {
   ];
 
   const filteredTasks = useMemo(() => tasks.filter((task) => {
+    const life = lifecycleOf(task);
+    if (lifecycleTab === "active" && life !== "active") return false;
+    if (lifecycleTab === "archive" && life !== "archived") return false;
+    if (lifecycleTab === "trash" && life !== "trashed") return false;
     if (search && !task.title.toLowerCase().includes(search.toLowerCase())) return false;
+    if (tagFilter) {
+      const tgs = task.tags || [];
+      if (!tgs.map((x) => String(x).toLowerCase()).includes(tagFilter.toLowerCase().replace(/^#/, ""))) return false;
+    }
+    if (projectFilter && task.projectId !== projectFilter) return false;
     switch (activeFilter) {
       case "today":
         return task.dueDate === today;
@@ -177,13 +290,38 @@ export default function Tasks() {
       default:
         return true;
     }
-  }), [activeFilter, search, tasks, today, weekEnd]);
+  }), [activeFilter, search, tasks, today, weekEnd, lifecycleTab, tagFilter, projectFilter]);
+
+  const handleTaskToggle = async (task, completed) => {
+    if (completed && task.isRecurring) {
+      const ymd = localTodayYMD();
+      const dates = [...new Set([...(task.completedDates || []), ymd])];
+      const next = computeNextDueDate(task, task.dueDate || ymd);
+      await updateTask(task.id, {
+        completed: false,
+        completedDates: dates,
+        dueDate: next,
+      });
+      toast.success("Recurring logged · next date set");
+      return;
+    }
+    await updateTask(task.id, { completed });
+  };
+
+  const handleSkipRecurring = async (task) => {
+    const ymd = localTodayYMD();
+    const skips = [...new Set([...(task.recurringSkipDates || []), ymd])];
+    const next = computeNextDueDate(task, task.dueDate || ymd);
+    await updateTask(task.id, { recurringSkipDates: skips, dueDate: next });
+    toast.success("Skipped this occurrence");
+  };
 
   const categoryOptions = [{ value: "", label: "No category" }, ...categories.map((category) => ({ value: category.id, label: `${category.icon} ${category.name}` }))];
+  const projectOptions = [{ value: "", label: "No project" }, ...projects.map((p) => ({ value: p.id, label: `${p.icon || "◇"} ${p.name}` }))];
 
   const openCreate = () => {
     setEditingTaskId(null);
-    setDraft(blankTask);
+    setDraft({ ...blankTask });
     setShowTaskModal(true);
   };
 
@@ -194,11 +332,37 @@ export default function Tasks() {
       description: task.description || "",
       priority: task.priority || "medium",
       categoryId: task.categoryId || "",
+      projectId: task.projectId || "",
       dueDate: task.dueDate || "",
-      startTime: task.startTime ? String(task.startTime).slice(0, 5) : "",
-      endTime: task.endTime ? String(task.endTime).slice(0, 5) : "",
+      tagsInput: (task.tags || []).join(", "),
+      isRecurring: !!task.isRecurring,
+      recurringFrequency: task.recurringFrequency || "daily",
+      recurringInterval: task.recurringInterval || 2,
+      weeklyDays: (task.recurringDays || []).join(","),
     });
     setShowTaskModal(true);
+  };
+
+  const buildPayload = () => {
+    const tags = parseTags(draft.tagsInput);
+    const recurringDays = draft.recurringFrequency === "weekly"
+      ? draft.weeklyDays.split(/[,\s]+/).map((x) => Number.parseInt(x, 10)).filter((n) => !Number.isNaN(n) && n >= 0 && n <= 6)
+      : [];
+    return {
+      title: draft.title.trim(),
+      description: draft.description,
+      priority: draft.priority,
+      categoryId: draft.categoryId || null,
+      projectId: draft.projectId || null,
+      dueDate: draft.dueDate || null,
+      tags,
+      isRecurring: !!draft.isRecurring,
+      recurringFrequency: draft.isRecurring ? draft.recurringFrequency : null,
+      recurringInterval: draft.isRecurring && draft.recurringFrequency === "custom"
+        ? Math.max(1, Number(draft.recurringInterval) || 2)
+        : null,
+      recurringDays: draft.isRecurring && draft.recurringFrequency === "weekly" ? recurringDays : [],
+    };
   };
 
   const handleSaveTask = async () => {
@@ -208,28 +372,13 @@ export default function Tasks() {
     }
 
     setSavingTask(true);
+    const payload = buildPayload();
 
     if (editingTaskId) {
-      await updateTask(editingTaskId, {
-        title: draft.title.trim(),
-        description: draft.description,
-        priority: draft.priority,
-        categoryId: draft.categoryId || null,
-        dueDate: draft.dueDate || null,
-        startTime: normalizeTimeForApi(draft.startTime),
-        endTime: normalizeTimeForApi(draft.endTime),
-      });
+      await updateTask(editingTaskId, payload);
       toast.success("Task updated.");
     } else {
-      const created = await addTask({
-        title: draft.title.trim(),
-        description: draft.description,
-        priority: draft.priority,
-        categoryId: draft.categoryId || null,
-        dueDate: draft.dueDate || null,
-        startTime: normalizeTimeForApi(draft.startTime),
-        endTime: normalizeTimeForApi(draft.endTime),
-      });
+      const created = await addTask(payload);
       if (!created) {
         setSavingTask(false);
         return;
@@ -239,7 +388,34 @@ export default function Tasks() {
     setSavingTask(false);
     setShowTaskModal(false);
     setEditingTaskId(null);
-    setDraft(blankTask);
+    setDraft({ ...blankTask });
+  };
+
+  const handleApplyTemplate = async () => {
+    if (!applyTplId) return;
+    const list = await applyTemplate(applyTplId, today);
+    if (list.length) mergeAppliedTasks(list);
+    setShowTplModal(false);
+    setApplyTplId("");
+  };
+
+  const handleSaveQuickTemplate = async () => {
+    if (!tplName.trim()) {
+      toast.error("Template name required");
+      return;
+    }
+    if (!draft.title.trim()) {
+      toast.error("Add a task title first");
+      return;
+    }
+    await saveTemplate(tplName.trim(), [{
+      title: draft.title.trim(),
+      priority: draft.priority,
+      tags: parseTags(draft.tagsInput),
+      categoryId: draft.categoryId || null,
+      projectId: draft.projectId || null,
+    }]);
+    setTplName("");
   };
 
   const handleAddCategory = async () => {
@@ -252,11 +428,25 @@ export default function Tasks() {
   };
 
   return (
-    <div style={{ maxWidth: "760px", margin: "0 auto", padding: "28px 22px 40px", color: "var(--text-body)" }}>
+    <div style={{ maxWidth: "720px", margin: "0 auto", padding: "20px 16px 32px", color: "var(--text-body)" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
         <div>
           <h1 style={{ fontSize: "28px", letterSpacing: "-0.04em", marginBottom: "4px" }}>Tasks</h1>
           <div style={{ color: "var(--text-muted)", fontSize: "13px" }}>{filteredTasks.length} items</div>
+        </div>
+      </div>
+
+      <div className="hide-scrollbar" style={{ overflowX: "auto", marginBottom: "10px" }}>
+        <div style={{ display: "flex", gap: "8px", width: "max-content" }}>
+          {[
+            { id: "active", label: "Active" },
+            { id: "archive", label: "Archive" },
+            { id: "trash", label: "Trash" },
+          ].map((t) => (
+            <button key={t.id} type="button" onClick={() => setLifecycleTab(t.id)} className={`pill-filter ${lifecycleTab === t.id ? "active" : ""}`}>
+              {t.label}
+            </button>
+          ))}
         </div>
       </div>
 
@@ -282,7 +472,64 @@ export default function Tasks() {
           <button onClick={() => setShowCatModal(true)} className="glass-tile" style={{ borderRadius: "999px", padding: "0 14px", height: "36px", color: "var(--accent)", fontWeight: 700 }}>
             + Category
           </button>
+          {isAuthenticated && (
+            <button type="button" onClick={() => setShowTplModal(true)} className="glass-tile" style={{ borderRadius: "999px", padding: "0 14px", height: "36px", color: "var(--accent)", fontWeight: 700 }}>
+              Templates
+            </button>
+          )}
         </div>
+      </div>
+
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px", marginBottom: "12px" }}>
+        <input
+          value={tagFilter}
+          onChange={(e) => setTagFilter(e.target.value)}
+          placeholder="Filter #tag"
+          style={{ padding: "10px 12px", borderRadius: "12px", border: "1px solid var(--border)", background: "var(--surface)", color: "var(--text-primary)", fontFamily: "var(--font-body)", fontSize: "13px" }}
+        />
+        <CustomSelect
+          value={projectFilter}
+          onChange={setProjectFilter}
+          options={[{ value: "", label: "All projects" }, ...projects.map((p) => ({ value: p.id, label: `${p.icon || "◇"} ${p.name}` }))]}
+        />
+      </div>
+      <div style={{ marginBottom: "12px", display: "flex", gap: "8px", flexWrap: "wrap" }}>
+        <button
+          type="button"
+          className="glass-tile"
+          style={{ borderRadius: "10px", padding: "6px 12px", fontSize: "12px", fontWeight: 600 }}
+          onClick={() => {
+            if (!tagFilter.trim() && !projectFilter) return;
+            try {
+              const cur = JSON.parse(localStorage.getItem(SAVED_FILTERS_KEY) || "[]");
+              const entry = { tag: tagFilter.replace(/^#/, "").trim(), projectId: projectFilter || "" };
+              if (!cur.some((c) => c.tag === entry.tag && c.projectId === entry.projectId)) {
+                cur.push(entry);
+                localStorage.setItem(SAVED_FILTERS_KEY, JSON.stringify(cur));
+                refreshSavedFilters();
+                toast.success("Saved filter");
+              }
+            } catch { /* ignore */ }
+          }}
+        >
+          Save filter
+        </button>
+        {savedFilters.map((sf, i) => {
+          const proj = sf.projectId ? projects.find((p) => p.id === sf.projectId) : null;
+          return (
+            <button
+              key={`${sf.tag}-${sf.projectId}-${i}`}
+              type="button"
+              className="pill-filter"
+              onClick={() => {
+                setTagFilter(sf.tag || "");
+                setProjectFilter(sf.projectId || "");
+              }}
+            >
+              {sf.tag ? `#${sf.tag}` : "Tag: any"}{proj ? ` · ${proj.name}` : sf.projectId ? " · project" : ""}
+            </button>
+          );
+        })}
       </div>
 
       <div className="glass-panel" style={{ borderRadius: "18px", padding: "0 14px" }}>
@@ -297,9 +544,15 @@ export default function Tasks() {
                 key={task.id}
                 task={task}
                 categories={categories}
-                onToggle={(id, completed) => updateTask(id, { completed })}
+                projects={projects}
+                lifecycleTab={lifecycleTab}
+                onToggle={handleTaskToggle}
                 onDelete={deleteTask}
                 onEdit={openEdit}
+                onRestore={restoreTask}
+                onArchive={archiveTask}
+                onPermanent={permanentDeleteTask}
+                onSkipRecurring={handleSkipRecurring}
               />
             ))}
           </AnimatePresence>
@@ -386,6 +639,25 @@ export default function Tasks() {
               </span>
               <CustomSelect value={draft.categoryId} onChange={(value) => setDraft((current) => ({ ...current, categoryId: value }))} options={categoryOptions} />
             </div>
+            {isAuthenticated && (
+              <div style={{ marginTop: "4px" }}>
+                <span className="section-label" style={{ marginBottom: "8px", display: "block" }}>
+                  Project
+                </span>
+                <CustomSelect value={draft.projectId} onChange={(value) => setDraft((current) => ({ ...current, projectId: value }))} options={projectOptions} />
+              </div>
+            )}
+            <div style={{ marginTop: "4px" }}>
+              <span className="section-label" style={{ marginBottom: "8px", display: "block" }}>
+                Tags
+              </span>
+              <input
+                value={draft.tagsInput}
+                onChange={(e) => setDraft((c) => ({ ...c, tagsInput: e.target.value }))}
+                placeholder="work, deep-focus (comma-separated)"
+                style={{ width: "100%", padding: "12px 14px", borderRadius: "12px", border: "1px solid var(--border)", background: "var(--surface)", color: "var(--text-primary)", fontFamily: "var(--font-body)", fontSize: "13px" }}
+              />
+            </div>
           </div>
 
           <div className="glass-tile" style={{ borderRadius: "16px", padding: "14px", display: "grid", gap: "10px", border: "1px solid var(--border)" }}>
@@ -401,31 +673,58 @@ export default function Tasks() {
                 style={{ width: "100%", padding: "12px 14px 12px 42px", borderRadius: "12px", border: "1px solid var(--border)", background: "var(--surface)", color: "var(--text-primary)", fontFamily: "var(--font-body)" }}
               />
             </div>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
-              <div>
-                <span className="section-label" style={{ marginBottom: "6px", display: "block" }}>
-                  Start
-                </span>
-                <input
-                  type="time"
-                  value={draft.startTime}
-                  onChange={(event) => setDraft((current) => ({ ...current, startTime: event.target.value }))}
-                  style={{ width: "100%", padding: "12px 14px", borderRadius: "12px", border: "1px solid var(--border)", background: "var(--surface)", color: "var(--text-primary)", fontFamily: "var(--font-body)" }}
+            <label style={{ display: "flex", alignItems: "center", gap: "10px", fontSize: "13px", fontWeight: 600, cursor: "pointer" }}>
+              <input
+                type="checkbox"
+                checked={draft.isRecurring}
+                onChange={(e) => setDraft((c) => ({ ...c, isRecurring: e.target.checked }))}
+              />
+              Recurring task
+            </label>
+            {draft.isRecurring && (
+              <>
+                <CustomSelect
+                  value={draft.recurringFrequency}
+                  onChange={(value) => setDraft((c) => ({ ...c, recurringFrequency: value }))}
+                  options={[
+                    { value: "daily", label: "Daily" },
+                    { value: "weekly", label: "Weekly (pick days)" },
+                    { value: "monthly", label: "Monthly" },
+                    { value: "custom", label: "Every N days" },
+                  ]}
                 />
-              </div>
-              <div>
-                <span className="section-label" style={{ marginBottom: "6px", display: "block" }}>
-                  End
-                </span>
-                <input
-                  type="time"
-                  value={draft.endTime}
-                  onChange={(event) => setDraft((current) => ({ ...current, endTime: event.target.value }))}
-                  style={{ width: "100%", padding: "12px 14px", borderRadius: "12px", border: "1px solid var(--border)", background: "var(--surface)", color: "var(--text-primary)", fontFamily: "var(--font-body)" }}
-                />
-              </div>
-            </div>
+                {draft.recurringFrequency === "weekly" && (
+                  <div>
+                    <span className="section-label" style={{ marginBottom: "6px", display: "block" }}>Days (0=Sun … 6=Sat)</span>
+                    <input
+                      value={draft.weeklyDays}
+                      onChange={(e) => setDraft((c) => ({ ...c, weeklyDays: e.target.value }))}
+                      placeholder="1,3,5"
+                      style={{ width: "100%", padding: "10px 12px", borderRadius: "12px", border: "1px solid var(--border)", background: "var(--surface)", color: "var(--text-primary)", fontFamily: "var(--font-body)", fontSize: "13px" }}
+                    />
+                  </div>
+                )}
+                {draft.recurringFrequency === "custom" && (
+                  <div>
+                    <span className="section-label" style={{ marginBottom: "6px", display: "block" }}>Every N days</span>
+                    <input
+                      type="number"
+                      min={1}
+                      value={draft.recurringInterval}
+                      onChange={(e) => setDraft((c) => ({ ...c, recurringInterval: Number(e.target.value) || 1 }))}
+                      style={{ width: "100%", padding: "10px 12px", borderRadius: "12px", border: "1px solid var(--border)", background: "var(--surface)", color: "var(--text-primary)", fontFamily: "var(--font-body)", fontSize: "13px" }}
+                    />
+                  </div>
+                )}
+              </>
+            )}
           </div>
+
+          {isAuthenticated && editingTaskId === null && (
+            <div className="glass-tile" style={{ borderRadius: "16px", padding: "12px 14px", border: "1px dashed var(--border)", fontSize: "12px", color: "var(--text-muted)" }}>
+              Save the current fields as a reusable template from <strong style={{ color: "var(--text-primary)" }}>Templates</strong> (toolbar).
+            </div>
+          )}
 
           <div style={{ display: "flex", gap: "10px" }}>
             <button type="button" onClick={() => setShowTaskModal(false)} className="glass-tile" style={{ flex: 1, borderRadius: "14px", padding: "12px 14px", color: "var(--text-primary)", fontWeight: 600 }}>
@@ -463,6 +762,35 @@ export default function Tasks() {
             </button>
             <button onClick={handleAddCategory} className="btn-primary" style={{ flex: 1 }}>
               Create
+            </button>
+          </div>
+        </div>
+      </CenteredModal>
+
+      <CenteredModal isOpen={showTplModal} onClose={() => setShowTplModal(false)} title="Templates" maxWidth="420px">
+        <div style={{ display: "grid", gap: "16px" }}>
+          <div className="glass-tile" style={{ borderRadius: "16px", padding: "14px", display: "grid", gap: "10px", border: "1px solid var(--border)" }}>
+            <span className="section-label">Apply template</span>
+            <CustomSelect
+              value={applyTplId}
+              onChange={setApplyTplId}
+              options={[{ value: "", label: "Choose…" }, ...templates.map((t) => ({ value: t.id, label: t.name }))]}
+            />
+            <button type="button" className="btn-primary" style={{ fontWeight: 700 }} onClick={handleApplyTemplate} disabled={!applyTplId}>
+              Add tasks to list
+            </button>
+            <p style={{ margin: 0, fontSize: "12px", color: "var(--text-muted)" }}>New tasks use today&apos;s date when the template sets a due date.</p>
+          </div>
+          <div className="glass-tile" style={{ borderRadius: "16px", padding: "14px", display: "grid", gap: "10px", border: "1px solid var(--border)" }}>
+            <span className="section-label">Save from task form</span>
+            <input
+              value={tplName}
+              onChange={(e) => setTplName(e.target.value)}
+              placeholder="Template name"
+              style={{ width: "100%", padding: "12px 14px", borderRadius: "12px", border: "1px solid var(--border)", background: "var(--surface)", color: "var(--text-primary)", fontFamily: "var(--font-body)" }}
+            />
+            <button type="button" className="glass-tile" style={{ borderRadius: "12px", padding: "12px", fontWeight: 700 }} onClick={handleSaveQuickTemplate}>
+              Save current title, tags, category &amp; project
             </button>
           </div>
         </div>
