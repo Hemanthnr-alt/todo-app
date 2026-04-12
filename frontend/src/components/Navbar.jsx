@@ -12,6 +12,9 @@ import { useTheme } from "../context/ThemeContext";
 import AppSettings from "./AppSettings";
 import AuthModal from "./AuthModal";
 import Portal from "./Portal";
+import { isNativeApp } from "../services/storage";
+
+const NATIVE = isNativeApp();
 
 // ── Nav icons ──────────────────────────────────────────────────────────────────
 const I = {
@@ -135,8 +138,8 @@ function MenuSheet({ onClose, onSettings, isAuthenticated, user, logout, toggleT
         <div style={{width:"36px",height:"3px",borderRadius:"999px",background:"var(--border-strong)",margin:"10px auto 0"}}/>
         {isAuthenticated&&user&&(
           <div style={{display:"flex",gap:"12px",alignItems:"center",padding:"14px 18px 10px"}}>
-            <div style={{width:"44px",height:"44px",borderRadius:"12px",background:"var(--accent-subtle)",border:"1.5px solid var(--accent)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"18px",fontWeight:800,color:"var(--accent)",fontFamily:"var(--font-heading)",flexShrink:0}}>
-              {(user.name||"?").charAt(0).toUpperCase()}
+            <div style={{width:"44px",height:"44px",borderRadius:"12px",background:user.avatar?`url(${user.avatar}) center/cover`:"var(--accent-subtle)",border:user.avatar?"1px solid var(--border-strong)":"1.5px solid var(--accent)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"18px",fontWeight:800,color:"var(--accent)",fontFamily:"var(--font-heading)",flexShrink:0}}>
+              {!user.avatar && (user.name||"?").charAt(0).toUpperCase()}
             </div>
             <div>
               <div style={{fontSize:"14px",fontWeight:700,color:"var(--text-primary)"}}>{user.name}</div>
@@ -231,13 +234,15 @@ export default function Navbar({ activePage, onPageChange }) {
 
           {/* Right actions */}
           <div style={{display:"flex",gap:"7px",alignItems:"center",marginLeft:"auto"}}>
-            {/* Bell */}
-            <motion.button whileTap={{scale:0.92}} onClick={()=>setShowNotifs(true)} className="btn-reset" style={btnStyle}>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 0 1-3.46 0"/>
-              </svg>
-              {unread>0&&<div style={{position:"absolute",top:"7px",right:"7px",width:"7px",height:"7px",borderRadius:"50%",background:"var(--accent)",boxShadow:`0 0 0 2px var(--bg)`}}/>}
-            </motion.button>
+            {/* Bell (Hide on Native) */}
+            {!NATIVE && (
+              <motion.button whileTap={{scale:0.92}} onClick={()=>setShowNotifs(true)} className="btn-reset" style={btnStyle}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 0 1-3.46 0"/>
+                </svg>
+                {unread>0&&<div style={{position:"absolute",top:"7px",right:"7px",width:"7px",height:"7px",borderRadius:"50%",background:"var(--accent)",boxShadow:`0 0 0 2px var(--bg)`}}/>}
+              </motion.button>
+            )}
 
             {/* Desktop: settings + auth */}
             <motion.button whileTap={{scale:0.92}} onClick={()=>setShowSettings(true)} className="btn-reset desktop-only" style={btnStyle}>
@@ -250,8 +255,8 @@ export default function Navbar({ activePage, onPageChange }) {
             {isAuthenticated?(
               <motion.button whileTap={{scale:0.95}} onClick={()=>setShowMenu(v=>!v)} className="btn-reset desktop-only"
                 style={{...btnStyle,width:"auto",padding:"0 10px 0 4px",display:"flex",alignItems:"center",gap:"7px"}}>
-                <div style={{width:"26px",height:"26px",borderRadius:"8px",background:"var(--accent-subtle)",border:"1px solid var(--accent)44",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"12px",fontWeight:800,color:"var(--accent)"}}>
-                  {(user?.name||"?").charAt(0).toUpperCase()}
+                <div style={{width:"26px",height:"26px",borderRadius:"8px",background:user?.avatar?`url(${user.avatar}) center/cover`:"var(--accent-subtle)",border:user?.avatar?"1px solid var(--border-strong)":"1px solid var(--accent)44",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"12px",fontWeight:800,color:"var(--accent)"}}>
+                  {!user?.avatar && (user?.name||"?").charAt(0).toUpperCase()}
                 </div>
                 <span style={{fontSize:"12px",fontWeight:700,color:"var(--text-primary)"}}>{user?.name?.split(" ")[0]}</span>
               </motion.button>

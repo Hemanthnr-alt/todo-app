@@ -488,10 +488,10 @@ function HabitCard({ habit, onToggle, onDelete, onEdit, onOpenQty, onOpenAction,
                 onClick={()=>!locked&&onToggle(habit.id,dateStr)}
                 disabled={locked} className="btn-reset"
                 style={{
-                  width:"28px",height:"28px",borderRadius:"8px",
+                  width:"24px",height:"24px",borderRadius:"7px",
                   display:"flex",alignItems:"center",justifyContent:"center",
                   cursor:locked?"not-allowed":"pointer",
-                  fontSize:"10px",fontWeight:isDone||isToday?700:400,
+                  fontSize:"12px",fontWeight:isDone||isToday?700:500,
                   background:isDone?habit.color:locked?"transparent":isToday?`${habit.color}12`:"var(--surface-raised)",
                   border:locked?"1px solid var(--border)":isDone?"none":isToday?`1.5px solid ${habit.color}55`:"1px solid var(--border)",
                   color:isDone?"#000":locked?"var(--text-tertiary)":isToday?habit.color:"var(--text-secondary)",
@@ -750,24 +750,6 @@ export default function Habits() {
             <label style={{display:"grid",gap:"4px"}}>
               <span style={{fontSize:"11px",fontWeight:600,color:"var(--text-muted)"}}>Target / week (optional)</span>
               <input value={fTargetW} onChange={e=>setFTargetW(e.target.value)} placeholder="e.g. 5" style={{...IS,fontSize:"12px"}}/>
-            </label>
-          </div>
-
-          <div className="glass-tile" style={{borderRadius:"14px",padding:"12px",border:"1px solid var(--border)",display:"grid",gap:"10px"}}>
-            <div style={SL}>Goals &amp; unit</div>
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"8px"}}>
-              <label style={{display:"grid",gap:"4px"}}>
-                <span style={{fontSize:"10px",fontWeight:600,color:"var(--text-muted)"}}>Min minutes</span>
-                <input value={fMinMins} onChange={e=>setFMinMins(e.target.value)} placeholder="—" inputMode="numeric" style={{...IS,fontSize:"12px"}}/>
-              </label>
-              <label style={{display:"grid",gap:"4px"}}>
-                <span style={{fontSize:"10px",fontWeight:600,color:"var(--text-muted)"}}>Max per day</span>
-                <input value={fMaxDay} onChange={e=>setFMaxDay(e.target.value)} placeholder="—" inputMode="numeric" style={{...IS,fontSize:"12px"}}/>
-              </label>
-            </div>
-            <label style={{display:"grid",gap:"4px"}}>
-              <span style={{fontSize:"10px",fontWeight:600,color:"var(--text-muted)"}}>Unit (glasses, km, pages…)</span>
-              <input value={fUnit} onChange={e=>setFUnit(e.target.value)} placeholder="times" style={{...IS,fontSize:"12px"}}/>
             </label>
           </div>
 

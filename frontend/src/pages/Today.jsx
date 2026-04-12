@@ -70,8 +70,8 @@ function HelpModal({ onClose }) {
 function AddTypeSheet({ onClose, onGoToTasks, onGoToHabits }) {
   const types = [
     {bg:"#FF7A5918",border:"#FF7A5940",icon:"🏆",iconBg:"#FF7A5933",title:"Habit",sub:"Activity that repeats over time. It has detailed tracking and statistics.",action:()=>{onGoToHabits?.();onClose();}},
-    {bg:"#F5A62318",border:"#F5A62340",icon:"🔁",iconBg:"#F5A62333",title:"Recurring Task",sub:"Activity that repeats over time without tracking or statistics.",action:()=>{onGoToTasks?.();onClose();}},
-    {bg:"#3DD68C18",border:"#3DD68C40",icon:"✅",iconBg:"#3DD68C33",title:"Task",sub:"Single instance activity without tracking over time.",action:()=>{onGoToTasks?.();onClose();}},
+    {bg:"#F5A62318",border:"#F5A62340",icon:"🔁",iconBg:"#F5A62333",title:"Recurring Task",sub:"Activity that repeats over time without tracking or statistics.",action:()=>{onGoToTasks?.("recurring");onClose();}},
+    {bg:"#3DD68C18",border:"#3DD68C40",icon:"✅",iconBg:"#3DD68C33",title:"Task",sub:"Single instance activity without tracking over time.",action:()=>{onGoToTasks?.("single");onClose();}},
   ];
   return (
     <div onClick={onClose} style={{position:"fixed",inset:0,zIndex:9000,background:"rgba(0,0,0,0.55)",backdropFilter:"blur(8px)",display:"flex",alignItems:"flex-end",justifyContent:"center"}}>
@@ -178,7 +178,7 @@ function AgendaItem({ item, accent, onToggleTask, onToggleHabit, isFuture }) {
 export default function Today({ onGoToTasks, onGoToCalendar, onGoToHabits }) {
   const { accent } = useTheme();
   const { user, isAuthenticated } = useAuth();
-  const { tasks, updateTask } = useTasks();
+  const { tasks, updateTask, toggleComplete } = useTasks();
   const { habits, toggleHabit } = useHabits();
 
   const todayStr = localTodayYMD();
@@ -220,9 +220,14 @@ export default function Today({ onGoToTasks, onGoToCalendar, onGoToHabits }) {
   const missedMap    = getMissed();
   const isFutureDate = selected > todayStr;
 
-  const dayTasks = tasks.filter(t=>t.dueDate===selected).map(t=>({
+  const dayTasks = tasks.filter(t => {
+    if (t.dueDate === selected) return true;
+    if (t.isRecurring && (t.completedDates || []).includes(selected)) return true;
+    return false;
+  }).map(t=>({
     type:"task",id:t.id,title:t.title,taskIcon:t.icon||"check",color:"#E84A8A",
-    kind:"Task",done:t.completed,isRecurring:!!t.isRecurring,
+    kind:"Task",done:t.isRecurring ? (t.completedDates || []).includes(selected) : t.completed,
+    isRecurring:!!t.isRecurring, rawTask: t
   }));
 
   const dayHabits = habits.filter(h=>{
@@ -348,7 +353,7 @@ export default function Today({ onGoToTasks, onGoToCalendar, onGoToHabits }) {
           <AnimatePresence initial={false}>
             {items.map(item=>(
               <AgendaItem key={`${item.type}-${item.id}`} item={item} accent={accent} isFuture={isFutureDate}
-                onToggleTask={(id,c)=>updateTask(id,{completed:c})}
+                onToggleTask={() => toggleComplete(item.rawTask, selected)}
                 onToggleHabit={(id,d)=>toggleHabit(id,d)}/>
             ))}
           </AnimatePresence>

@@ -66,6 +66,7 @@ export const ThemeProvider = ({ children }) => {
     return ["dark","ultra","light"].includes(t) ? t : "dark";
   });
   const [accent, setAccent] = useState(() => normalizeAccent(localStorage.getItem("accent")||DEFAULT_ACCENT));
+  const [buttonShape, setButtonShape] = useState(() => localStorage.getItem("buttonShape") || "rounded");
 
   useEffect(() => {
     localStorage.setItem("theme",  theme);
@@ -79,11 +80,13 @@ export const ThemeProvider = ({ children }) => {
     root.style.setProperty("--accent-glow",    withAlpha(accent,0.30));
     root.style.setProperty("--accent-subtle",  withAlpha(accent,0.15));
     root.style.setProperty("--accent-soft",    withAlpha(accent,0.08));
-  }, [theme, accent]);
+    root.style.setProperty("--radius-btn",     buttonShape === "pill" ? "999px" : "14px");
+  }, [theme, accent, buttonShape]);
 
   const toggleTheme  = () => setTheme(p => p==="dark"?"light":p==="light"?"ultra":"dark");
   const setThemeTo   = (t) => setTheme(t);
   const changeAccent = (c) => setAccent(c);
+  const changeShape  = (s) => { setButtonShape(s); localStorage.setItem("buttonShape", s); };
 
   return (
     <ThemeContext.Provider value={{
@@ -91,6 +94,7 @@ export const ThemeProvider = ({ children }) => {
       isDark: theme!=="light",
       isUltraDark: theme==="ultra",
       accent, changeAccent, setAccent: changeAccent,
+      buttonShape, changeShape,
       ACCENT_PRESETS,
     }}>
       {children}

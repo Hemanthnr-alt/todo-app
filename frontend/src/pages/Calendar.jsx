@@ -20,6 +20,7 @@ import { useTheme } from "../context/ThemeContext";
 import { useHabits } from "../hooks/useHabits";
 import { useTasks } from "../hooks/useTasks";
 import { localTodayYMD } from "../utils/date";
+import { lifecycleOf } from "../utils/recurringTask";
 
 const MONTH_NAMES = ["January","February","March","April","May","June","July","August","September","October","November","December"];
 const DAY_SHORT   = ["S","M","T","W","T","F","S"];
@@ -157,7 +158,9 @@ export default function Calendar() {
 
   const tasksByDate = useMemo(() => {
     const m = {};
-    tasks.forEach(t => { if(t.dueDate){if(!m[t.dueDate])m[t.dueDate]=[];m[t.dueDate].push(t);} });
+    tasks
+      .filter(t => lifecycleOf(t) === "active")
+      .forEach(t => { if(t.dueDate){if(!m[t.dueDate])m[t.dueDate]=[];m[t.dueDate].push(t);} });
     return m;
   }, [tasks]);
 

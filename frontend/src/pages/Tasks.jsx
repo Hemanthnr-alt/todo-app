@@ -6,7 +6,7 @@
  * Task action sheet (Calendar / Edit / Archive / Delete)
  */
 import { AnimatePresence, motion } from "framer-motion";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import toast from "react-hot-toast";
 import CenteredModal from "../components/CenteredModal";
 import CustomSelect from "../components/CustomSelect";
@@ -199,11 +199,11 @@ function TaskRow({ task, categories, tab, onToggle, onDelete, onEdit, onRestore,
 }
 
 // ─── Main page ─────────────────────────────────────────────────────────────────
-export default function Tasks() {
+export default function Tasks({ initialTab = null }) {
   const { accent } = useTheme();
   const {
     tasks, categories, loading,
-    addTask, updateTask, deleteTask,
+    addTask, updateTask, toggleComplete, deleteTask,
     restoreTask, archiveTask, permanentDeleteTask, addCategory,
   } = useTasks();
 
@@ -212,6 +212,13 @@ export default function Tasks() {
   // Lifecycle sub-tab: "active" | "archive" | "trash"
   const [lifetab,     setLifetab]     = useState("active");
   const [search,      setSearch]      = useState("");
+
+  // Apply initialTab from routing
+  useEffect(() => {
+    if (initialTab === "recurring" || initialTab === "single") {
+      setMainTab(initialTab);
+    }
+  }, [initialTab]);
   const [filter,      setFilter]      = useState("all");
   const [showForm,    setShowForm]    = useState(false);
   const [editingId,   setEditingId]   = useState(null);
@@ -253,16 +260,10 @@ export default function Tasks() {
   const catOptions = [{value:"",label:"No category"}, ...categories.map(c=>({value:c.id,label:`${c.icon||""} ${c.name}`}))];
 
   // Toggle
-  const handleToggle = async (task, completed) => {
-    if (completed && task.isRecurring) {
-      const ymd = now;
-      const dates = [...new Set([...(task.completedDates||[]),ymd])];
-      const next  = computeNextDueDate(task, task.dueDate||ymd);
-      await updateTask(task.id,{completed:false,completedDates:dates,dueDate:next});
-      toast.success("Logged · next date updated");
-      return;
-    }
-    await updateTask(task.id,{completed});
+  const handleToggle = async (task, __ignored_completed_arg) => {
+    // we use generalized toggleComplete that handles isRecurring automatically
+    // pass task down so global recur date computation applies!
+    await toggleComplete(task);
   };
 
   const handleSkip = async (task) => {

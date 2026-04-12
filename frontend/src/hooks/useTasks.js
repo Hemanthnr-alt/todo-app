@@ -4,7 +4,7 @@ import { useAuth } from "../context/AuthContext";
 import api from "../services/api";
 import { isNativeApp, localCategories, localTasks } from "../services/storage";
 import { localTodayYMD } from "../utils/date";
-import { lifecycleOf } from "../utils/recurringTask";
+import { computeNextDueDate, lifecycleOf } from "../utils/recurringTask";
 
 const TASKS_KEY = "30_offline_tasks";
 const CATS_KEY = "30_offline_cats";
@@ -467,10 +467,28 @@ export const useTasks = () => {
     });
   }, [setTasks]);
 
-  const toggleComplete = useCallback(async (task) => {
-    const updated = await updateTask(task.id, { completed: !task.completed });
-    if (updated?.completed) toast.success("Task completed.");
-    return updated;
+  const toggleComplete = useCallback(async (task, customDate = null) => {
+    const isCompleting = !task.completed;
+    const ymd = customDate || localTodayYMD();
+    
+    if (isCompleting && task.isRecurring) {
+      const dates = [...new Set([...(task.completedDates||[]), ymd])];
+      const next = computeNextDueDate(task, task.dueDate || ymd);
+      const updated = await updateTask(task.id, { completed: false, completedDates: dates, dueDate: next, updatedAt: new Date().toISOString() });
+      if (updated) toast.success("Logged · next date scheduled");
+      return updated;
+    } else {
+      // Logic for un-completing a recurring task inside the history (Today page on a past day)
+      if (!isCompleting && task.isRecurring) {
+        const dates = (task.completedDates||[]).filter(d => d !== ymd);
+        const updated = await updateTask(task.id, { completed: false, completedDates: dates, updatedAt: new Date().toISOString() });
+        return updated;
+      }
+      
+      const updated = await updateTask(task.id, { completed: isCompleting, updatedAt: new Date().toISOString() });
+      if (updated?.completed) toast.success("Task completed.");
+      return updated;
+    }
   }, [updateTask]);
 
   const createOfflineCategory = useCallback((catData) => {

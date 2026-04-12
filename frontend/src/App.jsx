@@ -46,8 +46,9 @@ function LoadingScreen() {
 }
 
 function AppContent() {
-  const [page, setPage]       = useState("today");
-  const [todayKey, setTodayKey] = useState(0);
+  const [page, setPage]             = useState("today");
+  const [todayKey, setTodayKey]       = useState(0);
+  const [taskInitialTab, setTaskInitialTab] = useState(null);
   const { loading } = useAuth();
   const [isWaking, setIsWaking] = useState(false);
   const { accent } = useTheme();
@@ -72,8 +73,9 @@ function AppContent() {
     return () => { clearTimeout(t); ctl.abort(); };
   }, [NATIVE]);
 
-  const handlePageChange = (p) => {
+  const handlePageChange = (p, tab = null) => {
     if (p === "today") setTodayKey(k => k+1);
+    if (p === "tasks") setTaskInitialTab(tab);
     setPage(p);
   };
 
@@ -92,14 +94,14 @@ function AppContent() {
       <div className="mobile-page-content">
         {page==="today" && (
           <Today key={todayKey}
-            onGoToTasks={()=>handlePageChange("tasks")}
+            onGoToTasks={(tab) => handlePageChange("tasks", tab)}
             onGoToHabits={()=>handlePageChange("habits")}
             onGoToCalendar={()=>handlePageChange("calendar")}
             onGoToTimer={()=>handlePageChange("timer")}
             onGoToRewards={()=>handlePageChange("rewards")}/>
         )}
         {page==="habits"     && <Habits/>}
-        {page==="tasks"      && <Tasks/>}
+        {page==="tasks"      && <Tasks initialTab={taskInitialTab}/>}
         {page==="calendar"   && <Calendar/>}
         {page==="categories" && <Categories/>}
         {page==="timer"      && <Timer/>}
