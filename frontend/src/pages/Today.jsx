@@ -256,7 +256,7 @@ export default function Today({ onGoToTasks, onGoToCalendar, onGoToHabits }) {
         <div className="glass-panel" style={{borderRadius:"16px",padding:"24px",textAlign:"center"}}>
           <h2 style={{fontSize:"22px",marginBottom:"8px",letterSpacing:"-0.03em"}}>Today</h2>
           <p style={{color:"var(--text-muted)",fontSize:"13px",marginBottom:"16px"}}>Sign in to see your daily list.</p>
-          <button onClick={onGoToTasks} className="btn-primary" style={{padding:"0 18px",height:"42px",fontSize:"13px"}}>Open Tasks</button>
+          <button onClick={() => window.dispatchEvent(new Event("open-auth"))} className="btn-primary" style={{padding:"0 18px",height:"42px",fontSize:"13px"}}>Sign in</button>
         </div>
       </div>
     );

@@ -14,7 +14,11 @@ export const useHabits = () => {
   const { isAuthenticated } = useAuth();
   const NATIVE = isNativeApp();
 
-  const [habits,  setHabitsState] = useState(() => NATIVE ? localHabits.getAll() : (load(HABITS_KEY)||[]));
+  const [habits,  setHabitsState] = useState(() => {
+    if (NATIVE) return localHabits.getAll();
+    const cached = load(HABITS_KEY);
+    return Array.isArray(cached) ? cached : [];
+  });
   const [loading, setLoading]     = useState(!NATIVE);
   const syncing = useRef(false);
   const habitsRef = useRef(habits);

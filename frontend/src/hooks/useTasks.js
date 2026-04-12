@@ -46,8 +46,16 @@ export const useTasks = () => {
   const { isAuthenticated } = useAuth();
   const NATIVE = isNativeApp();
 
-  const [tasks, setTasksState] = useState(() => (NATIVE ? localTasks.getAll() : (loadLocal(TASKS_KEY) || [])));
-  const [categories, setCatsState] = useState(() => (NATIVE ? localCategories.getAll() : (loadLocal(CATS_KEY) || [])));
+  const [tasks, setTasksState] = useState(() => {
+    if (NATIVE) return localTasks.getAll();
+    const cached = loadLocal(TASKS_KEY);
+    return Array.isArray(cached) ? cached : [];
+  });
+  const [categories, setCatsState] = useState(() => {
+    if (NATIVE) return localCategories.getAll();
+    const cached = loadLocal(CATS_KEY);
+    return Array.isArray(cached) ? cached : [];
+  });
   const [loading, setLoading] = useState(!NATIVE);
   const syncingRef = useRef(false);
 

@@ -122,6 +122,8 @@ function MenuSheet({ onClose, onSettings, isAuthenticated, user, logout, toggleT
 
   if (isAuthenticated) {
     menuItems.push({ icon:"🚪", label:"Sign out", fn:()=>{ logout(); toast("See you soon."); onClose(); }, danger:true });
+  } else {
+    menuItems.push({ icon:"👤", label:"Sign in", fn:()=>{ window.dispatchEvent(new Event("open-auth")); onClose(); } });
   }
 
   return (
@@ -173,6 +175,12 @@ export default function Navbar({ activePage, onPageChange }) {
     update();
     const iv = setInterval(update, 5000);
     return () => clearInterval(iv);
+  }, []);
+
+  useEffect(() => {
+    const handleOpenAuth = () => setShowAuth(true);
+    window.addEventListener("open-auth", handleOpenAuth);
+    return () => window.removeEventListener("open-auth", handleOpenAuth);
   }, []);
 
   const btnStyle = {
