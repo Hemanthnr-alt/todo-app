@@ -87,15 +87,33 @@ function AppearanceTab({ theme, setTheme, accent, changeAccent, ACCENT_PRESETS, 
           <div style={{ fontSize:"14px",fontWeight:700,color:"var(--text-primary)",marginBottom:"12px",fontFamily:"var(--font-heading)" }}>Button style</div>
           <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:"8px" }}>
             {[
-              {id:"sharp",l:"Sharp",r:"4px"},
-              {id:"rounded",l:"Rounded",r:"14px"},
-              {id:"pill",l:"Pill",r:"999px"}
+              {id:"sharp",   l:"Sharp",   r:"4px"},
+              {id:"rounded", l:"Rounded", r:"14px"},
+              {id:"pill",    l:"Pill",    r:"999px"},
             ].map(s=>(
               <button key={s.id} type="button" onClick={()=>changeShape(s.id)} className="btn-reset"
-                style={{ height:"42px",borderRadius:s.r,background:buttonShape===s.id?"var(--accent)":"var(--surface)",color:buttonShape===s.id?"#fff":"var(--text-secondary)",border:buttonShape===s.id?`1px solid var(--accent)`:"1px solid var(--border)",fontWeight:700,fontSize:"12px",transition:"all 150ms",boxShadow:buttonShape===s.id?`0 4px 12px var(--accent-glow)`:"none" }}>
+                style={{
+                  height:"42px",
+                  /* Each button previews its OWN shape */
+                  borderRadius: s.r,
+                  background: buttonShape===s.id ? "var(--accent)" : "var(--surface)",
+                  color: buttonShape===s.id ? "#fff" : "var(--text-secondary)",
+                  border: buttonShape===s.id ? "1.5px solid var(--accent)" : "1px solid var(--border)",
+                  fontWeight:700, fontSize:"12px",
+                  transition:"all 160ms",
+                  boxShadow: buttonShape===s.id ? "0 4px 14px var(--accent-glow)" : "none",
+                  outline: buttonShape===s.id ? "2px solid var(--accent)" : "none",
+                  outlineOffset: "2px",
+                }}>
                 {s.l}
               </button>
             ))}
+          </div>
+          {/* Live preview strip */}
+          <div style={{ marginTop:"14px",padding:"12px",background:"var(--surface)",borderRadius:"10px",border:"1px solid var(--border)",display:"flex",gap:"8px",alignItems:"center" }}>
+            <span style={{fontSize:"11px",color:"var(--text-muted)",fontWeight:600,flexShrink:0}}>Preview</span>
+            <button className="btn-primary" style={{flex:1,height:"36px",fontSize:"12px",fontWeight:700}}>Save changes</button>
+            <button className="btn-reset" style={{flex:1,height:"36px",borderRadius:"var(--radius-btn)",border:"1px solid var(--border)",background:"var(--surface-elevated)",color:"var(--text-secondary)",fontSize:"12px",fontWeight:600}}>Cancel</button>
           </div>
         </div>
       </Card>

@@ -468,27 +468,45 @@ export const useTasks = () => {
   }, [setTasks]);
 
   const toggleComplete = useCallback(async (task, customDate = null) => {
-    const isCompleting = !task.completed;
     const ymd = customDate || localTodayYMD();
-    
-    if (isCompleting && task.isRecurring) {
-      const dates = [...new Set([...(task.completedDates||[]), ymd])];
-      const next = computeNextDueDate(task, task.dueDate || ymd);
-      const updated = await updateTask(task.id, { completed: false, completedDates: dates, dueDate: next, updatedAt: new Date().toISOString() });
-      if (updated) toast.success("Logged · next date scheduled");
-      return updated;
-    } else {
-      // Logic for un-completing a recurring task inside the history (Today page on a past day)
-      if (!isCompleting && task.isRecurring) {
-        const dates = (task.completedDates||[]).filter(d => d !== ymd);
-        const updated = await updateTask(task.id, { completed: false, completedDates: dates, updatedAt: new Date().toISOString() });
+
+    if (task.isRecurring) {
+      const completedDates = task.completedDates || [];
+      const alreadyDone = completedDates.includes(ymd);
+
+      if (alreadyDone) {
+        // UN-TICK: remove this date from history
+        const dates = completedDates.filter(d => d !== ymd);
+        const updated = await updateTask(task.id, {
+          completed: false,
+          completedDates: dates,
+          updatedAt: new Date().toISOString(),
+        });
+        return updated;
+      } else {
+        // TICK: record date, advance dueDate
+        const dates = [...new Set([...completedDates, ymd])];
+        const next = computeNextDueDate(task, task.dueDate || ymd);
+        const updated = await updateTask(task.id, {
+          completed: false,
+          completedDates: dates,
+          dueDate: next,
+          updatedAt: new Date().toISOString(),
+        });
+        // Stable ID prevents multiple stacked toasts
+        if (updated) toast.success("Logged · next date scheduled", { id: "recurring-log" });
         return updated;
       }
-      
-      const updated = await updateTask(task.id, { completed: isCompleting, updatedAt: new Date().toISOString() });
-      if (updated?.completed) toast.success("Task completed.");
-      return updated;
     }
+
+    // Non-recurring task: simple flip
+    const isCompleting = !task.completed;
+    const updated = await updateTask(task.id, {
+      completed: isCompleting,
+      updatedAt: new Date().toISOString(),
+    });
+    if (updated?.completed) toast.success("Task completed.", { id: "task-complete" });
+    return updated;
   }, [updateTask]);
 
   const createOfflineCategory = useCallback((catData) => {
