@@ -76,35 +76,35 @@ function TaskActionSheet({ task, categories, onClose, onEdit, onDelete, onArchiv
   const cat = categories.find(c => c.id === task.categoryId);
   const p   = PRIORITY[task.priority] || PRIORITY.medium;
   const actions = [
-    { icon:"📅", label:"Calendar",  fn:()=>{ toast("Task calendar coming soon"); onClose(); } },
+    { icon:"📅", label:"Calendar",  fn:()=>{ onClose(); } },
     { icon:"✏️", label:"Edit",      fn:()=>{ onEdit(task); onClose(); } },
-    { icon:"🗃️",label:"Archive",   fn:()=>{ onArchive(task.id); toast("Archived"); onClose(); } },
+    { icon:"🗃️",label:"Archive",   fn:()=>{ onArchive(task.id); onClose(); } },
     { icon:"🗑️",label:"Delete",    fn:()=>{ onDelete(task.id); onClose(); }, danger:true },
   ];
   return (
     <div onClick={onClose} style={{position:"fixed",inset:0,zIndex:9000,background:"rgba(0,0,0,0.55)",backdropFilter:"blur(8px)",display:"flex",alignItems:"flex-end",justifyContent:"center"}}>
       <motion.div onClick={e=>e.stopPropagation()} initial={{y:80,opacity:0}} animate={{y:0,opacity:1}} exit={{y:80,opacity:0}} transition={{type:"spring",stiffness:340,damping:30}}
-        style={{width:"100%",maxWidth:"440px",background:"var(--surface-raised)",borderRadius:"20px 20px 0 0",padding:"12px 0 44px",border:"1px solid var(--border-strong)",borderBottom:"none"}}>
-        <div style={{width:"36px",height:"3px",borderRadius:"999px",background:"var(--border-strong)",margin:"0 auto 10px"}}/>
+        style={{width:"100%",maxWidth:"440px",background:"var(--surface-raised)",borderRadius:"24px 24px 0 0",padding:"12px 0 44px",border:"1px solid var(--border-strong)",borderBottom:"none"}}>
+        <div style={{width:"36px",height:"4px",borderRadius:"999px",background:"var(--border-strong)",margin:"0 auto 14px"}}/>
         {/* header */}
-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"6px 16px 10px"}}>
-          <div>
-            <div style={{fontSize:"15px",fontWeight:700,color:"var(--text-primary)",marginBottom:"3px"}}>{task.title}</div>
-            <div style={{display:"flex",alignItems:"center",gap:"6px"}}>
-              <span style={{fontSize:"10px",fontWeight:700,color:p.color,background:p.bg,padding:"1px 6px",borderRadius:"999px"}}>{p.label}</span>
-              {task.isRecurring&&<span style={{fontSize:"10px",color:"var(--text-muted)",display:"inline-flex",alignItems:"center",gap:"2px"}}><IconRepeat size={10} stroke="var(--text-muted)"/>Recurring</span>}
-              {cat&&<span style={{fontSize:"10px",color:cat.color,fontWeight:600}}>{cat.icon} {cat.name}</span>}
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"0 20px 16px"}}>
+          <div style={{flex:1,minWidth:0}}>
+            <div style={{fontSize:"17px",fontWeight:800,color:"var(--text-primary)",marginBottom:"4px",fontFamily:"var(--font-heading)"}}>{task.title}</div>
+            <div style={{display:"flex",alignItems:"center",gap:"6px",flexWrap:"wrap"}}>
+              <span style={{fontSize:"10px",fontWeight:700,color:p.color,background:p.bg,padding:"1px 8px",borderRadius:"999px",border:`1px solid ${p.color}28`}}>{p.label}</span>
+              {task.isRecurring&&<span style={{fontSize:"10px",color:"var(--text-muted)",fontWeight:600,background:"var(--surface-elevated)",padding:"1px 8px",borderRadius:"999px",display:"inline-flex",alignItems:"center",gap:"3px"}}><IconRepeat size={10} stroke="var(--text-muted)"/>Recurring</span>}
+              {cat&&<span style={{fontSize:"10px",color:cat.color,fontWeight:700,background:`${cat.color}15`,padding:"1px 8px",borderRadius:"999px"}}>{cat.icon} {cat.name}</span>}
             </div>
           </div>
-          <TaskIconTile iconKey={task.icon||"check"} color={task.color||p.color} size={36}/>
+          <TaskIconTile iconKey={task.icon||"check"} color={task.color||p.color} size={40}/>
         </div>
-        <div style={{height:"1px",background:"var(--border)",marginBottom:"2px"}}/>
+        <div style={{height:"1px",background:"var(--border)",marginBottom:"4px"}}/>
         {actions.map(a=>(
           <button key={a.label} type="button" onClick={a.fn} className="btn-reset"
-            style={{width:"100%",padding:"13px 18px",display:"flex",alignItems:"center",gap:"14px",color:a.danger?"var(--danger)":"var(--text-primary)",fontSize:"14px",fontWeight:500,background:"transparent"}}>
-            <span style={{fontSize:"18px",width:"22px",textAlign:"center"}}>{a.icon}</span>
+            style={{width:"100%",padding:"14px 20px",display:"flex",alignItems:"center",gap:"14px",color:a.danger?"var(--danger)":"var(--text-primary)",fontSize:"15px",fontWeight:600,background:"transparent"}}>
+            <span style={{fontSize:"20px",width:"24px",textAlign:"center",display:"flex",alignItems:"center",justifyContent:"center"}}>{a.icon}</span>
             {a.label}
-            <span style={{marginLeft:"auto",color:"var(--text-muted)",fontSize:"16px"}}>›</span>
+            <span style={{marginLeft:"auto",color:"var(--text-tertiary)",fontSize:"16px"}}>›</span>
           </button>
         ))}
       </motion.div>
@@ -120,45 +120,57 @@ function TaskRow({ task, categories, tab, onToggle, onDelete, onEdit, onRestore,
   const now = today();
   const overdue = due && due < now && !task.completed;
   const isActive = tab==="active";
+  const color = task.color || p.color;
 
   return (
-    <motion.div initial={{opacity:0,x:-4}} animate={{opacity:1,x:0}} exit={{opacity:0,x:4}} transition={{duration:0.16}}
+    <motion.div initial={{opacity:0,y:6}} animate={{opacity:1,y:0}} exit={{opacity:0,scale:0.97}} transition={{duration:0.2}}
       style={{
-        display:"flex",alignItems:"center",gap:"11px",padding:"12px 8px",
+        display:"flex",alignItems:"center",gap:"12px",
+        padding:"13px 14px 13px 0",
         borderBottom:"1px solid var(--border)",
-        borderLeft:task.completed?`3px solid ${p.color}`:"3px solid transparent",
-        borderRadius:"0 12px 12px 0",
-        background:task.completed?`linear-gradient(90deg,${p.color}10,transparent 50%)`:undefined,
+        position:"relative",
+        background:task.completed?`linear-gradient(90deg,${color}08,transparent 60%)`:"",
+        transition:"background 250ms",
       }}>
 
+      {/* Colored left strip */}
+      <div style={{position:"absolute",left:0,top:"12%",bottom:"12%",width:"3px",borderRadius:"999px",
+        background:task.completed?color:`${color}44`,transition:"background 250ms"}}/>
+
+      {/* left margin for strip */}
+      <div style={{width:"10px",flexShrink:0}}/>
+
       {/* check circle */}
-      {isActive?(
+      {isActive ? (
         <PremiumRoundComplete checked={task.completed} onClick={()=>onToggle(task,!task.completed)}
-          color={p.color} ariaLabel={task.completed?"Mark incomplete":"Complete"}/>
-      ):<div style={{width:32}}/>}
+          color={color} ariaLabel={task.completed?"Mark incomplete":"Complete"}/>
+      ) : <div style={{width:32}}/>}
 
       {/* icon tile */}
-      <TaskIconTile iconKey={task.icon||"check"} color={task.color||p.color} size={34}/>
+      <TaskIconTile iconKey={task.icon||"check"} color={color} size={36}/>
 
       {/* text */}
       <div style={{flex:1,minWidth:0}}>
-        <PremiumCompleteTitle complete={task.completed} lineColor="var(--text-secondary)">
+        <PremiumCompleteTitle complete={task.completed} lineColor={color}>
           {task.title}
         </PremiumCompleteTitle>
-        <div style={{display:"flex",gap:"5px",flexWrap:"wrap",marginTop:"3px",alignItems:"center"}}>
-          <span style={{fontSize:"10px",fontWeight:700,color:p.color,background:p.bg,padding:"1px 6px",borderRadius:"999px",border:`1px solid ${p.color}28`}}>{p.label}</span>
+        <div style={{display:"flex",gap:"5px",flexWrap:"wrap",marginTop:"4px",alignItems:"center"}}>
+          <span style={{fontSize:"10px",fontWeight:700,color,background:`${color}18`,padding:"1px 7px",borderRadius:"999px",border:`1px solid ${color}28`,textTransform:"uppercase",letterSpacing:"0.04em"}}>{p.label}</span>
+          
           {task.isRecurring&&(
-            <span style={{fontSize:"10px",color:"var(--text-muted)",display:"inline-flex",alignItems:"center",gap:"2px",fontWeight:600}}>
-              <IconRepeat size={9} stroke="var(--text-muted)"/> Every {task.recurringFrequency||"day"}
+            <span style={{fontSize:"10px",color:"var(--text-muted)",display:"inline-flex",alignItems:"center",gap:"2px",fontWeight:600,padding:"1px 7px",borderRadius:"999px",background:"var(--surface-elevated)"}}>
+              <IconRepeat size={9} stroke="var(--text-muted)"/> Everyday
             </span>
           )}
+          
           {cat&&(
-            <span style={{fontSize:"10px",color:cat.color,fontWeight:600}}>
+            <span style={{fontSize:"10px",color:cat.color,fontWeight:700,background:`${cat.color}15`,padding:"1px 7px",borderRadius:"999px",display:"flex",alignItems:"center",gap:"3px"}}>
               {cat.icon} {cat.name}
             </span>
           )}
+          
           {due&&(
-            <span style={{fontSize:"10px",fontWeight:600,color:overdue?"var(--danger)":due===now?"var(--accent)":"var(--text-muted)"}}>
+            <span style={{fontSize:"10px",fontWeight:700,color:overdue?"var(--danger)":due===now?"var(--accent)":"var(--text-muted)",marginLeft:"2px"}}>
               {due===now?"Today":overdue?`Overdue ${due}`:due}
             </span>
           )}
@@ -166,30 +178,32 @@ function TaskRow({ task, categories, tab, onToggle, onDelete, onEdit, onRestore,
       </div>
 
       {/* actions */}
-      <div style={{display:"flex",gap:"4px",flexShrink:0,alignItems:"center"}}>
+      <div style={{display:"flex",gap:"6px",flexShrink:0,alignItems:"center"}}>
         {isActive&&task.isRecurring&&(
-          <button type="button" onClick={()=>onSkipRecurring(task)} className="btn-reset"
-            style={{fontSize:"10px",fontWeight:600,color:"var(--text-muted)",padding:"5px 7px",borderRadius:"7px",border:"1px solid var(--border)",background:"var(--surface)"}}>Skip</button>
+          <motion.button whileTap={{scale:0.92}} type="button" onClick={()=>onSkipRecurring(task)} className="btn-reset"
+            style={{fontSize:"11px",fontWeight:700,color:"var(--text-secondary)",padding:"4px 10px",borderRadius:"8px",border:"1px solid var(--border)",background:"var(--surface-raised)"}}>Skip</motion.button>
         )}
         {isActive&&(
           <motion.button whileTap={{scale:0.88}} type="button" onClick={()=>onOpenAction(task)} className="btn-reset"
-            style={{width:"28px",height:"28px",borderRadius:"8px",background:"var(--surface)",border:"1px solid var(--border)",color:"var(--text-muted)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"13px",fontWeight:700}}>⋮</motion.button>
+            style={{width:"30px",height:"30px",borderRadius:"10px",background:"var(--surface)",border:"1px solid var(--border)",color:"var(--text-muted)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"14px",fontWeight:700}}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="12" cy="19" r="1.5"/></svg>
+          </motion.button>
         )}
         {tab==="trash"&&(
           <>
             <button type="button" onClick={()=>onRestore(task.id)} className="btn-reset"
-              style={{fontSize:"11px",fontWeight:700,color:"var(--accent)",padding:"5px 8px",borderRadius:"8px",border:"1px solid var(--accent)28",background:"var(--accent-soft)"}}>Restore</button>
+              style={{fontSize:"11px",fontWeight:700,color:"var(--accent)",padding:"6px 10px",borderRadius:"10px",border:"1px solid var(--accent)28",background:"var(--accent-subtle)"}}>Restore</button>
             <button type="button" onClick={()=>onPermanent(task.id)} className="btn-reset"
-              style={{fontSize:"11px",fontWeight:700,color:"var(--danger)",padding:"5px 8px"}}>Delete</button>
+              style={{fontSize:"11px",fontWeight:700,color:"var(--danger)",padding:"6px 10px"}}>Delete</button>
           </>
         )}
         {tab==="archive"&&(
           <>
             <button type="button" onClick={()=>onRestore(task.id)} className="btn-reset"
-              style={{fontSize:"11px",fontWeight:700,color:"var(--accent)",padding:"5px 8px",borderRadius:"8px",border:"1px solid var(--border)",background:"var(--surface)"}}>Restore</button>
+              style={{fontSize:"11px",fontWeight:700,color:"var(--accent)",padding:"6px 10px",borderRadius:"10px",border:"1px solid var(--border)",background:"var(--surface-raised)"}}>Restore</button>
             <motion.button whileTap={{scale:0.88}} type="button" onClick={()=>onDelete(task.id)} className="btn-reset"
-              style={{width:"28px",height:"28px",borderRadius:"8px",background:"var(--surface)",border:"1px solid var(--border)",color:"var(--danger)",display:"flex",alignItems:"center",justifyContent:"center"}}>
-              <IconTrash size={13} stroke="currentColor"/>
+              style={{width:"30px",height:"30px",borderRadius:"10px",background:"var(--surface)",border:"1px solid var(--border)",color:"var(--danger)",display:"flex",alignItems:"center",justifyContent:"center"}}>
+              <IconTrash size={14} stroke="currentColor"/>
             </motion.button>
           </>
         )}
@@ -217,6 +231,10 @@ export default function Tasks({ initialTab = null }) {
   useEffect(() => {
     if (initialTab === "recurring" || initialTab === "single") {
       setMainTab(initialTab);
+      // Wait for states to settle then open form
+      setTimeout(() => {
+        openCreate(initialTab === "recurring");
+      }, 100);
     }
   }, [initialTab]);
   const [filter,      setFilter]      = useState("all");

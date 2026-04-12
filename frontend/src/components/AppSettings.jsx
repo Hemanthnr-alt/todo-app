@@ -84,11 +84,15 @@ function AppearanceTab({ theme, setTheme, accent, changeAccent, ACCENT_PRESETS, 
       <SH title="UI Elements"/>
       <Card>
         <div style={{ padding:"16px",background:"var(--surface-raised)" }}>
-          <div style={{ fontSize:"14px",fontWeight:500,color:"var(--text-primary)",marginBottom:"12px" }}>Button style</div>
-          <div style={{ display:"flex",gap:"8px" }}>
-            {[{id:"rounded",l:"Rounded"},{id:"pill",l:"Pill"}].map(s=>(
+          <div style={{ fontSize:"14px",fontWeight:700,color:"var(--text-primary)",marginBottom:"12px",fontFamily:"var(--font-heading)" }}>Button style</div>
+          <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:"8px" }}>
+            {[
+              {id:"sharp",l:"Sharp",r:"4px"},
+              {id:"rounded",l:"Rounded",r:"14px"},
+              {id:"pill",l:"Pill",r:"999px"}
+            ].map(s=>(
               <button key={s.id} type="button" onClick={()=>changeShape(s.id)} className="btn-reset"
-                style={{ flex:1,padding:"10px",borderRadius:s.id==="pill"?"999px":"14px",background:buttonShape===s.id?"var(--accent)":"var(--surface)",color:buttonShape===s.id?"#fff":"var(--text-secondary)",border:buttonShape===s.id?"1px solid var(--accent)":"1px solid var(--border)",fontWeight:700,fontSize:"13px",transition:"all 150ms" }}>
+                style={{ height:"42px",borderRadius:s.r,background:buttonShape===s.id?"var(--accent)":"var(--surface)",color:buttonShape===s.id?"#fff":"var(--text-secondary)",border:buttonShape===s.id?`1px solid var(--accent)`:"1px solid var(--border)",fontWeight:700,fontSize:"12px",transition:"all 150ms",boxShadow:buttonShape===s.id?`0 4px 12px var(--accent-glow)`:"none" }}>
                 {s.l}
               </button>
             ))}
@@ -133,28 +137,37 @@ function ProfilePhotoModal({ user, updateProfile, onClose }) {
 
   return (
     <CenteredModal isOpen={true} onClose={onClose} title="Profile Photo" maxWidth="320px">
-      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "20px" }}>
+      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "24px", padding: "8px 0" }}>
         
-        {user?.avatar ? (
-          <div style={{ width: "160px", height: "160px", borderRadius: "50%", background: `url(${user.avatar}) center/cover`, border: "2px solid var(--border-strong)", boxShadow: "0 8px 24px rgba(0,0,0,0.3)" }} />
-        ) : (
-          <div style={{ width: "160px", height: "160px", borderRadius: "50%", background: "var(--accent-subtle)", border: "2px solid var(--accent)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "64px", fontWeight: 800, fontFamily: "var(--font-heading)", color: "var(--accent)" }}>
-            {(user?.name || "?").charAt(0).toUpperCase()}
-          </div>
-        )}
+        <div style={{ position: "relative" }}>
+          {user?.avatar ? (
+            <div style={{ width: "160px", height: "160px", borderRadius: "54px", background: `url(${user.avatar}) center/cover`, border: "4px solid var(--surface-raised)", boxShadow: "0 12px 32px rgba(0,0,0,0.3)" }} />
+          ) : (
+            <div style={{ width: "160px", height: "160px", borderRadius: "54px", background: "var(--accent-subtle)", border: "3px solid var(--accent)44", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "64px", fontWeight: 900, fontFamily: "var(--font-heading)", color: "var(--accent)", boxShadow: `0 12px 32px ${accent}22` }}>
+              {(user?.name || "?").charAt(0).toUpperCase()}
+            </div>
+          )}
+        </div>
 
         <input type="file" accept="image/*" ref={fileInputRef} onChange={handleFileChange} style={{display:"none"}} />
         
-        <div style={{ display: "flex", flexDirection: "column", gap: "8px", width: "100%" }}>
-          <button type="button" onClick={() => fileInputRef.current?.click()} disabled={loading} className="btn-primary" style={{ width: "100%", height: "46px" }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: "10px", width: "100%" }}>
+          <button type="button" onClick={() => fileInputRef.current?.click()} disabled={loading} className="btn-primary" 
+            style={{ width: "100%", height: "48px", fontSize: "14px", fontWeight: 700 }}>
             {loading ? "Uploading..." : "Change Photo"}
           </button>
           
           {user?.avatar && (
-            <button type="button" onClick={removePhoto} disabled={loading} className="btn-reset" style={{ width: "100%", padding: "14px", borderRadius: "var(--radius-btn)", color: "var(--danger)", fontWeight: 700, fontSize: "14px", border: "1px solid var(--border)", background: "var(--surface-raised)" }}>
+            <button type="button" onClick={removePhoto} disabled={loading} className="btn-reset" 
+              style={{ width: "100%", height: "48px", borderRadius: "var(--radius-btn)", color: "var(--danger)", fontWeight: 700, fontSize: "14px", border: "1px solid var(--border)", background: "var(--surface-raised)", transition: "all 150ms" }}>
               Remove Photo
             </button>
           )}
+          
+          <button type="button" onClick={onClose} className="btn-reset" 
+            style={{ width: "100%", height: "48px", borderRadius: "var(--radius-btn)", color: "var(--text-muted)", fontWeight: 700, fontSize: "14px", border: "1px solid transparent" }}>
+            Cancel
+          </button>
         </div>
       </div>
     </CenteredModal>
@@ -192,18 +205,20 @@ function AccountTab({ user, updateProfile, changePassword, logout, onClose }) {
     <>
       <SH title="Profile"/>
       <Card>
-        <div style={{ padding:"20px",display:"grid",gap:"16px",background:"var(--surface-raised)" }}>
-          <div style={{ display:"flex",alignItems:"center",gap:"16px" }}>
-            <motion.button whileTap={{scale:0.95}} type="button" onClick={() => setPhotoModal(true)} className="btn-reset" title="Change photo"
-              style={{ width:"64px",height:"64px",borderRadius:"50%",background:user?.avatar?`url(${user.avatar}) center/cover`:"var(--accent-subtle)",border:user?.avatar?"1px solid var(--border-strong)":"1.5px solid var(--accent)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"26px",fontWeight:800,fontFamily:"var(--font-heading)",color:"var(--accent)",flexShrink:0,position:"relative",overflow:"hidden" }}>
-              {!user?.avatar && (user?.name||"?").charAt(0).toUpperCase()}
-              <div style={{position:"absolute",bottom:0,left:0,right:0,height:"20px",background:"rgba(0,0,0,0.5)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"10px",color:"#fff"}}>✏️</div>
-            </motion.button>
-            <div style={{flex:1}}>
-              <div style={{ fontSize:"18px",fontWeight:700,color:"var(--text-primary)" }}>{user?.name||"User"}</div>
-              <div style={{ fontSize:"13px",color:"var(--text-muted)" }}>{user?.email||"No email"}</div>
+        <div style={{ padding:"24px 20px",display:"flex",flexDirection:"column",alignItems:"center",background:"var(--surface-raised)",gap:"16px" }}>
+          <motion.button whileTap={{scale:0.95}} type="button" onClick={() => setPhotoModal(true)} className="btn-reset" title="Change photo"
+            style={{ width:"80px",height:"80px",borderRadius:"28px",background:user?.avatar?`url(${user.avatar}) center/cover`:"var(--accent-subtle)",border:user?.avatar?"2px solid var(--border-strong)":"2px solid var(--accent)44",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"32px",fontWeight:900,fontFamily:"var(--font-heading)",color:"var(--accent)",flexShrink:0,position:"relative",boxShadow:"0 8px 24px rgba(0,0,0,0.15)" }}>
+            {!user?.avatar && (user?.name||"?").charAt(0).toUpperCase()}
+            <div style={{position:"absolute",bottom:"-4px",right:"-4px",width:"24px",height:"24px",borderRadius:"8px",background:"var(--accent)",display:"flex",alignItems:"center",justifyContent:"center",border:"3px solid var(--surface-raised)",boxShadow:"0 3px 8px rgba(0,0,0,0.1)"}}>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
             </div>
+          </motion.button>
+          <div style={{textAlign:"center"}}>
+            <div style={{ fontSize:"18px",fontWeight:800,color:"var(--text-primary)",fontFamily:"var(--font-heading)" }}>{user?.name||"Display Name"}</div>
+            <div style={{ fontSize:"13px",color:"var(--text-muted)",marginTop:"1px" }}>{user?.email||"account@domain.com"}</div>
           </div>
+        </div>
+        <div style={{ padding:"0 20px 20px",display:"grid",gap:"12px",background:"var(--surface-raised)" }}>
           <div style={{display:"grid",gap:"10px",marginTop:"8px"}}>
             <input value={name}  onChange={e=>setName(e.target.value)}  placeholder="Display name" style={IS}/>
             <input value={email} onChange={e=>setEmail(e.target.value)} placeholder="Email" type="email" style={IS}/>
@@ -327,12 +342,13 @@ export default function AppSettings({ isOpen, onClose }) {
 
         <div style={{ width:"40px",height:"5px",borderRadius:"999px",background:"var(--border-hover)",margin:"14px auto 8px" }}/>
 
-        <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 20px 14px" }}>
+        <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",padding:"16px 20px 18px",background:"var(--bg)",position:"sticky",top:0,zIndex:10 }}>
           <div>
-            <div style={{ fontSize:"24px",fontWeight:800,color:"var(--text-primary)",fontFamily:"var(--font-heading)",letterSpacing:"-0.03em" }}>Settings</div>
+            <div style={{ fontSize:"22px",fontWeight:900,color:"var(--text-primary)",fontFamily:"var(--font-heading)",letterSpacing:"-0.03em" }}>Settings</div>
+            <div style={{ fontSize:"11px",color:"var(--text-muted)",fontWeight:600,textTransform:"uppercase",letterSpacing:"0.05em",marginTop:"1px" }}>Preferences & Account</div>
           </div>
-          <button type="button" onClick={onClose} className="btn-reset"
-            style={{ width:"34px",height:"34px",borderRadius:"10px",background:"var(--surface)",border:"1px solid var(--border)",color:"var(--text-secondary)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"18px" }}>×</button>
+          <motion.button whileTap={{scale:0.92}} type="button" onClick={onClose} className="btn-reset"
+            style={{ width:"36px",height:"36px",borderRadius:"12px",background:"var(--surface)",border:"1px solid var(--border)",color:"var(--text-secondary)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"20px",boxShadow:"0 2px 8px rgba(0,0,0,0.06)" }}>×</motion.button>
         </div>
 
         {/* tab pills */}

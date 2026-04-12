@@ -4,8 +4,42 @@ import CustomSelect from "../components/CustomSelect";
 import { useAuth } from "../context/AuthContext";
 import { useTheme } from "../context/ThemeContext";
 import { useTasks } from "../hooks/useTasks";
-import { playTimerSound, sendNotification } from "../services/notifications";
+import { playTimerSound, sendNotification, startBackgroundTimer, stopBackgroundTimer, pauseBackgroundTimer } from "../services/notifications";
 import { lifecycleOf } from "../utils/recurringTask";
+
+/* ── Wake Lock hook ───────────────────────────────────────────────────── */
+function useWakeLock() {
+  const [active, setActive] = useState(false);
+  const lockRef = useRef(null);
+  const supported = typeof navigator !== "undefined" && "wakeLock" in navigator;
+
+  const acquire = useCallback(async () => {
+    if (!supported) return;
+    try {
+      lockRef.current = await navigator.wakeLock.request("screen");
+      lockRef.current.addEventListener("release", () => setActive(false));
+      setActive(true);
+    } catch { setActive(false); }
+  }, [supported]);
+
+  const release = useCallback(() => {
+    lockRef.current?.release();
+    lockRef.current = null;
+    setActive(false);
+  }, []);
+
+  const toggle = useCallback(() => { active ? release() : acquire(); }, [active, acquire, release]);
+
+  // Re-acquire after visibility change (Android screen wakes back up)
+  useEffect(() => {
+    const fn = () => { if (document.visibilityState === "visible" && active) acquire(); };
+    document.addEventListener("visibilitychange", fn);
+    return () => document.removeEventListener("visibilitychange", fn);
+  }, [active, acquire]);
+
+  useEffect(() => () => { lockRef.current?.release(); }, []);
+  return { active, toggle, supported };
+}
 
 /* ── Helpers ── */
 function pad(n) { return String(Math.floor(Math.abs(n))).padStart(2,"0"); }
@@ -15,16 +49,19 @@ function fmtMs(ms) {
 }
 function fmtMsMs(ms) { return `.${String(Math.floor((ms%1000)/10)).padStart(2,"0")}`; }
 
-/* ── Ring SVG ── */
-function Ring({ pct, color, size=200, stroke=10, children }) {
+/* ── Ring SVG with glow ──────────────────────────────────────────────── */
+function Ring({ pct, color, size=200, stroke=10, children, glow=true }) {
   const r=(size-stroke*2)/2, circ=2*Math.PI*r;
+  const resolvedColor = typeof color === "string" && color.startsWith("var") ? color : color;
   return (
     <div style={{position:"relative",width:size,height:size,margin:"0 auto 24px"}}>
       <svg width={size} height={size} style={{transform:"rotate(-90deg)",position:"absolute",top:0,left:0}}>
-        <circle cx={size/2} cy={size/2} r={r} fill="none" stroke="var(--surface-raised)" strokeWidth={stroke}/>
-        <circle cx={size/2} cy={size/2} r={r} fill="none" stroke={color} strokeWidth={stroke}
+        <circle cx={size/2} cy={size/2} r={r} fill="none" stroke="var(--surface-elevated)" strokeWidth={stroke}/>
+        <circle cx={size/2} cy={size/2} r={r} fill="none" stroke={resolvedColor} strokeWidth={stroke}
           strokeDasharray={circ} strokeDashoffset={circ*(1-Math.min(pct,100)/100)}
-          strokeLinecap="round" style={{transition:"stroke-dashoffset 0.1s linear,stroke 0.3s"}}/>
+          strokeLinecap="round"
+          style={{transition:"stroke-dashoffset 0.1s linear,stroke 0.3s",
+            filter:glow&&pct>0?`drop-shadow(0 0 8px ${resolvedColor}88)`:"none"}} />
       </svg>
       <div style={{position:"absolute",inset:0,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center"}}>
         {children}
@@ -190,11 +227,18 @@ function Countdown({ accent }) {
   const start=()=>{
     if(totalMs<=0) return;
     setRemaining(totalMs); setStarted(true); setRunning(true); setCompleted(false);
+    playTimerSound("start");
+    startBackgroundTimer({ label:"Countdown", totalMs });
   };
-  const toggle=()=>setRunning(r=>!r);
+  const toggle=()=>{
+    setRunning(r=>!r);
+    if (running) pauseBackgroundTimer();
+    else startBackgroundTimer({ label:"Countdown", totalMs: remaining });
+  };
   const reset=()=>{
     clearInterval(interval.current);
     setStarted(false); setRunning(false); setRemaining(0); setCompleted(false);
+    stopBackgroundTimer();
   };
 
   useEffect(()=>{
@@ -680,6 +724,7 @@ export default function Timer() {
   const { tasks } = useTasks();
   const [tab, setTab] = useState("stopwatch");
   const [linkedTaskId, setLinkedTaskId] = useState("");
+  const wakeLock = useWakeLock();
 
   useEffect(() => {
     try {
@@ -706,11 +751,26 @@ export default function Timer() {
 
   return (
     <div style={{ maxWidth: "560px", margin: "0 auto", padding: "18px 16px 28px", fontFamily: "var(--font-body)", color: "var(--text-primary)" }}>
-      <div style={{ marginBottom: "18px" }}>
-        <h1 style={{ fontSize: "28px", fontWeight: 700, margin: "0 0 6px", letterSpacing: "-0.03em", fontFamily: "var(--font-heading)", color: "var(--text-primary)" }}>Timer</h1>
-        <p style={{ fontSize: "13px", color: "var(--text-muted)", margin: 0, lineHeight: 1.55 }}>
-          Stopwatch, countdown, interval rounds, and Pomodoro — pick a mode and stay in flow.
-        </p>
+      <div style={{ display:"flex",alignItems:"flex-start",justifyContent:"space-between",marginBottom: "18px" }}>
+        <div>
+          <h1 style={{ fontSize: "28px", fontWeight: 800, margin: "0 0 4px", letterSpacing: "-0.04em", fontFamily: "var(--font-heading)", color: "var(--text-primary)" }}>Timer</h1>
+          <p style={{ fontSize: "13px", color: "var(--text-muted)", margin: 0, lineHeight: 1.5 }}>Focus, countdown, intervals, and Pomodoro.</p>
+        </div>
+        {wakeLock.supported && (
+          <motion.button whileTap={{scale:0.92}} type="button" onClick={wakeLock.toggle}
+            style={{ display:"flex",alignItems:"center",gap:"6px",padding:"8px 14px",borderRadius:"var(--radius-btn)",
+              border:`1px solid ${wakeLock.active?"var(--accent)":"var(--border)"}`,
+              background:wakeLock.active?"var(--accent-subtle)":"var(--surface-raised)",
+              color:wakeLock.active?"var(--accent)":"var(--text-muted)",
+              fontSize:"12px",fontWeight:700,cursor:"pointer",flexShrink:0 }}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              {wakeLock.active
+                ? <><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></>
+                : <><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></>}
+            </svg>
+            {wakeLock.active ? "Screen On" : "Keep On"}
+          </motion.button>
+        )}
       </div>
 
       <div

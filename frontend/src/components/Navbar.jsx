@@ -244,33 +244,30 @@ export default function Navbar({ activePage, onPageChange }) {
               </motion.button>
             )}
 
-            {/* Desktop: settings + auth */}
-            <motion.button whileTap={{scale:0.92}} onClick={()=>setShowSettings(true)} className="btn-reset desktop-only" style={btnStyle}>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                <circle cx="12" cy="12" r="3"/>
-                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
-              </svg>
-            </motion.button>
-
-            {isAuthenticated?(
-              <motion.button whileTap={{scale:0.95}} onClick={()=>setShowMenu(v=>!v)} className="btn-reset desktop-only"
-                style={{...btnStyle,width:"auto",padding:"0 10px 0 4px",display:"flex",alignItems:"center",gap:"7px"}}>
-                <div style={{width:"26px",height:"26px",borderRadius:"8px",background:user?.avatar?`url(${user.avatar}) center/cover`:"var(--accent-subtle)",border:user?.avatar?"1px solid var(--border-strong)":"1px solid var(--accent)44",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"12px",fontWeight:800,color:"var(--accent)"}}>
-                  {!user?.avatar && (user?.name||"?").charAt(0).toUpperCase()}
-                </div>
-                <span style={{fontSize:"12px",fontWeight:700,color:"var(--text-primary)"}}>{user?.name?.split(" ")[0]}</span>
+            {/* Profile / Menu */}
+            {isAuthenticated ? (
+              <motion.button whileTap={{scale:0.92}} onClick={()=>setShowMenu(true)} className="btn-reset"
+                style={{
+                  ...btnStyle,
+                  width:"34px", height:"34px", padding:0, overflow:"hidden",
+                  border:user?.avatar?"1px solid var(--border-strong)":"1px solid var(--accent)44",
+                  background:user?.avatar?"transparent":"var(--accent-subtle)",
+                }}>
+                {user?.avatar ? (
+                  <div style={{width:"100%",height:"100%",background:`url(${user.avatar}) center/cover`}}/>
+                ) : (
+                  <div style={{width:"100%",height:"100%",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"14px",fontWeight:800,color:"var(--accent)",fontFamily:"var(--font-heading)"}}>
+                    {(user?.name||"?").charAt(0).toUpperCase()}
+                  </div>
+                )}
               </motion.button>
-            ):(
-              <motion.button whileTap={{scale:0.97}} onClick={()=>setShowAuth(true)} className="btn-primary desktop-only"
-                style={{height:"34px",padding:"0 14px",fontSize:"13px"}}>Sign in</motion.button>
+            ) : (
+              <motion.button whileTap={{scale:0.95}} onClick={()=>setShowAuth(true)} className="btn-reset" style={btnStyle}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
+                </svg>
+              </motion.button>
             )}
-
-            {/* Mobile: dots menu */}
-            <motion.button whileTap={{scale:0.92}} onClick={()=>setShowMenu(true)} className="btn-reset mobile-only" style={btnStyle}>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-                <circle cx="5"  cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/>
-              </svg>
-            </motion.button>
           </div>
         </div>
       </div>

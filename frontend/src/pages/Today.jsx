@@ -128,36 +128,43 @@ function AgendaItem({ item, accent, onToggleTask, onToggleHabit, isFuture }) {
   const canAct  = !isFuture || isTask;
 
   return (
-    <motion.div layout initial={{opacity:0,x:-4}} animate={{opacity:1,x:0}} exit={{opacity:0}} transition={{duration:0.18}}
+    <motion.div layout initial={{opacity:0,y:6}} animate={{opacity:1,y:0}} exit={{opacity:0,scale:0.97}} transition={{duration:0.2}}
       style={{
-        display:"flex",alignItems:"center",gap:"11px",
-        padding:"12px 8px",borderBottom:"1px solid var(--border)",
-        borderLeft:checked?`3px solid ${color}`:"3px solid transparent",
-        borderRadius:"0 12px 12px 0",
-        background:checked?`linear-gradient(90deg,${color}12,transparent 50%)`:undefined,
+        display:"flex",alignItems:"center",gap:"12px",
+        padding:"13px 14px 13px 0",
+        borderBottom:"1px solid var(--border)",
+        position:"relative",
+        background:checked?`linear-gradient(90deg,${color}08,transparent 60%)`:"",
         transition:"background 250ms",
       }}>
 
+      {/* Colored left strip */}
+      <div style={{position:"absolute",left:0,top:"12%",bottom:"12%",width:"3px",borderRadius:"999px",
+        background:checked?color:`${color}44`,transition:"background 250ms"}}/>
+
+      {/* left margin for strip */}
+      <div style={{width:"10px",flexShrink:0}}/>
+
       {/* icon tile */}
       {isTask
-        ? <TaskIconTile iconKey={item.taskIcon||"check"} color={color} size={34}/>
-        : <HabitIconTile iconKey={item.icon||"default"}  color={color} size={34}/>
+        ? <TaskIconTile iconKey={item.taskIcon||"check"} color={color} size={36}/>
+        : <HabitIconTile iconKey={item.icon||"default"}  color={color} size={36}/>
       }
 
       {/* text */}
       <div style={{flex:1,minWidth:0}}>
-        <PremiumCompleteTitle complete={checked} lineColor="var(--text-secondary)">
+        <PremiumCompleteTitle complete={checked} lineColor={color}>
           {item.title}
         </PremiumCompleteTitle>
-        <div style={{display:"flex",alignItems:"center",gap:"5px",marginTop:"3px",flexWrap:"wrap"}}>
-          <span style={{fontSize:"10px",color,fontWeight:700,letterSpacing:"0.07em",textTransform:"uppercase"}}>{item.kind}</span>
+        <div style={{display:"flex",alignItems:"center",gap:"5px",marginTop:"4px",flexWrap:"wrap"}}>
+          <span style={{fontSize:"10px",color,fontWeight:700,letterSpacing:"0.06em",textTransform:"uppercase",
+            background:`${color}18`,padding:"1px 7px",borderRadius:"999px",border:`1px solid ${color}28`}}>
+            {item.kind}
+          </span>
           {item.isRecurring&&(
             <span style={{display:"inline-flex",alignItems:"center",gap:"2px",fontSize:"10px",color:"var(--text-muted)",fontWeight:600}}>
-              <IconRepeat size={10} stroke="var(--text-muted)"/> Recurring
+              <IconRepeat size={10} stroke="var(--text-muted)"/> Daily
             </span>
-          )}
-          {!isTask&&item.goalMaxPerDay&&(
-            <span style={{fontSize:"10px",color:"var(--text-muted)",fontWeight:500}}>· {item.goalMaxPerDay} {item.unit||"times"}</span>
           )}
         </div>
       </div>

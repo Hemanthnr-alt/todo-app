@@ -32,8 +32,26 @@ export const checkPermissionStatus = async () => {
   return Notification.permission === "granted";
 };
 
-// ── Send notification ─────────────────────────────────────────────────────────
-export const sendNotification = async ({ title, body, id = Date.now(), sound = true }) => {
+// ── Get registered service worker ─────────────────────────────────────────────
+const getSW = async () => {
+  if (!("serviceWorker" in navigator)) return null;
+  try {
+    return await navigator.serviceWorker.ready;
+  } catch { return null; }
+};
+
+// ── Post message to service worker ───────────────────────────────────────────
+export const postToSW = async (message) => {
+  const sw = await getSW();
+  if (sw?.active) {
+    sw.active.postMessage(message);
+    return true;
+  }
+  return false;
+};
+
+// ── Send notification (foreground or via SW) ──────────────────────────────────
+export const sendNotification = async ({ title, body, id = Date.now(), sound = true, requireInteraction = false, tag = "general" }) => {
   const ln = await getLN();
 
   if (ln) {
@@ -49,8 +67,12 @@ export const sendNotification = async ({ title, body, id = Date.now(), sound = t
         }],
       });
     } catch (e) { console.warn("Native notif failed:", e); }
-  } else if (typeof Notification !== "undefined" && Notification.permission === "granted") {
-    try { new Notification(title, { body }); } catch {}
+  } else {
+    // Try via service worker first (works in background on Android PWA)
+    const sent = await postToSW({ type: "SHOW_NOTIFICATION", title, body, tag, requireInteraction });
+    if (!sent && typeof Notification !== "undefined" && Notification.permission === "granted") {
+      try { new Notification(title, { body }); } catch {}
+    }
   }
 
   // Save to history
@@ -61,13 +83,25 @@ export const sendNotification = async ({ title, body, id = Date.now(), sound = t
   } catch {}
 };
 
-// ── Task due date checker — call this daily ───────────────────────────────────
+// ── Background timer control ──────────────────────────────────────────────────
+export const startBackgroundTimer = async ({ label, totalMs }) => {
+  await postToSW({ type: "TIMER_START", label, totalMs });
+};
+
+export const stopBackgroundTimer = async () => {
+  await postToSW({ type: "TIMER_STOP" });
+};
+
+export const pauseBackgroundTimer = async () => {
+  await postToSW({ type: "TIMER_PAUSE" });
+};
+
+// ── Task due date checker — call this daily ────────────────────────────────────
 export const scheduleTaskReminders = async (tasks) => {
   const ln = await getLN();
   if (!ln) return;
 
   try {
-    // Clear old scheduled notifications
     await ln.cancel({ notifications: tasks.map((_, i) => ({ id: 1000 + i })) });
 
     const today = new Date().toISOString().split("T")[0];
@@ -90,7 +124,7 @@ export const scheduleTaskReminders = async (tasks) => {
   } catch (e) { console.warn("Schedule reminders failed:", e); }
 };
 
-// ── Timer sound (plays in browser too via Web Audio) ─────────────────────────
+// ── Timer sound (Web Audio API) ───────────────────────────────────────────────
 let audioCtx = null;
 
 export const playTimerSound = (type = "beep") => {
@@ -101,12 +135,12 @@ export const playTimerSound = (type = "beep") => {
     const patterns = {
       beep:     [{ freq: 880, dur: 0.15, start: 0 }, { freq: 880, dur: 0.15, start: 0.2 }],
       complete: [{ freq: 523, dur: 0.1, start:0 },{ freq:659,dur:0.1,start:0.12 },{ freq:784,dur:0.1,start:0.24 },{ freq:1047,dur:0.3,start:0.36 }],
-      interval: [{ freq:440,dur:0.08,start:0},{freq:660,dur:0.08,start:0.1},{freq:880,dur:0.12,start:0.2}],
+      interval: [{ freq:440,dur:0.08,start:0},{ freq:660,dur:0.08,start:0.1},{ freq:880,dur:0.12,start:0.2}],
       warning:  [{ freq:440,dur:0.3,start:0 }],
+      start:    [{ freq:660,dur:0.08,start:0},{ freq:880,dur:0.15,start:0.1}],
     };
 
     const notes = patterns[type] || patterns.beep;
-
     notes.forEach(({ freq, dur, start }) => {
       const osc  = ctx.createOscillator();
       const gain = ctx.createGain();

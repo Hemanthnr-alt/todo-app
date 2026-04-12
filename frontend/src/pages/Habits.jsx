@@ -430,10 +430,16 @@ function HabitCard({ habit, onToggle, onDelete, onEdit, onOpenQty, onOpenAction,
     <motion.div layout
       initial={{opacity:0,y:10}} animate={{opacity:1,y:0}} exit={{opacity:0,scale:0.97}}
       className="glass-panel"
-      style={{ borderRadius:"16px",padding:"14px",marginBottom:"8px",position:"relative",overflow:"hidden",borderLeft:`3px solid ${sc}` }}>
+      style={{ borderRadius:"18px",padding:"16px",marginBottom:"10px",position:"relative",overflow:"hidden",border:"1px solid var(--border-strong)" }}>
+
+      {/* Gradient left accent strip */}
+      <div style={{position:"absolute",left:0,top:0,bottom:0,width:"4px",background:`linear-gradient(180deg,${habit.color},${sc}88)`,borderRadius:"4px 0 0 4px"}}/>
+
+      {/* Completion tint when done today */}
+      {doneToday&&<div style={{position:"absolute",inset:0,background:`linear-gradient(135deg,${habit.color}06,transparent 50%)`,pointerEvents:"none"}}/>}
 
       {/* header row */}
-      <div style={{ display:"flex",gap:"12px",alignItems:"flex-start",marginBottom:"12px" }}>
+      <div style={{ display:"flex",gap:"12px",alignItems:"flex-start",marginBottom:"12px",paddingLeft:"8px" }}>
         <HabitIconTile iconKey={habit.icon||"default"} color={habit.color} size={44}/>
 
         <div style={{ flex:1,minWidth:0 }}>
@@ -473,8 +479,9 @@ function HabitCard({ habit, onToggle, onDelete, onEdit, onOpenQty, onOpenAction,
         </motion.button>
       </div>
 
-      {/* 7-day row */}
-      <div style={{ display:"flex",gap:"3px",justifyContent:"space-between",marginBottom:"10px" }}>
+      {/* 7-day row tray */}
+      <div style={{ background:"var(--surface-elevated)",borderRadius:"10px",padding:"8px 6px",marginBottom:"10px",marginLeft:"8px" }}>
+        <div style={{ display:"flex",gap:"3px",justifyContent:"space-between" }}>
         {window7.map(dateStr=>{
           const isFuture=dateStr>today, before=dateStr<startDate;
           const isDone=doneSet.has(dateStr), isToday=dateStr===today;
@@ -502,6 +509,7 @@ function HabitCard({ habit, onToggle, onDelete, onEdit, onOpenQty, onOpenAction,
             </div>
           );
         })}
+        </div>
       </div>
 
       {/* footer */}
@@ -558,10 +566,6 @@ export default function Habits() {
   const [fFreq,      setFFreq]      = useState("daily");
   const [fRecurDays, setFRecurDays] = useState("1,2,3,4,5");
   const [fEveryN,    setFEveryN]    = useState(2);
-  const [fTargetW,   setFTargetW]   = useState("");
-  const [fMinMins,   setFMinMins]   = useState("");
-  const [fMaxDay,    setFMaxDay]    = useState("");
-  const [fUnit,      setFUnit]      = useState("times");
   const [fReminder,  setFReminder]  = useState(false);
   const [fRemTime,   setFRemTime]   = useState("09:00");
   const [showIcons,  setShowIcons]  = useState(false);
@@ -569,7 +573,6 @@ export default function Habits() {
   const resetForm = useCallback(()=>{
     setFName(""); setFIcon("default"); setFColor(accent); setEditingId(null);
     setFFreq("daily"); setFRecurDays("1,2,3,4,5"); setFEveryN(2);
-    setFTargetW(""); setFMinMins(""); setFMaxDay(""); setFUnit("times");
     setFReminder(false); setFRemTime("09:00"); setShowIcons(false);
   },[accent]);
 
@@ -580,10 +583,6 @@ export default function Habits() {
     setFFreq(h.frequency||"daily");
     setFRecurDays((h.recurringDays||[]).length?h.recurringDays.join(","):"1,2,3,4,5");
     setFEveryN(h.everyNDays??2);
-    setFTargetW(h.targetTimesPerWeek!=null?String(h.targetTimesPerWeek):"");
-    setFMinMins(h.goalMinMinutes!=null?String(h.goalMinMinutes):"");
-    setFMaxDay(h.goalMaxPerDay!=null?String(h.goalMaxPerDay):"");
-    setFUnit(h.unit||"times");
     setFReminder(!!h.reminderEnabled);
     const rt=h.reminderTime; setFRemTime(typeof rt==="string"&&rt.length>=5?rt.slice(0,5):"09:00");
     setShowIcons(false); setShowForm(true);
@@ -595,12 +594,8 @@ export default function Habits() {
     name:fName.trim(), icon:fIcon, color:fColor, frequency:fFreq,
     recurringDays:fFreq==="weekly"?fRecurDays.split(/[,\s]+/).map(x=>parseInt(x,10)).filter(n=>!isNaN(n)&&n>=0&&n<=6):[],
     everyNDays:fFreq==="interval"?Math.max(1,Number(fEveryN)||2):null,
-    targetTimesPerWeek:fTargetW?Math.min(7,Math.max(1,Number(fTargetW))):null,
-    goalMinMinutes:fMinMins===""?null:Math.max(0,Number(fMinMins)||0),
-    goalMaxPerDay:fMaxDay===""?null:Math.max(0,Number(fMaxDay)||0),
-    unit:fUnit.trim()||"times",
     reminderEnabled:fReminder, reminderTime:fReminder?fRemTime:null,
-  }),[fColor,fEveryN,fFreq,fMaxDay,fMinMins,fIcon,fName,fRecurDays,fReminder,fRemTime,fTargetW,fUnit]);
+  }),[fColor,fEveryN,fFreq,fIcon,fName,fRecurDays,fReminder,fRemTime]);
 
   const handleSave = useCallback(async()=>{
     if(!fName.trim()){toast.error("Enter a habit name");return;}
@@ -747,10 +742,6 @@ export default function Habits() {
                 <input type="number" min={1} value={fEveryN} onChange={e=>setFEveryN(Math.max(1,Number(e.target.value)||1))} style={{...IS,fontSize:"12px"}}/>
               </label>
             )}
-            <label style={{display:"grid",gap:"4px"}}>
-              <span style={{fontSize:"11px",fontWeight:600,color:"var(--text-muted)"}}>Target / week (optional)</span>
-              <input value={fTargetW} onChange={e=>setFTargetW(e.target.value)} placeholder="e.g. 5" style={{...IS,fontSize:"12px"}}/>
-            </label>
           </div>
 
           <div className="glass-tile" style={{borderRadius:"14px",padding:"12px",border:"1px solid var(--border)",display:"grid",gap:"8px"}}>

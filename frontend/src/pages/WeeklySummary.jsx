@@ -52,14 +52,20 @@ export default function WeeklySummary() {
     return Math.round((taskScore + habitScore) / 2);
   }, [done, planned, habitWeek.pct, habits.length]);
 
+  const scoreColor = productivityScore >= 80 ? "var(--success)" : productivityScore >= 50 ? accent : "var(--danger)";
+  const scoreLabel = productivityScore >= 80 ? "Excellent" : productivityScore >= 50 ? "On track" : "Needs focus";
+  // SVG donut for productivity score
+  const radius = 44, circ = 2 * Math.PI * radius;
+  const dash = circ * (productivityScore / 100);
+
   return (
     <div style={{ maxWidth: "800px", margin: "0 auto", padding: "24px 16px 80px", color: "var(--text-body)" }}>
       <header style={{ marginBottom: "28px" }}>
-        <h1 style={{ fontSize: "32px", letterSpacing: "-0.04em", marginBottom: "8px", fontFamily: "var(--font-heading)", color: "var(--text-primary)", fontWeight: 800 }}>
+        <h1 style={{ fontSize: "32px", letterSpacing: "-0.04em", marginBottom: "6px", fontFamily: "var(--font-heading)", color: "var(--text-primary)", fontWeight: 800 }}>
           Insights
         </h1>
-        <p style={{ color: "var(--text-muted)", fontSize: "14px", lineHeight: 1.5, maxWidth: "500px" }}>
-          Your performance over the rolling 7-day window ({weekStart} → {weekEnd}).
+        <p style={{ color: "var(--text-muted)", fontSize: "13px", lineHeight: 1.5 }}>
+          Rolling 7-day window · {weekStart} → {weekEnd}
         </p>
       </header>
 
@@ -70,74 +76,107 @@ export default function WeeklySummary() {
           </motion.div>
         </div>
       ) : (
-        <motion.div 
+        <motion.div
           initial="hidden" animate="visible"
-          variants={{ visible: { transition: { staggerChildren: 0.1 } } }}
-          style={{ display: "grid", gap: "16px", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))" }}
+          variants={{ visible: { transition: { staggerChildren: 0.08 } } }}
+          style={{ display: "grid", gap: "14px", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))" }}
         >
-          {/* Top Level Metric: Productivity Score */}
-          <motion.div variants={{ hidden: { opacity: 0, y: 15 }, visible: { opacity: 1, y: 0 } }} 
-            style={{ gridColumn: "1 / -1", borderRadius: "24px", padding: "24px", background: `linear-gradient(135deg, var(--surface-raised), var(--surface))`, border: "1px solid var(--border-strong)", display: "flex", alignItems: "center", gap: "24px" }}>
-            <div style={{ width: "80px", height: "80px", borderRadius: "24px", background: `linear-gradient(135deg, ${accent}, var(--accent-pressed))`, display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: 800, fontSize: "28px", boxShadow: `0 8px 32px ${accent}44` }}>
-              {productivityScore}
+          {/* Hero: Productivity Score */}
+          <motion.div variants={{ hidden: { opacity: 0, y: 15 }, visible: { opacity: 1, y: 0 } }}
+            style={{ gridColumn: "1 / -1", borderRadius: "24px", padding: "28px 24px",
+              background: `linear-gradient(135deg, ${accent}18, var(--surface-raised))`,
+              border: `1px solid ${accent}33`, display: "flex", alignItems: "center", gap: "28px", flexWrap: "wrap" }}>
+
+            {/* Donut */}
+            <div style={{ position: "relative", flexShrink: 0 }}>
+              <svg width="110" height="110" viewBox="0 0 110 110">
+                <circle cx="55" cy="55" r={radius} fill="none" stroke="var(--surface-elevated)" strokeWidth="10"/>
+                <motion.circle cx="55" cy="55" r={radius} fill="none" stroke={scoreColor} strokeWidth="10"
+                  strokeLinecap="round" strokeDasharray={circ}
+                  initial={{ strokeDashoffset: circ }} animate={{ strokeDashoffset: circ - dash }}
+                  transition={{ duration: 1.2, ease: "easeOut" }}
+                  style={{ transform: "rotate(-90deg)", transformOrigin: "55px 55px",
+                    filter: `drop-shadow(0 0 8px ${scoreColor}66)` }}/>
+              </svg>
+              <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
+                <div style={{ fontSize: "26px", fontWeight: 800, color: scoreColor, fontFamily: "var(--font-heading)", lineHeight: 1 }}>{productivityScore}</div>
+                <div style={{ fontSize: "9px", fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.06em" }}>Score</div>
+              </div>
             </div>
-            <div>
-              <div style={{ fontSize: "12px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--text-muted)", marginBottom: "4px" }}>Productivity Score</div>
-              <div style={{ fontSize: "14px", color: "var(--text-secondary)", lineHeight: 1.5 }}>
-                Based on task completion and habit check-in density over the past 7 days. {productivityScore >= 80 ? "You're crushing it!" : productivityScore >= 50 ? "Solid effort, keep going." : "Time to step it up."}
+
+            <div style={{ flex: 1, minWidth: "160px" }}>
+              <div style={{ fontSize: "10px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: scoreColor, marginBottom: "6px" }}>
+                {scoreLabel}
+              </div>
+              <div style={{ fontSize: "22px", fontWeight: 800, color: "var(--text-primary)", fontFamily: "var(--font-heading)", marginBottom: "8px" }}>
+                Productivity Score
+              </div>
+              <div style={{ fontSize: "13px", color: "var(--text-secondary)", lineHeight: 1.55 }}>
+                {productivityScore >= 80 ? "🎉 You're crushing it! Exceptional performance this week." :
+                 productivityScore >= 50 ? "💪 Solid effort. Keep building those habits." :
+                 "🎯 Time to re-focus. Small wins add up fast."}
+              </div>
+              {/* Mini stat pills */}
+              <div style={{ display: "flex", gap: "8px", marginTop: "14px", flexWrap: "wrap" }}>
+                <span style={{ padding: "4px 12px", borderRadius: "999px", background: `${accent}20`, border: `1px solid ${accent}44`, fontSize: "11px", fontWeight: 700, color: accent }}>
+                  {done}/{planned} tasks
+                </span>
+                <span style={{ padding: "4px 12px", borderRadius: "999px", background: "var(--success-subtle)", border: "1px solid rgba(61,214,140,0.25)", fontSize: "11px", fontWeight: 700, color: "var(--success)" }}>
+                  {habitWeek.pct}% habits
+                </span>
               </div>
             </div>
           </motion.div>
 
-          <motion.div variants={{ hidden: { opacity: 0, y: 15 }, visible: { opacity: 1, y: 0 } }} 
-            className="glass-panel" style={{ borderRadius: "24px", padding: "24px", border: "1px solid var(--border)", display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
-            <div>
-              <div style={{ fontSize: "12px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--text-muted)", marginBottom: "16px" }}>Task Completion</div>
-              <div style={{ display: "flex", alignItems: "baseline", gap: "12px" }}>
-                <span style={{ fontSize: "42px", fontWeight: 800, fontFamily: "var(--font-heading)", color: "var(--text-primary)", lineHeight: 1 }}>
-                  {done}
-                </span>
-                <span style={{ fontSize: "16px", color: "var(--text-muted)", fontWeight: 600 }}>/ {planned} done</span>
-              </div>
+          {/* Task Completion */}
+          <motion.div variants={{ hidden: { opacity: 0, y: 15 }, visible: { opacity: 1, y: 0 } }}
+            className="glass-panel" style={{ borderRadius: "22px", padding: "22px", border: "1px solid var(--border-strong)" }}>
+            <div style={{ fontSize: "10px", fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--text-muted)", marginBottom: "16px" }}>Task Completion</div>
+            <div style={{ display: "flex", alignItems: "baseline", gap: "8px", marginBottom: "16px" }}>
+              <span style={{ fontSize: "48px", fontWeight: 800, fontFamily: "var(--font-heading)", color: "var(--text-primary)", lineHeight: 1 }}>{done}</span>
+              <span style={{ fontSize: "18px", color: "var(--text-muted)", fontWeight: 600 }}>/ {planned}</span>
             </div>
-            
-            <div style={{ marginTop: "24px", display: "grid", gap: "10px" }}>
-              <div style={{ display: "flex", justifyContent: "space-between", fontSize: "13px" }}>
-                <span style={{ color: "var(--text-secondary)" }}>On-time rate</span>
-                <span style={{ fontWeight: 700, color: "var(--text-primary)" }}>{taskInsight.rate}%</span>
-              </div>
-              <div style={{ display: "flex", justifyContent: "space-between", fontSize: "13px" }}>
-                <span style={{ color: "var(--text-secondary)" }}>Pending in window</span>
-                <span style={{ fontWeight: 700, color: "var(--text-primary)" }}>{taskInsight.pendingInWin}</span>
-              </div>
-              {taskInsight.overdue > 0 && (
-                <div style={{ marginTop: "8px", padding: "8px 12px", borderRadius: "10px", background: "var(--danger-subtle)", color: "var(--danger)", fontSize: "12px", fontWeight: 700, display: "inline-block" }}>
-                  {taskInsight.overdue} task(s) overdue
+            {/* Progress bar */}
+            <div style={{ height: "8px", borderRadius: "999px", background: "var(--surface-elevated)", overflow: "hidden", marginBottom: "16px" }}>
+              <motion.div initial={{ width: 0 }} animate={{ width: `${planned > 0 ? Math.round((done/planned)*100) : 0}%` }}
+                transition={{ duration: 1, ease: "easeOut" }}
+                style={{ height: "100%", borderRadius: "999px", background: `linear-gradient(90deg, ${accent}, var(--accent-hover))`, boxShadow: `0 0 8px ${accent}55` }}/>
+            </div>
+            <div style={{ display: "grid", gap: "8px" }}>
+              {[
+                { l: "On-time rate", v: `${taskInsight.rate}%`, c: taskInsight.rate >= 75 ? "var(--success)" : "var(--warning)" },
+                { l: "Pending", v: taskInsight.pendingInWin },
+                taskInsight.overdue > 0 && { l: "Overdue", v: taskInsight.overdue, c: "var(--danger)" },
+              ].filter(Boolean).map(r => (
+                <div key={r.l} style={{ display: "flex", justifyContent: "space-between", fontSize: "13px" }}>
+                  <span style={{ color: "var(--text-secondary)" }}>{r.l}</span>
+                  <span style={{ fontWeight: 700, color: r.c || "var(--text-primary)" }}>{r.v}</span>
                 </div>
-              )}
+              ))}
             </div>
           </motion.div>
 
-          <motion.div variants={{ hidden: { opacity: 0, y: 15 }, visible: { opacity: 1, y: 0 } }} 
-            className="glass-panel" style={{ borderRadius: "24px", padding: "24px", border: "1px solid var(--border)", display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
-            <div>
-              <div style={{ fontSize: "12px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--text-muted)", marginBottom: "16px" }}>Habit Consistency</div>
-              <div style={{ display: "flex", alignItems: "baseline", gap: "12px" }}>
-                <span style={{ fontSize: "42px", fontWeight: 800, fontFamily: "var(--font-heading)", color: "var(--success)", lineHeight: 1 }}>
-                  {habitWeek.pct}%
-                </span>
-              </div>
+          {/* Habit Consistency */}
+          <motion.div variants={{ hidden: { opacity: 0, y: 15 }, visible: { opacity: 1, y: 0 } }}
+            className="glass-panel" style={{ borderRadius: "22px", padding: "22px", border: "1px solid var(--border-strong)" }}>
+            <div style={{ fontSize: "10px", fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--text-muted)", marginBottom: "16px" }}>Habit Consistency</div>
+            <div style={{ display: "flex", alignItems: "baseline", gap: "8px", marginBottom: "16px" }}>
+              <span style={{ fontSize: "48px", fontWeight: 800, fontFamily: "var(--font-heading)", color: "var(--success)", lineHeight: 1 }}>{habitWeek.pct}%</span>
             </div>
-            
-            <div style={{ marginTop: "24px", display: "grid", gap: "10px" }}>
+            <div style={{ height: "8px", borderRadius: "999px", background: "var(--surface-elevated)", overflow: "hidden", marginBottom: "16px" }}>
+              <motion.div initial={{ width: 0 }} animate={{ width: `${habitWeek.pct}%` }}
+                transition={{ duration: 1, ease: "easeOut" }}
+                style={{ height: "100%", borderRadius: "999px", background: "linear-gradient(90deg, var(--success), #69D025)", boxShadow: "0 0 8px rgba(61,214,140,0.5)" }}/>
+            </div>
+            <div style={{ display: "grid", gap: "8px" }}>
               <div style={{ display: "flex", justifyContent: "space-between", fontSize: "13px" }}>
-                <span style={{ color: "var(--text-secondary)" }}>Total check-ins</span>
-                <span style={{ fontWeight: 700, color: "var(--text-primary)" }}>{habitWeek.totalLogs} logs</span>
+                <span style={{ color: "var(--text-secondary)" }}>Total logs</span>
+                <span style={{ fontWeight: 700, color: "var(--text-primary)" }}>{habitWeek.totalLogs}</span>
               </div>
               {habitWeek.topHabitName && (
                 <div style={{ display: "flex", justifyContent: "space-between", fontSize: "13px" }}>
                   <span style={{ color: "var(--text-secondary)" }}>Top streak</span>
-                  <span style={{ fontWeight: 700, color: accent }}>{habitWeek.topHabitName} ({habitWeek.topHabitStreak}d)</span>
+                  <span style={{ fontWeight: 700, color: accent }}>{habitWeek.topHabitName} · {habitWeek.topHabitStreak}d</span>
                 </div>
               )}
               {bestDayLabel && habitWeek.bestCount > 0 && (
@@ -149,32 +188,31 @@ export default function WeeklySummary() {
             </div>
           </motion.div>
 
-          {/* Habit Rhythm Grid */}
-          <motion.div variants={{ hidden: { opacity: 0, y: 15 }, visible: { opacity: 1, y: 0 } }} 
-            className="glass-panel" style={{ gridColumn: "1 / -1", borderRadius: "24px", padding: "24px", border: "1px solid var(--border)" }}>
-            <div style={{ fontSize: "12px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--text-muted)", marginBottom: "20px" }}>Habit Rhythm</div>
-            <div style={{ display: "flex", gap: "12px", alignItems: "flex-end", minHeight: "120px", padding: "10px 0" }}>
+          {/* Habit Rhythm */}
+          <motion.div variants={{ hidden: { opacity: 0, y: 15 }, visible: { opacity: 1, y: 0 } }}
+            className="glass-panel" style={{ gridColumn: "1 / -1", borderRadius: "22px", padding: "22px", border: "1px solid var(--border-strong)" }}>
+            <div style={{ fontSize: "10px", fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--text-muted)", marginBottom: "20px" }}>Daily Activity</div>
+            <div style={{ display: "flex", gap: "8px", alignItems: "flex-end", minHeight: "100px", paddingBottom: "4px" }}>
               {habitWeek.perDay.map((row) => {
                 const maxC = Math.max(1, ...habitWeek.perDay.map((p) => p.count));
-                const h = Math.round((row.count / maxC) * 90);
+                const h = Math.round((row.count / maxC) * 80);
+                const dayName = DAY_NAMES[new Date(`${row.dateStr}T12:00:00`).getDay()];
+                const isToday = row.dateStr === weekEnd;
                 return (
                   <div key={row.dateStr} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: "8px" }}>
-                    <motion.div
-                      whileHover={{ scale: 1.05, filter: "brightness(1.2)" }}
+                    <motion.div whileHover={{ scale: 1.05 }}
                       title={`${row.dateStr}: ${row.count} check-ins`}
-                      style={{
-                        width: "100%",
-                        maxWidth: "48px",
-                        height: `${12 + h}px`,
-                        minHeight: "12px",
-                        borderRadius: "12px 12px 6px 6px",
-                        background: row.count ? `linear-gradient(180deg, ${accent}, ${accent}55)` : "var(--surface-elevated)",
+                      initial={{ height: 0 }} animate={{ height: `${10 + h}px` }}
+                      transition={{ duration: 0.8, delay: 0.1 }}
+                      style={{ width: "100%", maxWidth: "44px", minHeight: "10px",
+                        borderRadius: "10px 10px 4px 4px",
+                        background: row.count
+                          ? `linear-gradient(180deg, ${isToday ? accent : accent+"aa"}, ${accent}44)`
+                          : "var(--surface-elevated)",
                         margin: "0 auto",
-                        transition: "background 0.2s"
-                      }}
-                    />
-                    <span style={{ fontSize: "11px", color: "var(--text-muted)", fontWeight: 700 }}>
-                      {DAY_NAMES[new Date(`${row.dateStr}T12:00:00`).getDay()].toUpperCase()}
+                        boxShadow: row.count > 0 ? `0 4px 12px ${accent}33` : "none" }}/>
+                    <span style={{ fontSize: "9px", color: isToday ? accent : "var(--text-muted)", fontWeight: isToday ? 800 : 600, textTransform: "uppercase", letterSpacing: "0.04em" }}>
+                      {dayName.slice(0,1)}
                     </span>
                   </div>
                 );
@@ -183,29 +221,28 @@ export default function WeeklySummary() {
           </motion.div>
 
           {/* Priority Breakdown */}
-          <motion.div variants={{ hidden: { opacity: 0, y: 15 }, visible: { opacity: 1, y: 0 } }} 
-            className="glass-panel" style={{ borderRadius: "24px", padding: "24px", border: "1px solid var(--border)", display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
-            <div style={{ fontSize: "12px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--text-muted)", marginBottom: "16px" }}>Tasks by Priority</div>
+          <motion.div variants={{ hidden: { opacity: 0, y: 15 }, visible: { opacity: 1, y: 0 } }}
+            className="glass-panel" style={{ borderRadius: "22px", padding: "22px", border: "1px solid var(--border-strong)" }}>
+            <div style={{ fontSize: "10px", fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--text-muted)", marginBottom: "18px" }}>Tasks by Priority</div>
             <div style={{ display: "grid", gap: "14px" }}>
               {[
-                { key: "high", label: "High Priority", color: "var(--danger)" },
+                { key: "high", label: "High", color: "var(--danger)" },
                 { key: "medium", label: "Medium", color: "var(--warning)" },
-                { key: "low", label: "Low Priority", color: "var(--success)" },
+                { key: "low", label: "Low", color: "var(--success)" },
               ].map(({ key, label, color }) => {
                 const n = taskInsight.byPriority[key];
-                const max = Math.max(1, taskInsight.doneInWin || 1);
+                const max = Math.max(1, Object.values(taskInsight.byPriority).reduce((a,b)=>a+b,0));
                 const w = Math.round((n / max) * 100);
                 return (
                   <div key={key}>
-                    <div style={{ display: "flex", justifyContent: "space-between", fontSize: "13px", marginBottom: "6px" }}>
-                      <span style={{ fontWeight: 600, color }}>{label}</span>
+                    <div style={{ display: "flex", justifyContent: "space-between", fontSize: "12px", marginBottom: "6px" }}>
+                      <span style={{ fontWeight: 700, color }}>{label}</span>
                       <span style={{ color: "var(--text-primary)", fontWeight: 700 }}>{n}</span>
                     </div>
-                    <div style={{ height: "10px", borderRadius: "8px", background: "var(--surface-raised)", overflow: "hidden" }}>
-                      <motion.div 
-                        initial={{ width: 0 }} animate={{ width: `${w}%` }} transition={{ duration: 1, delay: 0.2 }}
-                        style={{ height: "100%", background: color, borderRadius: "8px" }} 
-                      />
+                    <div style={{ height: "8px", borderRadius: "999px", background: "var(--surface-elevated)", overflow: "hidden" }}>
+                      <motion.div
+                        initial={{ width: 0 }} animate={{ width: `${w}%` }} transition={{ duration: 0.9, delay: 0.2 }}
+                        style={{ height: "100%", borderRadius: "999px", background: color }}/>
                     </div>
                   </div>
                 );
@@ -215,15 +252,18 @@ export default function WeeklySummary() {
 
           {/* Top Categories */}
           {taskInsight.topCategories.length > 0 && (
-            <motion.div variants={{ hidden: { opacity: 0, y: 15 }, visible: { opacity: 1, y: 0 } }} 
-              className="glass-panel" style={{ borderRadius: "24px", padding: "24px", border: "1px solid var(--border)" }}>
-              <div style={{ fontSize: "12px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--text-muted)", marginBottom: "16px" }}>Top Categories (Done)</div>
-              <ul style={{ margin: 0, padding: 0, listStyle: "none", display: "grid", gap: "10px" }}>
+            <motion.div variants={{ hidden: { opacity: 0, y: 15 }, visible: { opacity: 1, y: 0 } }}
+              className="glass-panel" style={{ borderRadius: "22px", padding: "22px", border: "1px solid var(--border-strong)" }}>
+              <div style={{ fontSize: "10px", fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--text-muted)", marginBottom: "18px" }}>Top Categories</div>
+              <ul style={{ margin: 0, padding: 0, listStyle: "none", display: "grid", gap: "8px" }}>
                 {taskInsight.topCategories.map(([name, count], i) => (
-                  <motion.li key={name} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.3 + (i * 0.1) }}
-                    style={{ fontSize: "13px", color: "var(--text-secondary)", display: "flex", justifyContent: "space-between", padding: "8px 12px", background: "var(--surface-raised)", borderRadius: "10px" }}>
-                    <strong style={{ color: "var(--text-primary)", fontWeight: 600 }}>{name}</strong>
-                    <span style={{ fontWeight: 700 }}>{count}</span>
+                  <motion.li key={name} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.3 + i * 0.08 }}
+                    style={{ display: "flex", justifyContent: "space-between", alignItems: "center",
+                      padding: "10px 14px", background: "var(--surface-raised)", borderRadius: "12px",
+                      border: "1px solid var(--border)" }}>
+                    <span style={{ color: "var(--text-primary)", fontWeight: 600, fontSize: "13px" }}>{name}</span>
+                    <span style={{ fontWeight: 800, color: accent, fontSize: "14px",
+                      background: `${accent}18`, padding: "2px 10px", borderRadius: "999px" }}>{count}</span>
                   </motion.li>
                 ))}
               </ul>

@@ -80,7 +80,13 @@ export const ThemeProvider = ({ children }) => {
     root.style.setProperty("--accent-glow",    withAlpha(accent,0.30));
     root.style.setProperty("--accent-subtle",  withAlpha(accent,0.15));
     root.style.setProperty("--accent-soft",    withAlpha(accent,0.08));
-    root.style.setProperty("--radius-btn",     buttonShape === "pill" ? "999px" : "14px");
+    
+    let radius = "14px";
+    if (buttonShape === "pill") radius = "999px";
+    if (buttonShape === "sharp") radius = "4px";
+    if (buttonShape === "rounded") radius = "14px";
+    
+    root.style.setProperty("--radius-btn", radius);
   }, [theme, accent, buttonShape]);
 
   const toggleTheme  = () => setTheme(p => p==="dark"?"light":p==="light"?"ultra":"dark");
