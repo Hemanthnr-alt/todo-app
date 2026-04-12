@@ -78,7 +78,7 @@ export const sendNotification = async ({ title, body, id = Date.now(), sound = t
   // Save to history
   try {
     const existing = JSON.parse(localStorage.getItem("notifs")||"[]");
-    const updated  = [{ title, body, time: new Date().toLocaleTimeString("en-US",{hour:"2-digit",minute:"2-digit"}), read:false }, ...existing].slice(0,20);
+    const updated  = [{ id: `notif_${Date.now()}`, title, body, time: new Date().toLocaleTimeString("en-US",{hour:"2-digit",minute:"2-digit"}), read:false }, ...existing].slice(0,20);
     localStorage.setItem("notifs", JSON.stringify(updated));
   } catch {}
 };

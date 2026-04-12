@@ -1,18 +1,47 @@
+/**
+ * NotificationBell.jsx
+ * Fixed:
+ *  - Unified localStorage key ("notifs") shared with Navbar NotifPanel & sendNotification()
+ *  - Clean dropdown layout with proper type icons, read state, dismiss
+ *  - timeAgo helper correctly handles both ISO strings and already-formatted strings
+ *  - No more scrambled / stacked notification items
+ */
 import { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "../context/AuthContext";
 import { useTheme } from "../context/ThemeContext";
 import api from "../services/api";
 
+// ── Shared storage key (must match Navbar NotifPanel & sendNotification) ───────
+export const NOTIFS_KEY = "notifs";
+
 const SAMPLE_NOTIFS = [
-  { id: "welcome", type: "reminder", title: "Welcome to TodoPro! 🚀", message: "Start by adding your first task", time: "Just now", read: false },
+  {
+    id: "welcome",
+    type: "reminder",
+    title: "Welcome to TodoPro! 🚀",
+    body: "Start by adding your first task",
+    time: new Date().toISOString(),
+    read: false,
+  },
 ];
 
-const TYPE_ICON = { due_today: "📅", overdue: "⚠️", task_completed: "✅", reminder: "🔔", info: "💡" };
+const TYPE_ICON = {
+  due_today:      "📅",
+  overdue:        "⚠️",
+  task_completed: "✅",
+  reminder:       "🔔",
+  info:           "💡",
+};
 
-function timeAgo(dateStr) {
-  if (!dateStr) return "";
-  const diff = Date.now() - new Date(dateStr).getTime();
+function timeAgo(timeVal) {
+  if (!timeVal) return "";
+  // Already formatted (e.g. "09:15 AM") — return as-is
+  if (typeof timeVal === "string" && !timeVal.includes("T") && !timeVal.match(/^\d{4}-/)) {
+    return timeVal;
+  }
+  const diff = Date.now() - new Date(timeVal).getTime();
+  if (isNaN(diff)) return "";
   const mins = Math.floor(diff / 60000);
   if (mins < 1) return "Just now";
   if (mins < 60) return `${mins}m ago`;
@@ -21,194 +50,252 @@ function timeAgo(dateStr) {
   return `${Math.floor(hrs / 24)}d ago`;
 }
 
+function loadNotifs() {
+  try {
+    const raw = localStorage.getItem(NOTIFS_KEY);
+    const parsed = JSON.parse(raw || "null");
+    return Array.isArray(parsed) ? parsed : SAMPLE_NOTIFS;
+  } catch {
+    return SAMPLE_NOTIFS;
+  }
+}
+
+function saveNotifs(list) {
+  const trimmed = list.slice(0, 50);
+  try { localStorage.setItem(NOTIFS_KEY, JSON.stringify(trimmed)); } catch {}
+  return trimmed;
+}
+
 export default function NotificationBell() {
-  const { token, isAuthenticated } = useAuth();
+  const { isAuthenticated } = useAuth();
   const { isDark } = useTheme();
-  const [notifs, setNotifs] = useState(() => {
-    try {
-      return JSON.parse(localStorage.getItem("tp_notifs") || "null") || SAMPLE_NOTIFS;
-    } catch {
-      return SAMPLE_NOTIFS;
-    }
-  });
+  const [notifs, setNotifs] = useState(loadNotifs);
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
-  const unread = notifs.filter((n) => !n.read).length;
 
-  const saveNotifs = (list) => {
-    const trimmed = list.slice(0, 50); // cap at 50
-    setNotifs(trimmed);
-    localStorage.setItem("tp_notifs", JSON.stringify(trimmed));
-  };
+  const unread = notifs.filter(n => !n.read).length;
 
+  const persist = useCallback((list) => {
+    setNotifs(saveNotifs(list));
+  }, []);
+
+  // Poll for new task due/overdue notifications
   const check = useCallback(async () => {
-    if (!isAuthenticated) { setNotifs(SAMPLE_NOTIFS); return; }
+    if (!isAuthenticated) {
+      setNotifs(SAMPLE_NOTIFS);
+      return;
+    }
     try {
       const res = await api.get("/tasks");
-      const tasks = res.data;
+      const tasks = Array.isArray(res.data) ? res.data : [];
       const today = new Date().toISOString().split("T")[0];
-      const dueToday = tasks.filter((x) => x.dueDate === today && !x.completed);
-      const overdue = tasks.filter((x) => x.dueDate && x.dueDate < today && !x.completed);
+      const dueToday = tasks.filter(x => x.dueDate === today && !x.completed);
+      const overdue  = tasks.filter(x => x.dueDate && x.dueDate < today && !x.completed);
 
-      const existing = JSON.parse(localStorage.getItem("tp_notifs") || "[]");
-      let next = [...existing];
-      let changed = false;
-      const now = new Date().toISOString();
+      setNotifs(prev => {
+        let next = [...prev];
+        let changed = false;
+        const now = new Date().toISOString();
 
-      if (dueToday.length > 0 && !next.some((n) => n.type === "due_today" && n.date === today)) {
-        next.unshift({
-          id: `due_${Date.now()}`,
-          type: "due_today",
-          title: `${dueToday.length} task${dueToday.length > 1 ? "s" : ""} due today`,
-          message: dueToday.slice(0, 3).map((x) => x.title).join(", ") + (dueToday.length > 3 ? "…" : ""),
-          time: now, date: today, read: false,
-        });
-        changed = true;
-      }
+        if (dueToday.length > 0 && !next.some(n => n.type === "due_today" && n.date === today)) {
+          next.unshift({
+            id: `due_${Date.now()}`,
+            type: "due_today",
+            title: `${dueToday.length} task${dueToday.length > 1 ? "s" : ""} due today`,
+            body: dueToday.slice(0, 3).map(x => x.title).join(", ") + (dueToday.length > 3 ? "…" : ""),
+            time: now, date: today, read: false,
+          });
+          changed = true;
+        }
 
-      if (overdue.length > 0 && !next.some((n) => n.type === "overdue" && n.date === today)) {
-        next.unshift({
-          id: `overdue_${Date.now()}`,
-          type: "overdue",
-          title: `${overdue.length} overdue task${overdue.length > 1 ? "s" : ""}`,
-          message: overdue.slice(0, 3).map((x) => x.title).join(", ") + (overdue.length > 3 ? "…" : ""),
-          time: now, date: today, read: false,
-        });
-        changed = true;
-      }
+        if (overdue.length > 0 && !next.some(n => n.type === "overdue" && n.date === today)) {
+          next.unshift({
+            id: `overdue_${Date.now()}`,
+            type: "overdue",
+            title: `${overdue.length} overdue task${overdue.length > 1 ? "s" : ""}`,
+            body: overdue.slice(0, 3).map(x => x.title).join(", ") + (overdue.length > 3 ? "…" : ""),
+            time: now, date: today, read: false,
+          });
+          changed = true;
+        }
 
-      if (changed) saveNotifs(next);
+        if (changed) {
+          saveNotifs(next);
+          return next;
+        }
+        return prev;
+      });
     } catch {
-      // silent - don't spam errors
+      // silent
     }
   }, [isAuthenticated]);
 
   useEffect(() => {
     check();
-    const iv = setInterval(check, 5 * 60 * 1000); // every 5 min
+    const iv = setInterval(check, 5 * 60 * 1000);
     return () => clearInterval(iv);
   }, [check]);
 
+  // Sync if sendNotification() writes to localStorage from elsewhere
   useEffect(() => {
-    const close = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    const sync = () => setNotifs(loadNotifs());
+    window.addEventListener("storage", sync);
+    return () => window.removeEventListener("storage", sync);
+  }, []);
+
+  // Close on outside click
+  useEffect(() => {
+    const close = e => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
     document.addEventListener("mousedown", close);
     return () => document.removeEventListener("mousedown", close);
   }, []);
 
-  const markRead = (id) => saveNotifs(notifs.map((n) => n.id === id ? { ...n, read: true } : n));
-  const markAll = () => saveNotifs(notifs.map((n) => ({ ...n, read: true })));
-  const clearAll = () => saveNotifs([]);
-  const dismiss = (id) => saveNotifs(notifs.filter(n => n.id !== id));
+  const markRead   = id  => persist(notifs.map(n => n.id === id ? { ...n, read: true } : n));
+  const markAll    = ()  => persist(notifs.map(n => ({ ...n, read: true })));
+  const dismiss    = id  => persist(notifs.filter(n => n.id !== id));
+  const clearAll   = ()  => persist([]);
 
-  const bg = isDark ? "rgba(8,11,20,0.97)" : "rgba(255,255,255,0.97)";
-  const border = isDark ? "rgba(255,107,157,0.12)" : "rgba(255,107,157,0.15)";
-  const textColor = isDark ? "#f1f5f9" : "#0f172a";
-  const mutedColor = isDark ? "rgba(241,245,249,0.45)" : "rgba(15,23,42,0.45)";
+  const handleOpen = () => {
+    setOpen(v => !v);
+    if (!open) markAll();
+  };
+
+  // Theme colours
+  const panelBg     = isDark ? "rgba(20,20,24,0.98)" : "rgba(255,255,255,0.98)";
+  const borderColor = isDark ? "rgba(255,255,255,0.09)" : "rgba(0,0,0,0.08)";
+  const textPrimary = isDark ? "#f1f5f9" : "#0f172a";
+  const textMuted   = isDark ? "rgba(241,245,249,0.42)" : "rgba(15,23,42,0.42)";
+  const rowHover    = isDark ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.03)";
+  const unreadBg    = isDark ? "rgba(var(--accent-rgb,255,122,89),0.07)" : "rgba(var(--accent-rgb,255,122,89),0.05)";
 
   return (
     <div ref={ref} style={{ position: "relative" }}>
+      {/* Bell button */}
       <motion.button
         whileTap={{ scale: 0.88 }}
-        onClick={() => { setOpen(!open); if (!open) markAll(); }}
+        onClick={handleOpen}
+        className="btn-reset"
         style={{
-          position: "relative", width: "36px", height: "36px", borderRadius: "10px",
-          border: `1px solid ${open ? "rgba(255,107,157,0.35)" : border}`,
-          background: open ? "rgba(255,107,157,0.1)" : (isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.04)"),
-          cursor: "pointer", fontSize: "16px",
+          position: "relative", width: "34px", height: "34px", borderRadius: "10px",
+          border: `1px solid ${open ? "var(--accent)" : "var(--border)"}`,
+          background: open ? "var(--accent-subtle)" : "var(--surface)",
           display: "flex", alignItems: "center", justifyContent: "center",
+          color: open ? "var(--accent)" : "var(--text-secondary)",
           transition: "all 0.15s",
         }}
       >
-        🔔
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.85" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 0 1-3.46 0"/>
+        </svg>
         <AnimatePresence>
           {unread > 0 && (
-            <motion.span
-              key="badge"
-              initial={{ scale: 0 }} animate={{ scale: 1 }} exit={{ scale: 0 }}
+            <motion.span key="badge" initial={{ scale: 0 }} animate={{ scale: 1 }} exit={{ scale: 0 }}
               style={{
                 position: "absolute", top: "-4px", right: "-4px",
-                background: "#f43f5e", color: "white",
+                background: "var(--danger)", color: "#fff",
                 fontSize: "9px", fontWeight: 800,
                 minWidth: "16px", height: "16px", borderRadius: "8px",
                 display: "flex", alignItems: "center", justifyContent: "center",
-                padding: "0 3px", border: `2px solid ${isDark ? "#080b14" : "#f8fafc"}`,
-              }}
-            >{unread > 9 ? "9+" : unread}</motion.span>
+                padding: "0 3px", border: `2px solid var(--bg)`,
+              }}>
+              {unread > 9 ? "9+" : unread}
+            </motion.span>
           )}
         </AnimatePresence>
       </motion.button>
 
+      {/* Dropdown panel */}
       <AnimatePresence>
         {open && (
           <motion.div
-            initial={{ opacity: 0, y: -8, scale: 0.95 }}
+            initial={{ opacity: 0, y: -6, scale: 0.96 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -8, scale: 0.95 }}
-            transition={{ type: "spring", damping: 22, stiffness: 280 }}
+            exit={{ opacity: 0, y: -6, scale: 0.96 }}
+            transition={{ type: "spring", damping: 24, stiffness: 300 }}
             style={{
-              position: "absolute", top: "44px", right: 0,
-              width: "340px", maxHeight: "440px",
-              background: bg, backdropFilter: "blur(20px)",
-              borderRadius: "16px", border: `1px solid ${border}`,
-              boxShadow: "0 16px 50px rgba(0,0,0,0.22)",
-              overflow: "hidden", zIndex: 1000,
+              position: "absolute", top: "42px", right: 0,
+              width: "320px", maxHeight: "420px",
+              background: panelBg, backdropFilter: "blur(20px)",
+              borderRadius: "16px", border: `1px solid ${borderColor}`,
+              boxShadow: "0 16px 48px rgba(0,0,0,0.20)",
+              overflow: "hidden", zIndex: 2000,
+              display: "flex", flexDirection: "column",
             }}
           >
             {/* Header */}
             <div style={{
-              padding: "12px 14px",
+              padding: "12px 14px 10px",
               display: "flex", justifyContent: "space-between", alignItems: "center",
-              borderBottom: `1px solid ${border}`,
+              borderBottom: `1px solid ${borderColor}`,
+              flexShrink: 0,
             }}>
-              <span style={{ fontSize: "13px", fontWeight: 700, color: textColor }}>
-                Notifications {unread > 0 && <span style={{ color: "#ff6b9d" }}>({unread})</span>}
-              </span>
+              <div>
+                <span style={{ fontSize: "13px", fontWeight: 700, color: textPrimary }}>
+                  Notifications
+                </span>
+                {unread > 0 && (
+                  <span style={{ marginLeft: "6px", fontSize: "11px", fontWeight: 700, color: "var(--accent)" }}>
+                    {unread} new
+                  </span>
+                )}
+              </div>
               {notifs.length > 0 && (
-                <div style={{ display: "flex", gap: "8px" }}>
-                  <button onClick={clearAll} style={{ background: "none", border: "none", fontSize: "11px", color: mutedColor, cursor: "pointer", fontFamily: "inherit" }}>
-                    Clear all
-                  </button>
-                </div>
+                <button onClick={clearAll} className="btn-reset"
+                  style={{ fontSize: "11px", fontWeight: 600, color: textMuted, cursor: "pointer" }}>
+                  Clear all
+                </button>
               )}
             </div>
 
             {/* List */}
-            <div style={{ maxHeight: "370px", overflowY: "auto" }}>
+            <div style={{ overflowY: "auto", flex: 1 }}>
               {notifs.length === 0 ? (
-                <div style={{ textAlign: "center", padding: "40px 20px" }}>
-                  <div style={{ fontSize: "32px", marginBottom: "8px" }}>🔕</div>
-                  <p style={{ fontSize: "13px", color: mutedColor, margin: 0 }}>All caught up!</p>
+                <div style={{ textAlign: "center", padding: "36px 20px" }}>
+                  <div style={{ fontSize: "28px", marginBottom: "8px" }}>🔕</div>
+                  <p style={{ fontSize: "12px", color: textMuted, margin: 0 }}>All caught up!</p>
                 </div>
               ) : (
-                notifs.map((n) => (
-                  <div
-                    key={n.id}
-                    onClick={() => markRead(n.id)}
+                notifs.map(n => (
+                  <div key={n.id} onClick={() => markRead(n.id)}
                     style={{
-                      display: "flex", gap: "10px", padding: "11px 14px",
-                      cursor: "pointer",
-                      background: n.read ? "transparent" : (isDark ? "rgba(255,107,157,0.05)" : "rgba(255,107,157,0.03)"),
-                      borderBottom: `1px solid ${isDark ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.04)"}`,
+                      display: "flex", gap: "10px", padding: "10px 14px",
+                      cursor: "pointer", alignItems: "flex-start",
+                      background: n.read ? "transparent" : unreadBg,
+                      borderBottom: `1px solid ${borderColor}`,
                       transition: "background 0.12s",
-                      position: "relative",
                     }}
-                    onMouseEnter={e => e.currentTarget.style.background = isDark ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.03)"}
-                    onMouseLeave={e => e.currentTarget.style.background = n.read ? "transparent" : (isDark ? "rgba(255,107,157,0.05)" : "rgba(255,107,157,0.03)")}
+                    onMouseEnter={e => e.currentTarget.style.background = rowHover}
+                    onMouseLeave={e => e.currentTarget.style.background = n.read ? "transparent" : unreadBg}
                   >
-                    <span style={{ fontSize: "18px", flexShrink: 0, marginTop: "1px" }}>
+                    {/* Icon */}
+                    <span style={{ fontSize: "16px", flexShrink: 0, marginTop: "1px", lineHeight: 1 }}>
                       {TYPE_ICON[n.type] || "📋"}
                     </span>
+
+                    {/* Text */}
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: "12px", fontWeight: 600, color: textColor, marginBottom: "2px" }}>{n.title}</div>
-                      <div style={{ fontSize: "11px", color: mutedColor, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{n.message}</div>
-                      <div style={{ fontSize: "10px", color: mutedColor, marginTop: "3px" }}>{typeof n.time === "string" && n.time.includes("T") ? timeAgo(n.time) : n.time}</div>
+                      <div style={{ fontSize: "12px", fontWeight: 600, color: textPrimary, marginBottom: "2px", lineHeight: 1.3 }}>
+                        {n.title}
+                      </div>
+                      {(n.body || n.message) && (
+                        <div style={{ fontSize: "11px", color: textMuted, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", marginBottom: "3px" }}>
+                          {n.body || n.message}
+                        </div>
+                      )}
+                      <div style={{ fontSize: "10px", color: textMuted }}>
+                        {timeAgo(n.time)}
+                      </div>
                     </div>
-                    <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "4px", flexShrink: 0 }}>
-                      {!n.read && <div style={{ width: "7px", height: "7px", borderRadius: "50%", background: "#ff6b9d" }} />}
-                      <button
-                        onClick={e => { e.stopPropagation(); dismiss(n.id); }}
-                        style={{ background: "none", border: "none", color: mutedColor, cursor: "pointer", fontSize: "11px", padding: "2px", lineHeight: 1 }}
-                      >✕</button>
+
+                    {/* Right: unread dot + dismiss */}
+                    <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "6px", flexShrink: 0 }}>
+                      {!n.read && (
+                        <div style={{ width: "7px", height: "7px", borderRadius: "50%", background: "var(--accent)" }} />
+                      )}
+                      <button onClick={e => { e.stopPropagation(); dismiss(n.id); }} className="btn-reset"
+                        style={{ fontSize: "13px", color: textMuted, lineHeight: 1, padding: "1px" }}>
+                        ✕
+                      </button>
                     </div>
                   </div>
                 ))

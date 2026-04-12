@@ -1,8 +1,10 @@
 /**
  * Navbar.jsx — HabitsNow-style navigation
- * Top bar: 30 logo | bell | menu (⋯)
- * Bottom nav (mobile): Today | Habits | Tasks | Categories | Timer
- * Desktop: compact pill nav inside top bar
+ * Fixed:
+ *  - MenuSheet uses SVG icons (not emojis) matching the reference screenshots
+ *  - Each menu row has a clean icon tile + label + chevron
+ *  - Button shape (sharp/rounded/pill) CSS variable applied correctly via JS
+ *  - Notification panel reads from unified "notifs" key
  */
 import { AnimatePresence, motion } from "framer-motion";
 import { useEffect, useRef, useState } from "react";
@@ -50,58 +52,138 @@ const I = {
       <path d="M9.5 3.5h5M12 3.5v2"/>
     </svg>
   ),
-  Rewards: ({ active }) => (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={active?2.2:1.6} strokeLinecap="round" strokeLinejoin="round">
+};
+
+const NAV_ITEMS = [
+  { id:"today",   label:"Today",   Icon:I.Today },
+  { id:"habits",  label:"Habits",  Icon:I.Habits },
+  { id:"tasks",   label:"Tasks",   Icon:I.Tasks },
+  { id:"summary", label:"Insights",Icon:I.Insights },
+  { id:"timer",   label:"Timer",   Icon:I.Timer },
+];
+
+// ── Menu SVG icons ─────────────────────────────────────────────────────────────
+const MenuIcons = {
+  Settings: () => (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="3"/>
+      <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+    </svg>
+  ),
+  Insights: () => (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+      <line x1="18" y1="20" x2="18" y2="10"/>
+      <line x1="12" y1="20" x2="12" y2="4"/>
+      <line x1="6"  y1="20" x2="6"  y2="14"/>
+    </svg>
+  ),
+  Rewards: () => (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
       <path d="M6 9H4a2 2 0 0 1-2-2V5h4M18 9h2a2 2 0 0 0 2-2V5h-4"/>
-      <path d="M6 5h12v7a6 6 0 0 1-12 0V5z" fill={active?"currentColor":"none"} fillOpacity={active?0.1:0}/>
+      <path d="M6 5h12v7a6 6 0 0 1-12 0V5z"/>
       <path d="M12 18v3M8 21h8"/>
+    </svg>
+  ),
+  Categories: () => (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"/>
+    </svg>
+  ),
+  Sun: () => (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round">
+      <circle cx="12" cy="12" r="4"/>
+      <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/>
+    </svg>
+  ),
+  Moon: () => (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+    </svg>
+  ),
+  UltraDark: () => (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round">
+      <circle cx="12" cy="12" r="9"/>
+      <path d="M12 3v18M3 12h9"/>
+      <path d="M12 3a9 9 0 0 0 0 18" fill="currentColor" fillOpacity="0.2"/>
+    </svg>
+  ),
+  SignOut: () => (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+      <polyline points="16 17 21 12 16 7"/>
+      <line x1="21" y1="12" x2="9" y2="12"/>
+    </svg>
+  ),
+  SignIn: () => (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/>
+      <polyline points="10 17 15 12 10 7"/>
+      <line x1="15" y1="12" x2="3" y2="12"/>
     </svg>
   ),
 };
 
-const NAV_ITEMS = [
-  { id:"today",    label:"Today",   Icon:I.Today },
-  { id:"habits",   label:"Habits",  Icon:I.Habits },
-  { id:"tasks",    label:"Tasks",   Icon:I.Tasks },
-  { id:"summary",  label:"Insights",Icon:I.Insights },
-  { id:"timer",    label:"Timer",   Icon:I.Timer },
-];
-
-// ── Notification panel ─────────────────────────────────────────────────────────
+// ── Notification panel (reads from unified "notifs" key) ───────────────────────
 function NotifPanel({ onClose }) {
   const [notifs, setNotifs] = useState(() => {
-    try { return JSON.parse(localStorage.getItem("notifs")||"[]"); } catch { return []; }
+    try { return JSON.parse(localStorage.getItem("notifs") || "[]"); } catch { return []; }
   });
 
-  const clear = () => { setNotifs([]); localStorage.setItem("notifs","[]"); };
-  const unread = notifs.filter(n=>!n.read).length;
+  const clear = () => {
+    const empty = [];
+    setNotifs(empty);
+    localStorage.setItem("notifs", JSON.stringify(empty));
+  };
+
+  const dismiss = (id) => {
+    const next = notifs.filter(n => n.id !== id);
+    setNotifs(next);
+    localStorage.setItem("notifs", JSON.stringify(next));
+  };
+
+  const unread = notifs.filter(n => !n.read).length;
+
+  const TYPE_ICON = { due_today:"📅", overdue:"⚠️", task_completed:"✅", reminder:"🔔", info:"💡" };
 
   return (
-    <div onClick={onClose} style={{position:"fixed",inset:0,zIndex:8500,background:"rgba(0,0,0,0.5)",backdropFilter:"blur(8px)",display:"flex",alignItems:"flex-end",justifyContent:"center"}}>
+    <div onClick={onClose} style={{ position:"fixed",inset:0,zIndex:8500,background:"rgba(0,0,0,0.5)",backdropFilter:"blur(8px)",display:"flex",alignItems:"flex-end",justifyContent:"center" }}>
       <motion.div onClick={e=>e.stopPropagation()}
         initial={{y:"100%"}} animate={{y:0}} exit={{y:"100%"}}
         transition={{type:"spring",damping:28,stiffness:280}}
         className="glass-panel"
-        style={{width:"100%",maxWidth:"480px",borderRadius:"20px 20px 0 0",paddingBottom:"calc(env(safe-area-inset-bottom,0px) + 80px)",border:"1px solid var(--border-strong)",borderBottom:"none"}}>
-        <div style={{width:"36px",height:"3px",borderRadius:"999px",background:"var(--border-strong)",margin:"10px auto 0"}}/>
-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"12px 16px 10px"}}>
+        style={{ width:"100%",maxWidth:"480px",borderRadius:"20px 20px 0 0",paddingBottom:"calc(env(safe-area-inset-bottom,0px) + 80px)",border:"1px solid var(--border-strong)",borderBottom:"none" }}>
+        <div style={{ width:"36px",height:"3px",borderRadius:"999px",background:"var(--border-strong)",margin:"10px auto 0" }}/>
+        <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",padding:"12px 16px 10px" }}>
           <div>
-            <div style={{fontSize:"16px",fontWeight:700,color:"var(--text-primary)"}}>Notifications</div>
-            <div style={{fontSize:"11px",color:"var(--text-muted)",marginTop:"1px"}}>{unread>0?`${unread} unread`:"All caught up"}</div>
-          </div>
-          {notifs.length>0&&<button type="button" onClick={clear} className="btn-reset" style={{fontSize:"12px",fontWeight:700,color:"var(--accent)"}}>Clear all</button>}
-        </div>
-        <div style={{padding:"0 14px 14px"}}>
-          {notifs.length===0?(
-            <div className="glass-tile" style={{borderRadius:"12px",padding:"24px 16px",textAlign:"center"}}>
-              <div style={{fontSize:"11px",color:"var(--text-muted)"}}>No notifications yet. Habit reminders and streak updates will appear here.</div>
+            <div style={{ fontSize:"16px",fontWeight:700,color:"var(--text-primary)" }}>Notifications</div>
+            <div style={{ fontSize:"11px",color:"var(--text-muted)",marginTop:"1px" }}>
+              {unread > 0 ? `${unread} unread` : "All caught up"}
             </div>
-          ):(
-            notifs.map((n,i)=>(
-              <div key={i} className="glass-tile" style={{borderRadius:"12px",padding:"12px 14px",marginBottom:"6px",borderColor:n.read?"var(--border)":"var(--accent)"}}>
-                <div style={{fontSize:"13px",fontWeight:700,color:"var(--text-primary)",marginBottom:"2px"}}>{n.title}</div>
-                <div style={{fontSize:"12px",color:"var(--text-secondary)",lineHeight:1.4}}>{n.body}</div>
-                <div style={{fontSize:"10px",color:"var(--text-muted)",marginTop:"4px"}}>{n.time}</div>
+          </div>
+          {notifs.length > 0 && (
+            <button type="button" onClick={clear} className="btn-reset"
+              style={{ fontSize:"12px",fontWeight:700,color:"var(--accent)" }}>Clear all</button>
+          )}
+        </div>
+        <div style={{ padding:"0 14px 14px", maxHeight:"60vh", overflowY:"auto" }}>
+          {notifs.length === 0 ? (
+            <div className="glass-tile" style={{ borderRadius:"12px",padding:"24px 16px",textAlign:"center" }}>
+              <div style={{ fontSize:"28px",marginBottom:"8px" }}>🔕</div>
+              <div style={{ fontSize:"11px",color:"var(--text-muted)" }}>No notifications yet.</div>
+            </div>
+          ) : (
+            notifs.map((n, i) => (
+              <div key={n.id || i} style={{ display:"flex",gap:"10px",alignItems:"flex-start",background:"var(--surface-raised)",borderRadius:"12px",padding:"12px 14px",marginBottom:"6px",border:`1px solid ${n.read?"var(--border)":"var(--accent)44"}` }}>
+                <span style={{ fontSize:"16px",flexShrink:0,marginTop:"1px" }}>{TYPE_ICON[n.type] || "📋"}</span>
+                <div style={{ flex:1,minWidth:0 }}>
+                  <div style={{ fontSize:"13px",fontWeight:700,color:"var(--text-primary)",marginBottom:"2px" }}>{n.title}</div>
+                  {(n.body || n.message) && (
+                    <div style={{ fontSize:"12px",color:"var(--text-secondary)",lineHeight:1.4,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" }}>{n.body || n.message}</div>
+                  )}
+                  <div style={{ fontSize:"10px",color:"var(--text-muted)",marginTop:"4px" }}>{n.time}</div>
+                </div>
+                <button type="button" onClick={()=>dismiss(n.id||i)} className="btn-reset"
+                  style={{ color:"var(--text-muted)",fontSize:"14px",flexShrink:0 }}>✕</button>
               </div>
             ))
           )}
@@ -111,50 +193,97 @@ function NotifPanel({ onClose }) {
   );
 }
 
+// ── Menu row component ─────────────────────────────────────────────────────────
+function MenuRow({ icon, label, onClick, danger = false, chevron = true }) {
+  return (
+    <motion.button type="button" onClick={onClick} className="btn-reset"
+      whileTap={{ backgroundColor: "var(--surface-elevated)" }}
+      style={{
+        width:"100%", padding:"13px 18px",
+        display:"flex", alignItems:"center", gap:"14px",
+        color: danger ? "var(--danger)" : "var(--text-primary)",
+        fontSize:"15px", fontWeight:500, background:"transparent",
+        borderRadius:0,
+      }}>
+      <span style={{
+        width:"34px", height:"34px", borderRadius:"10px",
+        background: danger ? "rgba(255,92,106,0.10)" : "var(--surface-elevated)",
+        border: `1px solid ${danger ? "rgba(255,92,106,0.20)" : "var(--border)"}`,
+        display:"flex", alignItems:"center", justifyContent:"center",
+        color: danger ? "var(--danger)" : "var(--text-secondary)",
+        flexShrink:0,
+      }}>
+        {icon}
+      </span>
+      <span style={{ flex:1, textAlign:"left" }}>{label}</span>
+      {chevron && (
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" strokeWidth="2" strokeLinecap="round"><path d="M9 18l6-6-6-6"/></svg>
+      )}
+    </motion.button>
+  );
+}
+
 // ── Menu sheet ─────────────────────────────────────────────────────────────────
 function MenuSheet({ onClose, onSettings, isAuthenticated, user, logout, toggleTheme, isDark, isUltraDark, onPageChange }) {
-  const menuItems = [
-    { icon:"⚙️", label:"Settings",   fn:()=>{ onSettings(); onClose(); } },
-    { icon:"📊", label:"Insights",   fn:()=>{ onPageChange("summary"); onClose(); } },
-    { icon:"🏆", label:"Rewards",    fn:()=>{ onPageChange("rewards"); onClose(); } },
-    { icon:"📁", label:"Categories", fn:()=>{ onPageChange("categories"); onClose(); } },
-    { icon: isDark&&!isUltraDark?"☀️":isUltraDark?"🌙":"🌑",
-      label: isDark&&!isUltraDark?"Light mode":isUltraDark?"Dark mode":"Ultra dark",
-      fn:()=>{ toggleTheme(); onClose(); } },
-  ];
-
-  if (isAuthenticated) {
-    menuItems.push({ icon:"🚪", label:"Sign out", fn:()=>{ logout(); toast("See you soon."); onClose(); }, danger:true });
-  } else {
-    menuItems.push({ icon:"👤", label:"Sign in", fn:()=>{ window.dispatchEvent(new Event("open-auth")); onClose(); } });
-  }
+  const themeIcon = isDark && !isUltraDark
+    ? <MenuIcons.Sun/>
+    : isUltraDark
+      ? <MenuIcons.Moon/>
+      : <MenuIcons.UltraDark/>;
+  const themeLabel = isDark && !isUltraDark
+    ? "Light mode"
+    : isUltraDark
+      ? "Dark mode"
+      : "Ultra dark";
 
   return (
-    <div onClick={onClose} style={{position:"fixed",inset:0,zIndex:8500,background:"rgba(0,0,0,0.5)",backdropFilter:"blur(8px)",display:"flex",alignItems:"flex-end",justifyContent:"center"}}>
+    <div onClick={onClose} style={{ position:"fixed",inset:0,zIndex:8500,background:"rgba(0,0,0,0.5)",backdropFilter:"blur(8px)",display:"flex",alignItems:"flex-end",justifyContent:"center" }}>
       <motion.div onClick={e=>e.stopPropagation()}
         initial={{y:"100%"}} animate={{y:0}} exit={{y:"100%"}}
         transition={{type:"spring",damping:28,stiffness:280}}
-        style={{width:"100%",maxWidth:"480px",background:"var(--bg-elevated)",borderRadius:"20px 20px 0 0",paddingBottom:"calc(env(safe-area-inset-bottom,0px) + 80px)",border:"1px solid var(--border-strong)",borderBottom:"none"}}>
-        <div style={{width:"36px",height:"3px",borderRadius:"999px",background:"var(--border-strong)",margin:"10px auto 0"}}/>
-        {isAuthenticated&&user&&(
-          <div style={{display:"flex",gap:"12px",alignItems:"center",padding:"14px 18px 10px"}}>
-            <div style={{width:"44px",height:"44px",borderRadius:"12px",background:user.avatar?`url(${user.avatar}) center/cover`:"var(--accent-subtle)",border:user.avatar?"1px solid var(--border-strong)":"1.5px solid var(--accent)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"18px",fontWeight:800,color:"var(--accent)",fontFamily:"var(--font-heading)",flexShrink:0}}>
-              {!user.avatar && (user.name||"?").charAt(0).toUpperCase()}
+        style={{ width:"100%",maxWidth:"480px",background:"var(--bg-elevated)",borderRadius:"24px 24px 0 0",paddingBottom:"calc(env(safe-area-inset-bottom,0px) + 12px)",border:"1px solid var(--border-strong)",borderBottom:"none",overflow:"hidden" }}>
+
+        {/* Handle */}
+        <div style={{ width:"36px",height:"3px",borderRadius:"999px",background:"var(--border-strong)",margin:"12px auto 0" }}/>
+
+        {/* Profile header */}
+        {isAuthenticated && user && (
+          <div style={{ display:"flex",gap:"13px",alignItems:"center",padding:"16px 18px 14px" }}>
+            {/* Avatar */}
+            <div style={{
+              width:"48px", height:"48px", borderRadius:"14px", flexShrink:0,
+              background: user.avatar ? `url(${user.avatar}) center/cover` : "var(--accent-subtle)",
+              border: user.avatar ? "1px solid var(--border-strong)" : "1.5px solid var(--accent)44",
+              display:"flex", alignItems:"center", justifyContent:"center",
+              fontSize:"20px", fontWeight:800, color:"var(--accent)", fontFamily:"var(--font-heading)",
+            }}>
+              {!user.avatar && (user.name || "?").charAt(0).toUpperCase()}
             </div>
             <div>
-              <div style={{fontSize:"14px",fontWeight:700,color:"var(--text-primary)"}}>{user.name}</div>
-              <div style={{fontSize:"11px",color:"var(--text-muted)"}}>{user.email}</div>
+              <div style={{ fontSize:"15px",fontWeight:700,color:"var(--text-primary)" }}>{user.name}</div>
+              <div style={{ fontSize:"12px",color:"var(--text-muted)",marginTop:"2px" }}>{user.email}</div>
             </div>
           </div>
         )}
-        <div style={{height:"1px",background:"var(--border)",margin:"0 16px 4px"}}/>
-        {menuItems.map(m=>(
-          <button key={m.label} type="button" onClick={m.fn} className="btn-reset"
-            style={{width:"100%",padding:"13px 20px",display:"flex",alignItems:"center",gap:"14px",color:m.danger?"var(--danger)":"var(--text-primary)",fontSize:"14px",fontWeight:500}}>
-            <span style={{fontSize:"18px",width:"22px",textAlign:"center"}}>{m.icon}</span>
-            {m.label}
-          </button>
-        ))}
+
+        <div style={{ height:"1px",background:"var(--border)",margin:"0 16px 6px" }}/>
+
+        {/* Menu items */}
+        <MenuRow icon={<MenuIcons.Settings/>}    label="Settings"    onClick={()=>{onSettings();onClose();}}/>
+        <MenuRow icon={<MenuIcons.Insights/>}    label="Insights"    onClick={()=>{onPageChange("summary");onClose();}}/>
+        <MenuRow icon={<MenuIcons.Rewards/>}     label="Rewards"     onClick={()=>{onPageChange("rewards");onClose();}}/>
+        <MenuRow icon={<MenuIcons.Categories/>}  label="Categories"  onClick={()=>{onPageChange("categories");onClose();}}/>
+        <MenuRow icon={themeIcon}                label={themeLabel}  onClick={()=>{toggleTheme();onClose();}}/>
+
+        <div style={{ height:"1px",background:"var(--border)",margin:"6px 16px" }}/>
+
+        {isAuthenticated ? (
+          <MenuRow icon={<MenuIcons.SignOut/>} label="Sign out" danger onClick={()=>{logout();toast("See you soon.");onClose();}} chevron={false}/>
+        ) : (
+          <MenuRow icon={<MenuIcons.SignIn/>}  label="Sign in"  onClick={()=>{window.dispatchEvent(new Event("open-auth"));onClose();}}/>
+        )}
+
+        <div style={{ height:"8px" }}/>
       </motion.div>
     </div>
   );
@@ -163,16 +292,23 @@ function MenuSheet({ onClose, onSettings, isAuthenticated, user, logout, toggleT
 // ── Main Navbar ────────────────────────────────────────────────────────────────
 export default function Navbar({ activePage, onPageChange }) {
   const { user, logout, isAuthenticated } = useAuth();
-  const { isDark, isUltraDark, toggleTheme, accent } = useTheme();
+  const { isDark, isUltraDark, toggleTheme, accent, buttonShape } = useTheme();
   const [showAuth,     setShowAuth]     = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [showNotifs,   setShowNotifs]   = useState(false);
   const [showMenu,     setShowMenu]     = useState(false);
   const [unread,       setUnread]       = useState(0);
 
+  // Apply button shape CSS variable globally whenever it changes
+  useEffect(() => {
+    const radii = { sharp: "4px", rounded: "14px", pill: "999px" };
+    const r = radii[buttonShape] || "14px";
+    document.documentElement.style.setProperty("--radius-btn", r);
+  }, [buttonShape]);
+
   useEffect(() => {
     const update = () => {
-      try { setUnread(JSON.parse(localStorage.getItem("notifs")||"[]").filter(n=>!n.read).length); }
+      try { setUnread(JSON.parse(localStorage.getItem("notifs") || "[]").filter(n => !n.read).length); }
       catch { setUnread(0); }
     };
     update();
@@ -202,11 +338,11 @@ export default function Navbar({ activePage, onPageChange }) {
         paddingTop:"env(safe-area-inset-top,0px)",
         background:"var(--bg)", borderBottom:"1px solid var(--border)",
       }}>
-        <div style={{maxWidth:"1200px",margin:"0 auto",padding:"8px 14px",display:"flex",alignItems:"center",gap:"10px"}}>
+        <div style={{ maxWidth:"1200px",margin:"0 auto",padding:"8px 14px",display:"flex",alignItems:"center",gap:"10px" }}>
 
           {/* Logo */}
           <motion.div whileTap={{scale:0.95}} onClick={()=>onPageChange("today")}
-            style={{display:"flex",alignItems:"center",gap:"8px",cursor:"pointer",flexShrink:0}}>
+            style={{ display:"flex",alignItems:"center",gap:"8px",cursor:"pointer",flexShrink:0 }}>
             <div style={{
               width:"34px",height:"34px",borderRadius:"10px",
               background:`linear-gradient(145deg,${accent},var(--accent-pressed))`,
@@ -215,16 +351,16 @@ export default function Navbar({ activePage, onPageChange }) {
               fontSize:"13px",letterSpacing:"-0.06em",
               boxShadow:`0 4px 14px ${accent}44`,
             }}>30</div>
-            <span className="desktop-only" style={{fontFamily:"var(--font-heading)",fontWeight:700,fontSize:"15px",color:"var(--text-primary)",letterSpacing:"-0.02em"}}>Thirty</span>
+            <span className="desktop-only" style={{ fontFamily:"var(--font-heading)",fontWeight:700,fontSize:"15px",color:"var(--text-primary)",letterSpacing:"-0.02em" }}>Thirty</span>
           </motion.div>
 
           {/* Desktop nav pills */}
-          <nav className="desktop-nav" style={{display:"flex",gap:"4px",flex:1,justifyContent:"center"}}>
-            {NAV_ITEMS.map(item=>{
-              const active=activePage===item.id;
+          <nav className="desktop-nav" style={{ display:"flex",gap:"4px",flex:1,justifyContent:"center" }}>
+            {NAV_ITEMS.map(item => {
+              const active = activePage === item.id;
               return (
                 <motion.button key={item.id} whileTap={{scale:0.96}} onClick={()=>onPageChange(item.id)} className="btn-reset"
-                  style={{padding:"6px 12px",borderRadius:"10px",color:active?"var(--accent)":"var(--text-muted)",background:active?"var(--accent-subtle)":"transparent",fontWeight:active?700:500,fontSize:"12px",display:"flex",alignItems:"center",gap:"5px",border:active?"1px solid var(--accent)28":"1px solid transparent",transition:"all 140ms"}}>
+                  style={{ padding:"6px 12px",borderRadius:"10px",color:active?"var(--accent)":"var(--text-muted)",background:active?"var(--accent-subtle)":"transparent",fontWeight:active?700:500,fontSize:"12px",display:"flex",alignItems:"center",gap:"5px",border:active?"1px solid var(--accent)28":"1px solid transparent",transition:"all 140ms" }}>
                   <item.Icon active={active}/>
                   {item.label}
                 </motion.button>
@@ -233,31 +369,31 @@ export default function Navbar({ activePage, onPageChange }) {
           </nav>
 
           {/* Right actions */}
-          <div style={{display:"flex",gap:"7px",alignItems:"center",marginLeft:"auto"}}>
-            {/* Bell (Hide on Native) */}
+          <div style={{ display:"flex",gap:"7px",alignItems:"center",marginLeft:"auto" }}>
+            {/* Bell */}
             {!NATIVE && (
               <motion.button whileTap={{scale:0.92}} onClick={()=>setShowNotifs(true)} className="btn-reset" style={btnStyle}>
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 0 1-3.46 0"/>
                 </svg>
-                {unread>0&&<div style={{position:"absolute",top:"7px",right:"7px",width:"7px",height:"7px",borderRadius:"50%",background:"var(--accent)",boxShadow:`0 0 0 2px var(--bg)`}}/>}
+                {unread > 0 && (
+                  <div style={{ position:"absolute",top:"6px",right:"6px",width:"7px",height:"7px",borderRadius:"50%",background:"var(--accent)",boxShadow:`0 0 0 2px var(--bg)` }}/>
+                )}
               </motion.button>
             )}
 
             {/* Profile / Menu */}
             {isAuthenticated ? (
               <motion.button whileTap={{scale:0.92}} onClick={()=>setShowMenu(true)} className="btn-reset"
-                style={{
-                  ...btnStyle,
-                  width:"34px", height:"34px", padding:0, overflow:"hidden",
-                  border:user?.avatar?"1px solid var(--border-strong)":"1px solid var(--accent)44",
-                  background:user?.avatar?"transparent":"var(--accent-subtle)",
+                style={{ ...btnStyle, overflow:"hidden",
+                  border: user?.avatar ? "1px solid var(--border-strong)" : "1px solid var(--accent)44",
+                  background: user?.avatar ? "transparent" : "var(--accent-subtle)",
                 }}>
                 {user?.avatar ? (
-                  <div style={{width:"100%",height:"100%",background:`url(${user.avatar}) center/cover`}}/>
+                  <div style={{ width:"100%",height:"100%",background:`url(${user.avatar}) center/cover` }}/>
                 ) : (
-                  <div style={{width:"100%",height:"100%",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"14px",fontWeight:800,color:"var(--accent)",fontFamily:"var(--font-heading)"}}>
-                    {(user?.name||"?").charAt(0).toUpperCase()}
+                  <div style={{ width:"100%",height:"100%",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"14px",fontWeight:800,color:"var(--accent)",fontFamily:"var(--font-heading)" }}>
+                    {(user?.name || "?").charAt(0).toUpperCase()}
                   </div>
                 )}
               </motion.button>
@@ -278,18 +414,18 @@ export default function Navbar({ activePage, onPageChange }) {
         background:"var(--bg)",borderTop:"1px solid var(--border)",
         paddingBottom:"max(env(safe-area-inset-bottom,0px),8px)",
       }}>
-        <div style={{display:"flex",justifyContent:"space-around",alignItems:"center",height:"56px",padding:"0 4px"}}>
-          {NAV_ITEMS.map(item=>{
-            const active=activePage===item.id;
+        <div style={{ display:"flex",justifyContent:"space-around",alignItems:"center",height:"56px",padding:"0 4px" }}>
+          {NAV_ITEMS.map(item => {
+            const active = activePage === item.id;
             return (
               <motion.button key={item.id} whileTap={{scale:0.90}} onClick={()=>onPageChange(item.id)} className="btn-reset"
-                style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:"3px",padding:"4px 2px",color:active?"var(--accent)":"var(--text-muted)",position:"relative",WebkitTapHighlightColor:"transparent"}}>
-                {active&&(
+                style={{ flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:"3px",padding:"4px 2px",color:active?"var(--accent)":"var(--text-muted)",position:"relative",WebkitTapHighlightColor:"transparent" }}>
+                {active && (
                   <motion.div layoutId="nav-active-dot"
-                    style={{position:"absolute",top:"4px",left:"50%",transform:"translateX(-50%)",width:"4px",height:"4px",borderRadius:"50%",background:"var(--accent)"}}/>
+                    style={{ position:"absolute",top:"4px",left:"50%",transform:"translateX(-50%)",width:"4px",height:"4px",borderRadius:"50%",background:"var(--accent)" }}/>
                 )}
                 <item.Icon active={active}/>
-                <span style={{fontSize:"9px",fontWeight:active?700:500,letterSpacing:"0.02em"}}>{item.label}</span>
+                <span style={{ fontSize:"9px",fontWeight:active?700:500,letterSpacing:"0.02em" }}>{item.label}</span>
               </motion.button>
             );
           })}
@@ -298,14 +434,16 @@ export default function Navbar({ activePage, onPageChange }) {
 
       {/* ── Panels & modals ── */}
       <AnimatePresence>
-        {showNotifs&&<NotifPanel onClose={()=>setShowNotifs(false)}/>}
-        {showMenu&&(
-          <MenuSheet onClose={()=>setShowMenu(false)}
+        {showNotifs && <NotifPanel onClose={()=>setShowNotifs(false)}/>}
+        {showMenu && (
+          <MenuSheet
+            onClose={()=>setShowMenu(false)}
             onSettings={()=>setShowSettings(true)}
             isAuthenticated={isAuthenticated} user={user}
             logout={logout} toggleTheme={toggleTheme}
             isDark={isDark} isUltraDark={isUltraDark}
-            onPageChange={onPageChange}/>
+            onPageChange={onPageChange}
+          />
         )}
       </AnimatePresence>
 
