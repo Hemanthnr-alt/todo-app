@@ -21,6 +21,12 @@ export const ACCENT_PRESETS = [
   { name:"Gold",    value:"#EAB308" },
 ];
 
+const STREAK_UNLOCKS = [
+  { streak: 3, value: "#FF5A5F" },
+  { streak: 7, value: "#8B5CF6" },
+  { streak: 30, value: "#EAB308" },
+];
+
 const hexToRgb = (hex) => {
   const v = hex.replace("#","");
   const n = v.length===3 ? v.split("").map(c=>c+c).join("") : v;
@@ -35,6 +41,17 @@ const mixHex = (hex,tgt,amt) => {
 };
 const withAlpha = (hex,a) => { const {r,g,b}=hexToRgb(hex); return `rgba(${r},${g},${b},${a})`; };
 const normalizeAccent = (a) => (LEGACY_DEFAULTS.has(a)?DEFAULT_ACCENT:a);
+
+export const unlockAccentForStreak = (streak = 0) => {
+  if (typeof window === "undefined") return [];
+
+  const unlocked = STREAK_UNLOCKS
+    .filter(({ streak: minStreak }) => streak >= minStreak)
+    .map(({ value }) => value);
+
+  localStorage.setItem("unlockedAccents", JSON.stringify(unlocked));
+  return unlocked;
+};
 
 export const useTheme = () => {
   const ctx = useContext(ThemeContext);
