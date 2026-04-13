@@ -299,13 +299,6 @@ export default function Navbar({ activePage, onPageChange }) {
   const [showMenu,     setShowMenu]     = useState(false);
   const [unread,       setUnread]       = useState(0);
 
-  // Apply button shape CSS variable globally whenever it changes
-  useEffect(() => {
-    const radii = { sharp: "4px", rounded: "14px", pill: "999px" };
-    const r = radii[buttonShape] || "14px";
-    document.documentElement.style.setProperty("--radius-btn", r);
-  }, [buttonShape]);
-
   useEffect(() => {
     const update = () => {
       try { setUnread(JSON.parse(localStorage.getItem("notifs") || "[]").filter(n => !n.read).length); }

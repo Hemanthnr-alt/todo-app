@@ -197,7 +197,7 @@ export const useTasks = () => {
     syncingRef.current = false;
 
     if (!failed.length && queue.length) {
-      toast.success("Synced successfully.");
+      toast.success("Synced successfully.", { id: "sync-ok" });
       loadTasks({ view: "all" });
       loadCategories();
     }
@@ -239,7 +239,7 @@ export const useTasks = () => {
     if (NATIVE) {
       const task = localTasks.add(taskData);
       setTasksState(localTasks.getAll());
-      toast.success("Task created.");
+      toast.success("Task created.", { id: "task-created" });
       return task;
     }
 
@@ -249,7 +249,7 @@ export const useTasks = () => {
     try {
       const res = await api.post("/tasks", taskData);
       setTasks((prev) => [res.data, ...prev]);
-      toast.success("Task created.");
+      toast.success("Task created.", { id: "task-created" });
       return res.data;
     } catch (error) {
       if (isOfflineErr(error)) return createOfflineTask(taskData);

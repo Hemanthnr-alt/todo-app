@@ -68,9 +68,14 @@ export const ThemeProvider = ({ children }) => {
   const [accent, setAccent] = useState(() => normalizeAccent(localStorage.getItem("accent")||DEFAULT_ACCENT));
   const [buttonShape, setButtonShape] = useState(() => localStorage.getItem("buttonShape") || "rounded");
 
+  // Helper: convert shape id -> CSS radius value
+  const shapeToRadius = (s) => s === "pill" ? "999px" : s === "sharp" ? "4px" : "14px";
+
   useEffect(() => {
     localStorage.setItem("theme",  theme);
     localStorage.setItem("accent", accent);
+    // buttonShape is saved in changeShape, but sync here too
+    localStorage.setItem("buttonShape", buttonShape);
 
     const root = document.documentElement;
     root.setAttribute("data-theme", theme);
@@ -80,19 +85,18 @@ export const ThemeProvider = ({ children }) => {
     root.style.setProperty("--accent-glow",    withAlpha(accent,0.30));
     root.style.setProperty("--accent-subtle",  withAlpha(accent,0.15));
     root.style.setProperty("--accent-soft",    withAlpha(accent,0.08));
-    
-    let radius = "14px";
-    if (buttonShape === "pill") radius = "999px";
-    if (buttonShape === "sharp") radius = "4px";
-    if (buttonShape === "rounded") radius = "14px";
-    
-    root.style.setProperty("--radius-btn", radius);
+    root.style.setProperty("--radius-btn",     shapeToRadius(buttonShape));
   }, [theme, accent, buttonShape]);
 
   const toggleTheme  = () => setTheme(p => p==="dark"?"light":p==="light"?"ultra":"dark");
   const setThemeTo   = (t) => setTheme(t);
   const changeAccent = (c) => setAccent(c);
-  const changeShape  = (s) => { setButtonShape(s); localStorage.setItem("buttonShape", s); };
+  const changeShape  = (s) => {
+    setButtonShape(s);
+    localStorage.setItem("buttonShape", s);
+    // Apply immediately without waiting for re-render
+    document.documentElement.style.setProperty("--radius-btn", shapeToRadius(s));
+  };
 
   return (
     <ThemeContext.Provider value={{

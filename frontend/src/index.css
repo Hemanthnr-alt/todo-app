@@ -211,6 +211,19 @@ h1,h2,h3,h4,h5,h6,.page-title {
 }
 .btn-primary:active { background:linear-gradient(135deg,var(--accent),var(--accent-pressed)); transform:scale(0.97); box-shadow:none; }
 
+/* ── Global button shape — all action buttons respect --radius-btn ── */
+/* These selectors target the common action/form button patterns  */
+.btn-secondary {
+  height:44px; border-radius:var(--radius-btn);
+  background:var(--surface-elevated); color:var(--text-primary);
+  font-size:13px; font-weight:600; font-family:var(--font-body);
+  border:1px solid var(--border); cursor:pointer;
+  display:inline-flex; align-items:center; justify-content:center; gap:8px;
+  -webkit-tap-highlight-color:transparent; touch-action:manipulation;
+  transition:all var(--motion-duration) var(--easing-default);
+}
+.btn-secondary:active { opacity:0.85; transform:scale(0.97); }
+
 /* ── Surface tiles ───────────────────────────────────────────────────── */
 .glass-panel {
   background:var(--surface); border:1px solid var(--border);
