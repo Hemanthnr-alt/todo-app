@@ -48,6 +48,8 @@ function AppearanceTab({ theme, setTheme, accent, changeAccent, ACCENT_PRESETS, 
       icon:<svg width="18" height="18" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="4" stroke="currentColor" strokeWidth="2"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/></svg> },
   ];
 
+  const shapeStyles = { sharp:"4px", rounded:"14px", pill:"999px" };
+
   return (
     <>
       <SH title="Theme"/>
@@ -87,14 +89,13 @@ function AppearanceTab({ theme, setTheme, accent, changeAccent, ACCENT_PRESETS, 
           <div style={{ fontSize:"14px",fontWeight:700,color:"var(--text-primary)",marginBottom:"12px",fontFamily:"var(--font-heading)" }}>Button style</div>
           <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:"8px" }}>
             {[
-              {id:"sharp",   l:"Sharp",   r:"4px"},
-              {id:"rounded", l:"Rounded", r:"14px"},
-              {id:"pill",    l:"Pill",    r:"999px"},
+              { id:"sharp",   l:"Sharp",   r:"4px" },
+              { id:"rounded", l:"Rounded", r:"14px" },
+              { id:"pill",    l:"Pill",    r:"999px" },
             ].map(s=>(
               <button key={s.id} type="button" onClick={()=>changeShape(s.id)} className="btn-reset"
                 style={{
                   height:"42px",
-                  /* Each button previews its OWN shape */
                   borderRadius: s.r,
                   background: buttonShape===s.id ? "var(--accent)" : "var(--surface)",
                   color: buttonShape===s.id ? "#fff" : "var(--text-secondary)",
@@ -102,37 +103,42 @@ function AppearanceTab({ theme, setTheme, accent, changeAccent, ACCENT_PRESETS, 
                   fontWeight:700, fontSize:"12px",
                   transition:"all 160ms",
                   boxShadow: buttonShape===s.id ? "0 4px 14px var(--accent-glow)" : "none",
-                  outline: buttonShape===s.id ? "2px solid var(--accent)" : "none",
-                  outlineOffset: "2px",
                 }}>
                 {s.l}
               </button>
             ))}
           </div>
-          {/* Live preview strip */}
-          <div style={{ marginTop:"14px",padding:"12px",background:"var(--surface)",borderRadius:"10px",border:"1px solid var(--border)",display:"flex",gap:"8px",alignItems:"center" }}>
-            <span style={{fontSize:"11px",color:"var(--text-muted)",fontWeight:600,flexShrink:0}}>Preview</span>
-            <button className="btn-primary" style={{flex:1,height:"36px",fontSize:"12px",fontWeight:700}}>Save changes</button>
-            <button className="btn-reset" style={{flex:1,height:"36px",borderRadius:"var(--radius-btn)",border:"1px solid var(--border)",background:"var(--surface-elevated)",color:"var(--text-secondary)",fontSize:"12px",fontWeight:600}}>Cancel</button>
+
+          {/* Live preview — shows real buttons reacting to shape change, no onClick needed */}
+          <div style={{ marginTop:"14px",padding:"12px",background:"var(--surface)",borderRadius:"10px",border:"1px solid var(--border)" }}>
+            <div style={{ fontSize:"11px",color:"var(--text-muted)",fontWeight:600,marginBottom:"8px" }}>Live preview</div>
+            <div style={{ display:"flex",gap:"8px" }}>
+              <div className="btn-primary" style={{ flex:1,height:"36px",fontSize:"12px",fontWeight:700,display:"flex",alignItems:"center",justifyContent:"center",cursor:"default" }}>
+                Save changes
+              </div>
+              <div className="btn-secondary" style={{ flex:1,fontSize:"12px",display:"flex",alignItems:"center",justifyContent:"center",cursor:"default" }}>
+                Cancel
+              </div>
+            </div>
           </div>
         </div>
       </Card>
-      
-      <div style={{height: 24}}></div>
+
+      <div style={{height: 24}}/>
     </>
   );
 }
 
-// ── Profile Photo View/Edit Modal ──────────────────────────────────────────────
+// ── Profile Photo Modal ──────────────────────────────────────────────────────
 function ProfilePhotoModal({ user, updateProfile, onClose }) {
   const [loading, setLoading] = useState(false);
   const fileInputRef = useRef(null);
+  const { accent } = useTheme();
 
   const handleFileChange = (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
     if (file.size > 2 * 1024 * 1024) return toast.error("Max image size is 2MB");
-
     setLoading(true);
     const reader = new FileReader();
     reader.onload = async (evt) => {
@@ -155,35 +161,30 @@ function ProfilePhotoModal({ user, updateProfile, onClose }) {
 
   return (
     <CenteredModal isOpen={true} onClose={onClose} title="Profile Photo" maxWidth="320px">
-      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "24px", padding: "8px 0" }}>
-        
-        <div style={{ position: "relative" }}>
+      <div style={{ display:"flex",flexDirection:"column",alignItems:"center",gap:"24px",padding:"8px 0" }}>
+        <div style={{ position:"relative" }}>
           {user?.avatar ? (
-            <div style={{ width: "160px", height: "160px", borderRadius: "54px", background: `url(${user.avatar}) center/cover`, border: "4px solid var(--surface-raised)", boxShadow: "0 12px 32px rgba(0,0,0,0.3)" }} />
+            <div style={{ width:"160px",height:"160px",borderRadius:"54px",background:`url(${user.avatar}) center/cover`,border:"4px solid var(--surface-raised)",boxShadow:"0 12px 32px rgba(0,0,0,0.3)" }}/>
           ) : (
-            <div style={{ width: "160px", height: "160px", borderRadius: "54px", background: "var(--accent-subtle)", border: "3px solid var(--accent)44", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "64px", fontWeight: 900, fontFamily: "var(--font-heading)", color: "var(--accent)", boxShadow: `0 12px 32px ${accent}22` }}>
-              {(user?.name || "?").charAt(0).toUpperCase()}
+            <div style={{ width:"160px",height:"160px",borderRadius:"54px",background:"var(--accent-subtle)",border:"3px solid var(--accent)44",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"64px",fontWeight:900,fontFamily:"var(--font-heading)",color:"var(--accent)",boxShadow:`0 12px 32px ${accent}22` }}>
+              {(user?.name||"?").charAt(0).toUpperCase()}
             </div>
           )}
         </div>
-
-        <input type="file" accept="image/*" ref={fileInputRef} onChange={handleFileChange} style={{display:"none"}} />
-        
-        <div style={{ display: "flex", flexDirection: "column", gap: "10px", width: "100%" }}>
-          <button type="button" onClick={() => fileInputRef.current?.click()} disabled={loading} className="btn-primary" 
-            style={{ width: "100%", height: "48px", fontSize: "14px", fontWeight: 700 }}>
+        <input type="file" accept="image/*" ref={fileInputRef} onChange={handleFileChange} style={{display:"none"}}/>
+        <div style={{ display:"flex",flexDirection:"column",gap:"10px",width:"100%" }}>
+          <button type="button" onClick={() => fileInputRef.current?.click()} disabled={loading} className="btn-primary"
+            style={{ width:"100%",height:"48px",fontSize:"14px",fontWeight:700 }}>
             {loading ? "Uploading..." : "Change Photo"}
           </button>
-          
           {user?.avatar && (
-            <button type="button" onClick={removePhoto} disabled={loading} className="btn-reset" 
-              style={{ width: "100%", height: "48px", borderRadius: "var(--radius-btn)", color: "var(--danger)", fontWeight: 700, fontSize: "14px", border: "1px solid var(--border)", background: "var(--surface-raised)", transition: "all 150ms" }}>
+            <button type="button" onClick={removePhoto} disabled={loading} className="btn-secondary"
+              style={{ width:"100%",height:"48px",color:"var(--danger)",borderColor:"var(--border-danger)" }}>
               Remove Photo
             </button>
           )}
-          
-          <button type="button" onClick={onClose} className="btn-reset" 
-            style={{ width: "100%", height: "48px", borderRadius: "var(--radius-btn)", color: "var(--text-muted)", fontWeight: 700, fontSize: "14px", border: "1px solid transparent" }}>
+          <button type="button" onClick={onClose} className="btn-reset"
+            style={{ width:"100%",height:"48px",borderRadius:"var(--radius-btn)",color:"var(--text-muted)",fontWeight:700,fontSize:"14px",border:"1px solid transparent" }}>
             Cancel
           </button>
         </div>
@@ -192,7 +193,7 @@ function ProfilePhotoModal({ user, updateProfile, onClose }) {
   );
 }
 
-// ── Account tab ────────────────────────────────────────────────────────────────
+// ── Account tab ──────────────────────────────────────────────────────────────
 function AccountTab({ user, updateProfile, changePassword, logout, onClose }) {
   const [name,  setName]  = useState(user?.name||"");
   const [email, setEmail] = useState(user?.email||"");
@@ -227,7 +228,7 @@ function AccountTab({ user, updateProfile, changePassword, logout, onClose }) {
           <motion.button whileTap={{scale:0.95}} type="button" onClick={() => setPhotoModal(true)} className="btn-reset" title="Change photo"
             style={{ width:"80px",height:"80px",borderRadius:"28px",background:user?.avatar?`url(${user.avatar}) center/cover`:"var(--accent-subtle)",border:user?.avatar?"2px solid var(--border-strong)":"2px solid var(--accent)44",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"32px",fontWeight:900,fontFamily:"var(--font-heading)",color:"var(--accent)",flexShrink:0,position:"relative",boxShadow:"0 8px 24px rgba(0,0,0,0.15)" }}>
             {!user?.avatar && (user?.name||"?").charAt(0).toUpperCase()}
-            <div style={{position:"absolute",bottom:"-4px",right:"-4px",width:"24px",height:"24px",borderRadius:"var(--radius-btn)",background:"var(--accent)",display:"flex",alignItems:"center",justifyContent:"center",border:"3px solid var(--surface-raised)",boxShadow:"0 3px 8px rgba(0,0,0,0.1)"}}>
+            <div style={{position:"absolute",bottom:"-4px",right:"-4px",width:"24px",height:"24px",borderRadius:"var(--radius-btn)",background:"var(--accent)",display:"flex",alignItems:"center",justifyContent:"center",border:"3px solid var(--surface-raised)"}}>
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
             </div>
           </motion.button>
@@ -253,8 +254,8 @@ function AccountTab({ user, updateProfile, changePassword, logout, onClose }) {
           <input value={cur} onChange={e=>setCur(e.target.value)} placeholder="Current password" type="password" style={IS}/>
           <input value={nw}  onChange={e=>setNw(e.target.value)}  placeholder="New password"     type="password" style={IS}/>
           <input value={cf}  onChange={e=>setCf(e.target.value)}  placeholder="Confirm password" type="password" style={IS}/>
-          <button type="button" onClick={savePwd} disabled={savP||!cur||!nw}
-            style={{ padding:"14px",borderRadius:"var(--radius-btn)",background:"var(--surface-elevated)",border:"1px solid var(--border)",color:"var(--text-primary)",fontWeight:700,fontSize:"14px",cursor:"pointer",opacity:savP?.5:1,marginTop:"6px" }}>
+          <button type="button" onClick={savePwd} disabled={savP||!cur||!nw} className="btn-secondary"
+            style={{ width:"100%",marginTop:"6px",opacity:savP?.5:1 }}>
             {savP?"Updating…":"Update password"}
           </button>
         </div>
@@ -266,14 +267,14 @@ function AccountTab({ user, updateProfile, changePassword, logout, onClose }) {
           right={<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--danger)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg>}
           onClick={()=>{ logout?.(); onClose(); toast("Signed out"); }}/>
       </Card>
-      
-      <div style={{height: 24}}></div>
+
+      <div style={{height: 24}}/>
       {photoModal && <ProfilePhotoModal user={user} updateProfile={updateProfile} onClose={() => setPhotoModal(false)} />}
     </>
   );
 }
 
-// ── General tab ────────────────────────────────────────────────────────────────
+// ── General tab ──────────────────────────────────────────────────────────────
 function GeneralTab({ accent }) {
   const NATIVE = isNativeApp();
   const getS = (k,d)=>{ try{const v=localStorage.getItem(`thirty_set_${k}`);return v?JSON.parse(v):d;}catch{return d;} };
@@ -336,13 +337,13 @@ function GeneralTab({ accent }) {
         <SettingRow label="Thirty Engine Dashboard" sub="Part of the Ultra-Premium SaaS Ecosystem" last
           right={<span style={{fontSize:"12px",color:"var(--accent)",fontWeight:700,padding:"4px 10px",background:"var(--accent-subtle)",border:"1px solid var(--accent)44",borderRadius:"var(--radius-btn)"}}>v2.0</span>}/>
       </Card>
-      
-      <div style={{height: 24}}></div>
+
+      <div style={{height: 24}}/>
     </>
   );
 }
 
-// ── Main export ────────────────────────────────────────────────────────────────
+// ── Main export ──────────────────────────────────────────────────────────────
 export default function AppSettings({ isOpen, onClose }) {
   const { user, updateProfile, changePassword, logout } = useAuth();
   const { theme, setTheme, accent, changeAccent, ACCENT_PRESETS, buttonShape, changeShape } = useTheme();
@@ -366,10 +367,9 @@ export default function AppSettings({ isOpen, onClose }) {
             <div style={{ fontSize:"11px",color:"var(--text-muted)",fontWeight:600,textTransform:"uppercase",letterSpacing:"0.05em",marginTop:"1px" }}>Preferences & Account</div>
           </div>
           <motion.button whileTap={{scale:0.92}} type="button" onClick={onClose} className="btn-reset"
-            style={{ width:"36px",height:"36px",borderRadius:"var(--radius-btn)",background:"var(--surface)",border:"1px solid var(--border)",color:"var(--text-secondary)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"20px",boxShadow:"0 2px 8px rgba(0,0,0,0.06)" }}>×</motion.button>
+            style={{ width:"36px",height:"36px",borderRadius:"var(--radius-btn)",background:"var(--surface)",border:"1px solid var(--border)",color:"var(--text-secondary)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"20px" }}>×</motion.button>
         </div>
 
-        {/* tab pills */}
         <div style={{ display:"flex",background:"var(--surface-raised)",borderRadius:"var(--radius-btn)",margin:"0 16px 12px",padding:"4px",border:"1px solid var(--border-strong)" }}>
           {[{id:"appearance",l:"App & UI"},{id:"account",l:"Account Settings"},{id:"general",l:"Preferences"}].map(t=>(
             <button key={t.id} type="button" onClick={()=>setTab(t.id)} className="btn-reset"

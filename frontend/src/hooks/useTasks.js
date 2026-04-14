@@ -243,7 +243,8 @@ export const useTasks = () => {
       return task;
     }
 
-    if (!isAuthenticated) return null;
+    // Allow offline/unauthenticated task creation — syncs when user logs in
+    if (!isAuthenticated) return createOfflineTask(taskData);
     if (!navigator.onLine) return createOfflineTask(taskData);
 
     try {
@@ -475,7 +476,8 @@ export const useTasks = () => {
       const alreadyDone = completedDates.includes(ymd);
 
       if (alreadyDone) {
-        // UN-TICK: remove this date from history
+        // UN-TICK: remove this date from history — dueDate does NOT change
+        // (stays at today so the task is still visible and can be re-ticked)
         const dates = completedDates.filter(d => d !== ymd);
         const updated = await updateTask(task.id, {
           completed: false,
@@ -484,16 +486,20 @@ export const useTasks = () => {
         });
         return updated;
       } else {
-        // TICK: record date, advance dueDate
+        // TICK: record this date.
+        // Only advance dueDate if completing on the scheduled due date
+        // (prevents advancing by ticking a past/future date)
         const dates = [...new Set([...completedDates, ymd])];
-        const next = computeNextDueDate(task, task.dueDate || ymd);
+        const currentDue = task.dueDate || ymd;
+        // Only advance if we're completing ON the due date
+        const shouldAdvance = ymd >= currentDue;
+        const next = shouldAdvance ? computeNextDueDate(task, currentDue) : currentDue;
         const updated = await updateTask(task.id, {
           completed: false,
           completedDates: dates,
           dueDate: next,
           updatedAt: new Date().toISOString(),
         });
-        // Stable ID prevents multiple stacked toasts
         if (updated) toast.success("Logged · next date scheduled", { id: "recurring-log" });
         return updated;
       }
@@ -522,7 +528,7 @@ export const useTasks = () => {
     if (NATIVE) {
       const category = localCategories.add(catData);
       setCatsState(localCategories.getAll());
-      toast.success("Category created.");
+      toast.success("Category created.", { id: "cat-created" });
       return category;
     }
 
@@ -532,7 +538,7 @@ export const useTasks = () => {
     try {
       const res = await api.post("/categories", catData);
       setCategories((prev) => [...prev, res.data]);
-      toast.success("Category created.");
+      toast.success("Category created.", { id: "cat-created" });
       return res.data;
     } catch (error) {
       if (isOfflineErr(error)) return createOfflineCategory(catData);

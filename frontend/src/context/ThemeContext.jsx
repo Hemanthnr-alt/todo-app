@@ -3,8 +3,8 @@ import { createContext, useContext, useEffect, useState } from "react";
 
 const ThemeContext = createContext();
 
-const DEFAULT_ACCENT  = "#FF7A59";
-const LEGACY_DEFAULTS = new Set(["#6B46FF","#7C5CFC","#a855f7","#ff6b9d"]);
+const DEFAULT_ACCENT  = "#14B8A6"; // Teal/cyan — default accent
+const LEGACY_DEFAULTS = new Set(["#6B46FF","#7C5CFC","#a855f7","#ff6b9d","#FF7A59"]);
 
 export const ACCENT_PRESETS = [
   { name:"Sunset",  value:"#FF7A59" },
@@ -76,7 +76,7 @@ export const useTheme = () => {
 export const ThemeProvider = ({ children }) => {
   const [theme, setTheme] = useState(() => {
     const t = localStorage.getItem("theme");
-    return ["dark","ultra","light"].includes(t) ? t : "dark";
+    return ["dark","ultra","light"].includes(t) ? t : "light";
   });
   const [accent,      setAccent]      = useState(() => normalizeAccent(localStorage.getItem("accent") || DEFAULT_ACCENT));
   const [buttonShape, setButtonShape] = useState(() => localStorage.getItem("buttonShape") || "rounded");

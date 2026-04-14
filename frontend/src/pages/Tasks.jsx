@@ -126,6 +126,10 @@ function TaskRow({ task, categories, tab, onToggle, onDelete, onEdit, onRestore,
 
   const overdue = due && due < now && !checked;
 
+  // For recurring tasks: locked if today is BEFORE the next due date (can't complete early)
+  // Same behavior as habits locking future dates
+  const isLocked = task.isRecurring && due && due > now;
+
   return (
     <motion.div
       initial={{opacity:0,y:6}} animate={{opacity:1,y:0}} exit={{opacity:0,scale:0.97}}
@@ -144,14 +148,23 @@ function TaskRow({ task, categories, tab, onToggle, onDelete, onEdit, onRestore,
         background: checked ? color : `${color}44`, transition:"background 250ms" }}/>
       <div style={{ width:"10px",flexShrink:0 }}/>
 
-      {/* Toggle — always shown when active */}
+      {/* Toggle — locked for recurring tasks scheduled in the future */}
       {isActive ? (
-        <PremiumRoundComplete
-          checked={checked}
-          onClick={() => onToggle(task)}
-          color={color}
-          ariaLabel={checked ? "Mark incomplete" : "Mark complete"}
-        />
+        isLocked ? (
+          <div style={{ width:"32px",height:"32px",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,opacity:0.35 }}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+              <rect x="5" y="11" width="14" height="11" rx="2.5" fill={color}/>
+              <path d="M8 11V7a4 4 0 018 0v4" stroke={color} strokeWidth="2.2" fill="none" strokeLinecap="round"/>
+            </svg>
+          </div>
+        ) : (
+          <PremiumRoundComplete
+            checked={checked}
+            onClick={() => onToggle(task)}
+            color={color}
+            ariaLabel={checked ? "Mark incomplete" : "Mark complete"}
+          />
+        )
       ) : <div style={{ width:32 }}/>}
 
       {/* Icon tile */}

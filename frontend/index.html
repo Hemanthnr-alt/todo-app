@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="dark">
+<html lang="en" data-theme="light">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -10,7 +10,7 @@
     <style>
       *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
       /* Prevent flash — set bg before React hydrates */
-      html { background: #000; }
+      html { background: #F2F2F7; }
       html[data-theme="light"] { background: #F2F2F7; }
       body { font-family: 'Inter', sans-serif; -webkit-font-smoothing: antialiased; background: transparent; }
 
@@ -25,13 +25,17 @@
     <!-- Blocking theme script — sets data-theme before first paint -->
     <script>
       (function() {
-        var t = localStorage.getItem('theme') || 'dark';
+        var t = localStorage.getItem('theme') || 'light';
         document.documentElement.setAttribute('data-theme', t);
-        document.documentElement.style.background = t === 'light' ? '#F2F2F7' : '#000000';
-        var a = localStorage.getItem('accent') || '#6B46FF';
+        document.documentElement.style.background = t === 'light' ? '#F2F2F7' : (t === 'ultra' ? '#000000' : '#111111');
+        var a = localStorage.getItem('accent') || '#14B8A6';
         document.documentElement.style.setProperty('--accent', a);
         document.documentElement.style.setProperty('--accent-subtle', a + '26');
         document.documentElement.style.setProperty('--accent-glow',   a + '66');
+        // Set button shape radius before React hydrates so no flash
+        var s = localStorage.getItem('buttonShape') || 'rounded';
+        var r = s === 'pill' ? '999px' : s === 'sharp' ? '4px' : '14px';
+        document.documentElement.style.setProperty('--radius-btn', r);
       })();
     </script>
   </head>
