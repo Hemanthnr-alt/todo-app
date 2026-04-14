@@ -2,19 +2,19 @@ import { motion } from "framer-motion";
 
 const VARIANTS = {
   primary: {
-    background: "linear-gradient(135deg,#ff6b9d,#ff99cc)",
+    background: "linear-gradient(135deg,var(--accent-hover),var(--accent))",
     color: "white", border: "none",
-    boxShadow: "0 4px 14px rgba(255,107,157,0.3)",
+    boxShadow: "var(--shadow-glow)",
   },
   secondary: {
-    background: "transparent",
+    background: "var(--surface-elevated)",
     color: "var(--text-primary)",
-    border: "1px solid var(--border-default)",
+    border: "1px solid var(--border)",
   },
   outline: {
     background: "transparent",
-    color: "#ff6b9d",
-    border: "1px solid #ff6b9d",
+    color: "var(--accent)",
+    border: "1px solid var(--accent)",
   },
   danger: {
     background: "linear-gradient(135deg,#ef4444,#dc2626)",
@@ -27,9 +27,9 @@ const VARIANTS = {
 };
 
 const SIZES = {
-  sm: { padding: "6px 14px",  fontSize: "12px" },
-  md: { padding: "10px 20px", fontSize: "14px" },
-  lg: { padding: "12px 24px", fontSize: "16px" },
+  sm: { padding: "6px 14px",  fontSize: "12px", height: "32px" },
+  md: { padding: "10px 20px", fontSize: "14px", height: "44px" },
+  lg: { padding: "12px 24px", fontSize: "16px", height: "52px" },
 };
 
 const Button = ({
@@ -40,7 +40,7 @@ const Button = ({
   const style = {
     ...VARIANTS[variant],
     ...SIZES[size],
-    borderRadius: "10px",
+    borderRadius: "var(--radius-btn)",   // ← respects button shape setting
     fontWeight: 600,
     cursor: disabled ? "not-allowed" : "pointer",
     opacity: disabled ? 0.5 : 1,
@@ -53,7 +53,7 @@ const Button = ({
   return (
     <motion.button
       whileHover={!disabled ? { scale: 1.02, y: -1 } : {}}
-      whileTap={!disabled ? { scale: 0.98 } : {}}
+      whileTap={!disabled ? { scale: 0.97 } : {}}
       onClick={onClick} disabled={disabled}
       type={type} style={style} className={className}
     >

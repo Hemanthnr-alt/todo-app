@@ -1,11 +1,12 @@
 /**
  * Tasks.jsx
- * Fixed:
- *  1. Recurring tasks toggle — uses completedDates.includes(today) like habits,
- *     not task.completed (which is always false for recurring)
- *  2. Double toast — removed local toast.success("Task created"), useTasks handles it
- *  3. All action/cancel buttons use var(--radius-btn) so button style setting applies
- *  4. Cancel/Save buttons in modal work correctly
+ * Recurring tasks now work EXACTLY like habits:
+ *  - Completion tracked via completedDates[] per date (not task.completed)
+ *  - Ticking adds today to completedDates & advances dueDate
+ *  - Un-ticking removes today from completedDates
+ *  - Visual state (circle, strikethrough, row bg) derives from completedDates.includes(today)
+ *  - No 7-day row — just a clean toggle circle like habits
+ * All buttons use var(--radius-btn) so button shape setting applies everywhere.
  */
 import { AnimatePresence, motion } from "framer-motion";
 import { useEffect, useMemo, useState } from "react";
@@ -55,7 +56,7 @@ function IconPicker({ value, onChange, color }) {
     <div style={{ display:"flex", flexWrap:"wrap", gap:"6px" }}>
       {TASK_ICON_LIST.map(key => (
         <button key={key} type="button" onClick={() => onChange(key)} className="btn-reset"
-          style={{ width:"36px", height:"36px", borderRadius:"9px", padding:"7px",
+          style={{ width:"36px", height:"36px", borderRadius:"var(--radius-btn)", padding:"7px",
             background: key===value ? `${color}20` : "var(--surface-elevated)",
             border: `1.5px solid ${key===value ? color : "var(--border)"}` }}>
           <div style={{ width:"100%", height:"100%", color }}>{TASK_ICONS[key]?.(color)}</div>
@@ -71,9 +72,12 @@ function TaskActionSheet({ task, categories, onClose, onEdit, onDelete, onArchiv
   const cat = categories.find(c => c.id === task.categoryId);
   const p   = PRIORITY[task.priority] || PRIORITY.medium;
   const actions = [
-    { icon:<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.85" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>, label:"Edit",    fn:()=>{ onEdit(task); onClose(); } },
-    { icon:<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.85" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>, label:"Archive", fn:()=>{ onArchive(task.id); onClose(); } },
-    { icon:<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--danger)" strokeWidth="1.85" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6h14z"/></svg>, label:"Delete",  fn:()=>{ onDelete(task.id); onClose(); }, danger:true },
+    { label:"Edit",    danger:false, fn:()=>{ onEdit(task); onClose(); },
+      icon:<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.85" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg> },
+    { label:"Archive", danger:false, fn:()=>{ onArchive(task.id); onClose(); },
+      icon:<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.85" strokeLinecap="round" strokeLinejoin="round"><path d="M21 8v13H3V8M1 3h22v5H1zM10 12h4"/></svg> },
+    { label:"Delete",  danger:true,  fn:()=>{ onDelete(task.id); onClose(); },
+      icon:<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--danger)" strokeWidth="1.85" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6h14z"/></svg> },
   ];
   return (
     <div onClick={onClose} style={{ position:"fixed",inset:0,zIndex:9000,background:"rgba(0,0,0,0.55)",backdropFilter:"blur(8px)",display:"flex",alignItems:"flex-end",justifyContent:"center" }}>
@@ -95,7 +99,7 @@ function TaskActionSheet({ task, categories, onClose, onEdit, onDelete, onArchiv
         {actions.map(a => (
           <button key={a.label} type="button" onClick={a.fn} className="btn-reset"
             style={{ width:"100%",padding:"13px 20px",display:"flex",alignItems:"center",gap:"14px",color:a.danger?"var(--danger)":"var(--text-primary)",fontSize:"15px",fontWeight:500,background:"transparent" }}>
-            <span style={{ width:"24px",display:"flex",alignItems:"center",justifyContent:"center",color:a.danger?"var(--danger)":"var(--text-secondary)" }}>{a.icon}</span>
+            <span style={{ width:"24px",display:"flex",alignItems:"center",justifyContent:"center" }}>{a.icon}</span>
             {a.label}
             <span style={{ marginLeft:"auto",color:"var(--text-muted)",fontSize:"16px" }}>›</span>
           </button>
@@ -105,9 +109,8 @@ function TaskActionSheet({ task, categories, onClose, onEdit, onDelete, onArchiv
   );
 }
 
-// ─── Task Row ────────────────────────────────────────────────────────────────────
-// KEY FIX: for recurring tasks, derive `checked` from completedDates.includes(today),
-// NOT from task.completed (which is always false for recurring tasks)
+// ─── Task Row ─────────────────────────────────────────────────────────────────
+// Recurring tasks behave like habits: checked = completedDates.includes(today)
 function TaskRow({ task, categories, tab, onToggle, onDelete, onEdit, onRestore, onArchive, onPermanent, onSkipRecurring, onOpenAction }) {
   const cat      = categories.find(c => c.id === task.categoryId);
   const p        = PRIORITY[task.priority] || PRIORITY.medium;
@@ -116,15 +119,17 @@ function TaskRow({ task, categories, tab, onToggle, onDelete, onEdit, onRestore,
   const isActive = tab === "active";
   const color    = task.color || p.color;
 
-  // Derive checked state correctly for both regular and recurring tasks
+  // Habit-style done check for recurring, simple flag for regular
   const checked = task.isRecurring
-    ? (task.completedDates || []).includes(now)   // habit-style: done today?
-    : !!task.completed;                            // regular: use completed flag
+    ? (task.completedDates || []).includes(now)
+    : !!task.completed;
 
   const overdue = due && due < now && !checked;
 
   return (
-    <motion.div initial={{opacity:0,y:6}} animate={{opacity:1,y:0}} exit={{opacity:0,scale:0.97}} transition={{duration:0.2}}
+    <motion.div
+      initial={{opacity:0,y:6}} animate={{opacity:1,y:0}} exit={{opacity:0,scale:0.97}}
+      transition={{duration:0.2}}
       style={{
         display:"flex", alignItems:"center", gap:"12px",
         padding:"13px 14px 13px 0",
@@ -134,12 +139,12 @@ function TaskRow({ task, categories, tab, onToggle, onDelete, onEdit, onRestore,
         transition:"background 250ms",
       }}>
 
-      {/* Left strip */}
+      {/* Left accent strip */}
       <div style={{ position:"absolute",left:0,top:"12%",bottom:"12%",width:"3px",borderRadius:"999px",
         background: checked ? color : `${color}44`, transition:"background 250ms" }}/>
       <div style={{ width:"10px",flexShrink:0 }}/>
 
-      {/* Toggle circle — always show when active, uses correct checked state */}
+      {/* Toggle — always shown when active */}
       {isActive ? (
         <PremiumRoundComplete
           checked={checked}
@@ -153,7 +158,7 @@ function TaskRow({ task, categories, tab, onToggle, onDelete, onEdit, onRestore,
       <TaskIconTile iconKey={task.icon||"check"} color={color} size={36}/>
 
       {/* Text */}
-      <div style={{ flex:1,minWidth:0 }}>
+      <div style={{ flex:1, minWidth:0 }}>
         <PremiumCompleteTitle complete={checked} lineColor={color}>
           {task.title}
         </PremiumCompleteTitle>
@@ -172,7 +177,7 @@ function TaskRow({ task, categories, tab, onToggle, onDelete, onEdit, onRestore,
             </span>
           )}
           {due && (
-            <span style={{ fontSize:"10px",fontWeight:700,color:overdue?"var(--danger)":due===now?"var(--accent)":"var(--text-muted)",marginLeft:"2px" }}>
+            <span style={{ fontSize:"10px",fontWeight:700,color:overdue?"var(--danger)":due===now?"var(--accent)":"var(--text-muted)" }}>
               {due===now ? "Today" : overdue ? `Overdue ${due}` : due}
             </span>
           )}
@@ -196,7 +201,7 @@ function TaskRow({ task, categories, tab, onToggle, onDelete, onEdit, onRestore,
         {tab === "trash" && (
           <>
             <button type="button" onClick={() => onRestore(task.id)} className="btn-reset"
-              style={{ fontSize:"11px",fontWeight:700,color:"var(--accent)",padding:"6px 10px",borderRadius:"var(--radius-btn)",border:"1px solid var(--accent)28",background:"var(--accent-subtle)" }}>Restore</button>
+              style={{ fontSize:"11px",fontWeight:700,color:"var(--accent)",padding:"6px 10px",borderRadius:"var(--radius-btn)",background:"var(--accent-subtle)" }}>Restore</button>
             <button type="button" onClick={() => onPermanent(task.id)} className="btn-reset"
               style={{ fontSize:"11px",fontWeight:700,color:"var(--danger)",padding:"6px 10px" }}>Delete</button>
           </>
@@ -204,7 +209,7 @@ function TaskRow({ task, categories, tab, onToggle, onDelete, onEdit, onRestore,
         {tab === "archive" && (
           <>
             <button type="button" onClick={() => onRestore(task.id)} className="btn-reset"
-              style={{ fontSize:"11px",fontWeight:700,color:"var(--accent)",padding:"6px 10px",borderRadius:"var(--radius-btn)",border:"1px solid var(--border)",background:"var(--surface-raised)" }}>Restore</button>
+              style={{ fontSize:"11px",fontWeight:700,color:"var(--accent)",padding:"6px 10px",borderRadius:"var(--radius-btn)",background:"var(--surface-raised)" }}>Restore</button>
             <motion.button whileTap={{scale:0.88}} type="button" onClick={() => onDelete(task.id)} className="btn-reset"
               style={{ width:"30px",height:"30px",borderRadius:"var(--radius-btn)",background:"var(--surface)",border:"1px solid var(--border)",color:"var(--danger)",display:"flex",alignItems:"center",justifyContent:"center" }}>
               <IconTrash size={14} stroke="currentColor"/>
@@ -251,7 +256,7 @@ export default function Tasks({ initialTab = null }) {
     }
   }, [initialTab]);
 
-  // ── Filtered list ────────────────────────────────────────────────────────────
+  // ── Filtered list ─────────────────────────────────────────────────────────────
   const filtered = useMemo(() => {
     return tasks.filter(t => {
       const life = lifecycleOf(t);
@@ -261,7 +266,6 @@ export default function Tasks({ initialTab = null }) {
       if (mainTab === "single"    &&  t.isRecurring) return false;
       if (mainTab === "recurring" && !t.isRecurring) return false;
       if (search && !t.title.toLowerCase().includes(search.toLowerCase())) return false;
-      // For recurring tasks, "done" means completedDates.includes(today)
       const isDone = t.isRecurring
         ? (t.completedDates||[]).includes(now)
         : !!t.completed;
@@ -276,7 +280,7 @@ export default function Tasks({ initialTab = null }) {
 
   const catOptions = [{ value:"", label:"No category" }, ...categories.map(c => ({ value:c.id, label:`${c.icon||""} ${c.name}` }))];
 
-  // ── Toggle handler — passes task to toggleComplete which reads completedDates ─
+  // ── Toggle — habit-style for recurring, simple flip for single ────────────────
   const handleToggle = (task) => toggleComplete(task, now);
 
   const handleSkip = async (task) => {
@@ -286,33 +290,34 @@ export default function Tasks({ initialTab = null }) {
     toast.success("Skipped · next date set", { id:"task-skip" });
   };
 
-  // ── Form helpers ─────────────────────────────────────────────────────────────
-  const closeForm = () => { setShowForm(false); setEditingId(null); setDraft({...blankTask}); setShowIcons(false); };
+  // ── Form ──────────────────────────────────────────────────────────────────────
+  const closeForm = () => {
+    setShowForm(false); setEditingId(null);
+    setDraft({...blankTask}); setShowIcons(false);
+  };
 
   const openCreate = (isRecurring = false) => {
     setEditingId(null);
     setDraft({ ...blankTask, isRecurring, recurringFrequency:"daily" });
-    setShowIcons(false);
-    setShowForm(true);
+    setShowIcons(false); setShowForm(true);
   };
 
   const openEdit = (task) => {
     setEditingId(task.id);
     setDraft({
-      title:             task.title || "",
-      description:       task.description || "",
-      priority:          task.priority || "medium",
-      categoryId:        task.categoryId || "",
-      dueDate:           task.dueDate || "",
-      icon:              task.icon || "check",
-      color:             task.color || "#FF7A59",
-      isRecurring:       !!task.isRecurring,
-      recurringFrequency:task.recurringFrequency || "daily",
-      recurringInterval: task.recurringInterval || 2,
-      weeklyDays:        (task.recurringDays||[]).join(","),
+      title:              task.title || "",
+      description:        task.description || "",
+      priority:           task.priority || "medium",
+      categoryId:         task.categoryId || "",
+      dueDate:            task.dueDate || "",
+      icon:               task.icon || "check",
+      color:              task.color || "#FF7A59",
+      isRecurring:        !!task.isRecurring,
+      recurringFrequency: task.recurringFrequency || "daily",
+      recurringInterval:  task.recurringInterval || 2,
+      weeklyDays:         (task.recurringDays||[]).join(","),
     });
-    setShowIcons(false);
-    setShowForm(true);
+    setShowIcons(false); setShowForm(true);
   };
 
   const buildPayload = () => {
@@ -336,8 +341,7 @@ export default function Tasks({ initialTab = null }) {
     };
   };
 
-  // FIX: removed local toast.success("Task created") — useTasks.addTask already shows it
-  // This was causing the double toast. Only show toast for edits here.
+  // No local toast for create — useTasks.addTask fires it with stable ID
   const handleSave = async () => {
     if (!draft.title.trim()) { toast.error("Task name required"); return; }
     setSaving(true);
@@ -346,11 +350,10 @@ export default function Tasks({ initialTab = null }) {
       await updateTask(editingId, p);
       toast.success("Task updated", { id:"task-updated" });
     } else {
-      const created = await addTask(p); // useTasks shows "Task created." toast internally
+      const created = await addTask(p);
       if (!created) { setSaving(false); return; }
     }
-    setSaving(false);
-    closeForm();
+    setSaving(false); closeForm();
   };
 
   const handleAddCat = async () => {
@@ -359,9 +362,9 @@ export default function Tasks({ initialTab = null }) {
     setCatName(""); setCatColor(accent); setCatIcon("default"); setShowCatForm(false);
   };
 
-  // ── Style helpers ────────────────────────────────────────────────────────────
   const IS = {
-    width:"100%", padding:"10px 12px", borderRadius:"12px",
+    width:"100%", padding:"10px 12px",
+    borderRadius:"var(--radius-btn)",
     border:"1px solid var(--border)", background:"var(--surface-raised)",
     color:"var(--text-primary)", fontFamily:"var(--font-body)",
     fontSize:"13px", outline:"none", boxSizing:"border-box",
@@ -525,7 +528,7 @@ export default function Tasks({ initialTab = null }) {
                 const pr = PRIORITY[k], active = draft.priority === k;
                 return (
                   <button key={k} type="button" onClick={() => setDraft(d => ({...d,priority:k}))} className="btn-reset"
-                    style={{ flex:1,padding:"8px",borderRadius:"var(--radius-btn)",border:active?`1.5px solid ${pr.color}`:"1px solid var(--border)",background:active?pr.bg:"var(--surface)",color:pr.color,fontWeight:700,fontSize:"11px",letterSpacing:"0.04em",textTransform:"uppercase" }}>
+                    style={{ flex:1,padding:"8px",borderRadius:"var(--radius-btn)",border:active?`1.5px solid ${pr.color}`:"1px solid var(--border)",background:active?pr.bg:"var(--surface)",color:pr.color,fontWeight:700,fontSize:"11px",textTransform:"uppercase" }}>
                     {pr.label}
                   </button>
                 );
@@ -539,7 +542,7 @@ export default function Tasks({ initialTab = null }) {
             <CustomSelect value={draft.categoryId} onChange={v => setDraft(d => ({...d,categoryId:v}))} options={catOptions}/>
           </div>
 
-          {/* Due date */}
+          {/* Due date — only for single tasks */}
           {!draft.isRecurring && (
             <div>
               <div style={SL}>Due date</div>
@@ -552,14 +555,14 @@ export default function Tasks({ initialTab = null }) {
             </div>
           )}
 
-          {/* Recurring options */}
+          {/* Recurring section — shown when isRecurring */}
           {draft.isRecurring && (
             <div className="glass-tile" style={{ borderRadius:"var(--radius-btn)",padding:"11px",border:"1px solid var(--border)",display:"grid",gap:"10px" }}>
               <div style={SL}>Repeat schedule</div>
               <CustomSelect value={draft.recurringFrequency} onChange={v => setDraft(d => ({...d,recurringFrequency:v}))} options={FREQ_OPTIONS}/>
               {draft.recurringFrequency === "weekly" && (
                 <div>
-                  <div style={{ ...SL,marginBottom:"4px" }}>Days (0=Sun…6=Sat)</div>
+                  <div style={{ ...SL,marginBottom:"4px" }}>Days (0=Sun … 6=Sat)</div>
                   <input value={draft.weeklyDays} onChange={e => setDraft(d => ({...d,weeklyDays:e.target.value}))} placeholder="1,3,5" style={{ ...IS,fontSize:"12px" }}/>
                 </div>
               )}
@@ -572,11 +575,11 @@ export default function Tasks({ initialTab = null }) {
             </div>
           )}
 
-          {/* Non-recurring toggle (allow switching) */}
+          {/* Recurring toggle for single tasks */}
           {!draft.isRecurring && (
             <div className="glass-tile" style={{ borderRadius:"var(--radius-btn)",padding:"11px",border:"1px solid var(--border)" }}>
               <label style={{ display:"flex",alignItems:"center",gap:"10px",cursor:"pointer" }}>
-                <input type="checkbox" checked={draft.isRecurring} onChange={e => setDraft(d => ({...d,isRecurring:e.target.checked}))}/>
+                <input type="checkbox" checked={false} onChange={() => setDraft(d => ({...d,isRecurring:true,dueDate:""}))}/>
                 <span style={{ fontSize:"13px",fontWeight:600,display:"flex",alignItems:"center",gap:"5px" }}>
                   <IconRepeat size={13} stroke="currentColor"/> Make recurring
                 </span>
@@ -586,13 +589,10 @@ export default function Tasks({ initialTab = null }) {
 
           {/* Buttons */}
           <div style={{ display:"flex",gap:"8px" }}>
-            {/* Cancel — uses btn-secondary class which respects --radius-btn */}
-            <button type="button" onClick={closeForm} className="btn-secondary"
-              style={{ flex:1,fontSize:"13px" }}>
+            <button type="button" onClick={closeForm} className="btn-secondary" style={{ flex:1,fontSize:"13px" }}>
               Cancel
             </button>
-            <button type="button" onClick={handleSave} disabled={saving} className="btn-primary"
-              style={{ flex:2,height:"44px",fontSize:"13px" }}>
+            <button type="button" onClick={handleSave} disabled={saving} className="btn-primary" style={{ flex:2,height:"44px",fontSize:"13px" }}>
               {saving ? "Saving…" : editingId ? "Save changes" : "Create task"}
             </button>
           </div>
@@ -624,8 +624,8 @@ export default function Tasks({ initialTab = null }) {
               ))}
             </div>
           </div>
-          <div style={{ background:"var(--surface)",borderRadius:"10px",padding:"10px 12px",border:"1px solid var(--border)",display:"flex",alignItems:"center",gap:"10px" }}>
-            <div style={{ width:"32px",height:"32px",borderRadius:"9px",background:`${catColor}20`,border:`1px solid ${catColor}44`,display:"flex",alignItems:"center",justifyContent:"center",padding:"6px" }}>
+          <div style={{ background:"var(--surface)",borderRadius:"var(--radius-btn)",padding:"10px 12px",border:"1px solid var(--border)",display:"flex",alignItems:"center",gap:"10px" }}>
+            <div style={{ width:"32px",height:"32px",borderRadius:"var(--radius-btn)",background:`${catColor}20`,border:`1px solid ${catColor}44`,display:"flex",alignItems:"center",justifyContent:"center",padding:"6px" }}>
               <div style={{ width:"100%",height:"100%",color:catColor }}>{TASK_ICONS[catIcon]?.(catColor)}</div>
             </div>
             <div>
@@ -634,10 +634,8 @@ export default function Tasks({ initialTab = null }) {
             </div>
           </div>
           <div style={{ display:"flex",gap:"8px" }}>
-            <button type="button" onClick={() => setShowCatForm(false)} className="btn-secondary"
-              style={{ flex:1,fontSize:"13px" }}>Cancel</button>
-            <button type="button" onClick={handleAddCat} className="btn-primary"
-              style={{ flex:2,height:"44px",fontSize:"13px" }}>Create category</button>
+            <button type="button" onClick={() => setShowCatForm(false)} className="btn-secondary" style={{ flex:1,fontSize:"13px" }}>Cancel</button>
+            <button type="button" onClick={handleAddCat} className="btn-primary" style={{ flex:2,height:"44px",fontSize:"13px" }}>Create category</button>
           </div>
         </div>
       </CenteredModal>

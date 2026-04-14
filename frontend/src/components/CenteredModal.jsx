@@ -75,7 +75,7 @@ export default function CenteredModal({ isOpen, onClose, title, children, maxWid
                     onClick={onClose}
                     aria-label="Close"
                     style={{
-                      width: "32px", height: "32px", borderRadius: "9px",
+                      width: "32px", height: "32px", borderRadius: "var(--radius-btn)",
                       background: "var(--surface-raised)",
                       border: "1px solid var(--border)",
                       color: "var(--text-muted)", cursor: "pointer",

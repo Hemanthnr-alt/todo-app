@@ -3,7 +3,7 @@ import { createContext, useContext, useEffect, useState } from "react";
 
 const ThemeContext = createContext();
 
-const DEFAULT_ACCENT = "#FF7A59";
+const DEFAULT_ACCENT  = "#FF7A59";
 const LEGACY_DEFAULTS = new Set(["#6B46FF","#7C5CFC","#a855f7","#ff6b9d"]);
 
 export const ACCENT_PRESETS = [
@@ -22,33 +22,47 @@ export const ACCENT_PRESETS = [
 ];
 
 const STREAK_UNLOCKS = [
-  { streak: 3, value: "#FF5A5F" },
-  { streak: 7, value: "#8B5CF6" },
+  { streak: 3,  value: "#FF5A5F" },
+  { streak: 7,  value: "#8B5CF6" },
   { streak: 30, value: "#EAB308" },
 ];
 
-const hexToRgb = (hex) => {
-  const v = hex.replace("#","");
-  const n = v.length===3 ? v.split("").map(c=>c+c).join("") : v;
-  const i = parseInt(n,16);
-  return { r:(i>>16)&255, g:(i>>8)&255, b:i&255 };
-};
-const clamp = (v,mn,mx) => Math.min(mx,Math.max(mn,v));
-const rgbToHex = ({r,g,b}) => `#${[r,g,b].map(c=>clamp(Math.round(c),0,255).toString(16).padStart(2,"0")).join("")}`;
-const mixHex = (hex,tgt,amt) => {
-  const s=hexToRgb(hex), d=hexToRgb(tgt);
-  return rgbToHex({r:s.r+(d.r-s.r)*amt,g:s.g+(d.g-s.g)*amt,b:s.b+(d.b-s.b)*amt});
-};
-const withAlpha = (hex,a) => { const {r,g,b}=hexToRgb(hex); return `rgba(${r},${g},${b},${a})`; };
-const normalizeAccent = (a) => (LEGACY_DEFAULTS.has(a)?DEFAULT_ACCENT:a);
+const hexToRgb    = (hex) => { const v=hex.replace("#",""); const n=v.length===3?v.split("").map(c=>c+c).join(""):v; const i=parseInt(n,16); return {r:(i>>16)&255,g:(i>>8)&255,b:i&255}; };
+const clamp       = (v,mn,mx) => Math.min(mx,Math.max(mn,v));
+const rgbToHex    = ({r,g,b}) => `#${[r,g,b].map(c=>clamp(Math.round(c),0,255).toString(16).padStart(2,"0")).join("")}`;
+const mixHex      = (hex,tgt,amt) => { const s=hexToRgb(hex),d=hexToRgb(tgt); return rgbToHex({r:s.r+(d.r-s.r)*amt,g:s.g+(d.g-s.g)*amt,b:s.b+(d.b-s.b)*amt}); };
+const withAlpha   = (hex,a) => { const {r,g,b}=hexToRgb(hex); return `rgba(${r},${g},${b},${a})`; };
+const normalizeAccent = (a) => (LEGACY_DEFAULTS.has(a) ? DEFAULT_ACCENT : a);
+
+// Shape → CSS radius
+const shapeToRadius = (s) =>
+  s === "pill"  ? "999px" :
+  s === "sharp" ? "4px"   : "14px";
+
+/**
+ * applyTheme — synchronously updates ALL CSS variables on :root.
+ * Called both from useEffect (React cycle) AND directly in changeShape/changeAccent
+ * so changes are visible instantly without waiting for a re-render.
+ */
+function applyTheme(theme, accent, buttonShape) {
+  const root   = document.documentElement;
+  const radius = shapeToRadius(buttonShape);
+
+  root.setAttribute("data-theme", theme);
+  root.style.setProperty("--accent",          accent);
+  root.style.setProperty("--accent-hover",    mixHex(accent,"#ffffff",0.14));
+  root.style.setProperty("--accent-pressed",  mixHex(accent,"#000000",0.14));
+  root.style.setProperty("--accent-glow",     withAlpha(accent,0.30));
+  root.style.setProperty("--accent-subtle",   withAlpha(accent,0.15));
+  root.style.setProperty("--accent-soft",     withAlpha(accent,0.08));
+  root.style.setProperty("--radius-btn",      radius);
+}
 
 export const unlockAccentForStreak = (streak = 0) => {
   if (typeof window === "undefined") return [];
-
   const unlocked = STREAK_UNLOCKS
-    .filter(({ streak: minStreak }) => streak >= minStreak)
+    .filter(({ streak: m }) => streak >= m)
     .map(({ value }) => value);
-
   localStorage.setItem("unlockedAccents", JSON.stringify(unlocked));
   return unlocked;
 };
@@ -59,50 +73,47 @@ export const useTheme = () => {
   return ctx;
 };
 
-// Valid themes: "dark" | "ultra" | "light"
 export const ThemeProvider = ({ children }) => {
-  const [theme,  setTheme]  = useState(() => {
+  const [theme, setTheme] = useState(() => {
     const t = localStorage.getItem("theme");
     return ["dark","ultra","light"].includes(t) ? t : "dark";
   });
-  const [accent, setAccent] = useState(() => normalizeAccent(localStorage.getItem("accent")||DEFAULT_ACCENT));
+  const [accent,      setAccent]      = useState(() => normalizeAccent(localStorage.getItem("accent") || DEFAULT_ACCENT));
   const [buttonShape, setButtonShape] = useState(() => localStorage.getItem("buttonShape") || "rounded");
 
-  // Helper: convert shape id -> CSS radius value
-  const shapeToRadius = (s) => s === "pill" ? "999px" : s === "sharp" ? "4px" : "14px";
-
+  // Apply on every state change (covers initial mount + any update)
   useEffect(() => {
-    localStorage.setItem("theme",  theme);
-    localStorage.setItem("accent", accent);
-    // buttonShape is saved in changeShape, but sync here too
+    localStorage.setItem("theme",       theme);
+    localStorage.setItem("accent",      accent);
     localStorage.setItem("buttonShape", buttonShape);
-
-    const root = document.documentElement;
-    root.setAttribute("data-theme", theme);
-    root.style.setProperty("--accent",         accent);
-    root.style.setProperty("--accent-hover",   mixHex(accent,"#ffffff",0.14));
-    root.style.setProperty("--accent-pressed", mixHex(accent,"#000000",0.14));
-    root.style.setProperty("--accent-glow",    withAlpha(accent,0.30));
-    root.style.setProperty("--accent-subtle",  withAlpha(accent,0.15));
-    root.style.setProperty("--accent-soft",    withAlpha(accent,0.08));
-    root.style.setProperty("--radius-btn",     shapeToRadius(buttonShape));
+    applyTheme(theme, accent, buttonShape);
   }, [theme, accent, buttonShape]);
+
+  // Also run once synchronously before first paint (in case SSR/hydration gap)
+  // By calling applyTheme in the useState initializers would run on server too,
+  // so we do it here on mount with a layout-like approach via the state init.
+  // The useEffect above covers it on mount anyway.
 
   const toggleTheme  = () => setTheme(p => p==="dark"?"light":p==="light"?"ultra":"dark");
   const setThemeTo   = (t) => setTheme(t);
-  const changeAccent = (c) => setAccent(c);
-  const changeShape  = (s) => {
+  const changeAccent = (c) => {
+    setAccent(c);
+    localStorage.setItem("accent", c);
+    // Immediately update CSS without waiting for React cycle
+    applyTheme(theme, c, buttonShape);
+  };
+  const changeShape = (s) => {
     setButtonShape(s);
     localStorage.setItem("buttonShape", s);
-    // Apply immediately without waiting for re-render
-    document.documentElement.style.setProperty("--radius-btn", shapeToRadius(s));
+    // Immediately update CSS without waiting for React cycle
+    applyTheme(theme, accent, s);
   };
 
   return (
     <ThemeContext.Provider value={{
       theme, setTheme: setThemeTo, toggleTheme,
-      isDark: theme!=="light",
-      isUltraDark: theme==="ultra",
+      isDark: theme !== "light",
+      isUltraDark: theme === "ultra",
       accent, changeAccent, setAccent: changeAccent,
       buttonShape, changeShape,
       ACCENT_PRESETS,
