@@ -56,7 +56,7 @@ function AppearanceTab({ theme, setTheme, accent, changeAccent, ACCENT_PRESETS, 
           <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:"8px" }}>
             {themeOpts.map(o=>(
               <button key={o.id} type="button" onClick={()=>setTheme(o.id)} className="btn-reset"
-                style={{ padding:"14px 6px",borderRadius:"16px",background:theme===o.id?"var(--accent-subtle)":"var(--surface)",border:`1.5px solid ${theme===o.id?"var(--accent)":"var(--border)"}`,color:theme===o.id?"var(--accent)":"var(--text-secondary)",display:"flex",flexDirection:"column",alignItems:"center",gap:"8px",transition:"all 140ms" }}>
+                style={{ padding:"14px 6px",borderRadius:"var(--radius-btn)",background:theme===o.id?"var(--accent-subtle)":"var(--surface)",border:`1.5px solid ${theme===o.id?"var(--accent)":"var(--border)"}`,color:theme===o.id?"var(--accent)":"var(--text-secondary)",display:"flex",flexDirection:"column",alignItems:"center",gap:"8px",transition:"all 140ms" }}>
                 {o.icon}
                 <span style={{ fontSize:"12px",fontWeight:700 }}>{o.label}</span>
               </button>
@@ -205,7 +205,7 @@ function AccountTab({ user, updateProfile, changePassword, logout, onClose }) {
 
   useEffect(()=>{ setName(user?.name||""); setEmail(user?.email||""); },[user]);
 
-  const IS = { width:"100%",padding:"12px 16px",borderRadius:"14px",border:"1px solid var(--border)",background:"var(--surface-elevated)",color:"var(--text-primary)",fontFamily:"var(--font-body)",fontSize:"14px",outline:"none",boxSizing:"border-box" };
+  const IS = { width:"100%",padding:"12px 16px",borderRadius:"var(--radius-btn)",border:"1px solid var(--border)",background:"var(--surface-elevated)",color:"var(--text-primary)",fontFamily:"var(--font-body)",fontSize:"14px",outline:"none",boxSizing:"border-box" };
 
   const save = async()=>{
     if(!name.trim()){toast.error("Name required");return;}
@@ -227,7 +227,7 @@ function AccountTab({ user, updateProfile, changePassword, logout, onClose }) {
           <motion.button whileTap={{scale:0.95}} type="button" onClick={() => setPhotoModal(true)} className="btn-reset" title="Change photo"
             style={{ width:"80px",height:"80px",borderRadius:"28px",background:user?.avatar?`url(${user.avatar}) center/cover`:"var(--accent-subtle)",border:user?.avatar?"2px solid var(--border-strong)":"2px solid var(--accent)44",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"32px",fontWeight:900,fontFamily:"var(--font-heading)",color:"var(--accent)",flexShrink:0,position:"relative",boxShadow:"0 8px 24px rgba(0,0,0,0.15)" }}>
             {!user?.avatar && (user?.name||"?").charAt(0).toUpperCase()}
-            <div style={{position:"absolute",bottom:"-4px",right:"-4px",width:"24px",height:"24px",borderRadius:"8px",background:"var(--accent)",display:"flex",alignItems:"center",justifyContent:"center",border:"3px solid var(--surface-raised)",boxShadow:"0 3px 8px rgba(0,0,0,0.1)"}}>
+            <div style={{position:"absolute",bottom:"-4px",right:"-4px",width:"24px",height:"24px",borderRadius:"var(--radius-btn)",background:"var(--accent)",display:"flex",alignItems:"center",justifyContent:"center",border:"3px solid var(--surface-raised)",boxShadow:"0 3px 8px rgba(0,0,0,0.1)"}}>
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
             </div>
           </motion.button>
@@ -322,10 +322,10 @@ function GeneralTab({ accent }) {
           right={<Toggle checked={haptic} onChange={setHaptic} accent={accent}/>}/>
         <SettingRow label="First day of week" last
           right={
-            <div style={{ display:"flex",background:"var(--surface-elevated)",borderRadius:"10px",padding:"4px",border:"1px solid var(--border)" }}>
+            <div style={{ display:"flex",background:"var(--surface-elevated)",borderRadius:"var(--radius-btn)",padding:"4px",border:"1px solid var(--border)" }}>
               {[{v:"sunday",l:"Sun"},{v:"monday",l:"Mon"}].map(o=>(
                 <button key={o.v} type="button" onClick={()=>setWeekStart(o.v)} className="btn-reset"
-                  style={{ padding:"6px 14px",borderRadius:"8px",background:weekStart===o.v?"var(--accent)":"transparent",color:weekStart===o.v?"#fff":"var(--text-muted)",fontWeight:700,fontSize:"12px",transition:"all 120ms" }}>{o.l}</button>
+                  style={{ padding:"6px 14px",borderRadius:"var(--radius-btn)",background:weekStart===o.v?"var(--accent)":"transparent",color:weekStart===o.v?"#fff":"var(--text-muted)",fontWeight:700,fontSize:"12px",transition:"all 120ms" }}>{o.l}</button>
               ))}
             </div>
           }/>
@@ -334,7 +334,7 @@ function GeneralTab({ accent }) {
       <SH title="About"/>
       <Card>
         <SettingRow label="Thirty Engine Dashboard" sub="Part of the Ultra-Premium SaaS Ecosystem" last
-          right={<span style={{fontSize:"12px",color:"var(--accent)",fontWeight:700,padding:"4px 10px",background:"var(--accent-subtle)",border:"1px solid var(--accent)44",borderRadius:"8px"}}>v2.0</span>}/>
+          right={<span style={{fontSize:"12px",color:"var(--accent)",fontWeight:700,padding:"4px 10px",background:"var(--accent-subtle)",border:"1px solid var(--accent)44",borderRadius:"var(--radius-btn)"}}>v2.0</span>}/>
       </Card>
       
       <div style={{height: 24}}></div>
@@ -366,14 +366,14 @@ export default function AppSettings({ isOpen, onClose }) {
             <div style={{ fontSize:"11px",color:"var(--text-muted)",fontWeight:600,textTransform:"uppercase",letterSpacing:"0.05em",marginTop:"1px" }}>Preferences & Account</div>
           </div>
           <motion.button whileTap={{scale:0.92}} type="button" onClick={onClose} className="btn-reset"
-            style={{ width:"36px",height:"36px",borderRadius:"12px",background:"var(--surface)",border:"1px solid var(--border)",color:"var(--text-secondary)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"20px",boxShadow:"0 2px 8px rgba(0,0,0,0.06)" }}>×</motion.button>
+            style={{ width:"36px",height:"36px",borderRadius:"var(--radius-btn)",background:"var(--surface)",border:"1px solid var(--border)",color:"var(--text-secondary)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"20px",boxShadow:"0 2px 8px rgba(0,0,0,0.06)" }}>×</motion.button>
         </div>
 
         {/* tab pills */}
-        <div style={{ display:"flex",background:"var(--surface-raised)",borderRadius:"14px",margin:"0 16px 12px",padding:"4px",border:"1px solid var(--border-strong)" }}>
+        <div style={{ display:"flex",background:"var(--surface-raised)",borderRadius:"var(--radius-btn)",margin:"0 16px 12px",padding:"4px",border:"1px solid var(--border-strong)" }}>
           {[{id:"appearance",l:"App & UI"},{id:"account",l:"Account Settings"},{id:"general",l:"Preferences"}].map(t=>(
             <button key={t.id} type="button" onClick={()=>setTab(t.id)} className="btn-reset"
-              style={{ flex:1,padding:"10px",borderRadius:"10px",background:tab===t.id?"var(--surface-elevated)":"transparent",color:tab===t.id?"var(--text-primary)":"var(--text-muted)",fontWeight:tab===t.id?700:600,fontSize:"13px",transition:"all 130ms",border:tab===t.id?"1px solid var(--border)":"1px solid transparent",boxShadow:tab===t.id?"0 2px 8px rgba(0,0,0,0.12)":"none" }}>
+              style={{ flex:1,padding:"10px",borderRadius:"var(--radius-btn)",background:tab===t.id?"var(--surface-elevated)":"transparent",color:tab===t.id?"var(--text-primary)":"var(--text-muted)",fontWeight:tab===t.id?700:600,fontSize:"13px",transition:"all 130ms",border:tab===t.id?"1px solid var(--border)":"1px solid transparent",boxShadow:tab===t.id?"0 2px 8px rgba(0,0,0,0.12)":"none" }}>
               {t.l}
             </button>
           ))}
