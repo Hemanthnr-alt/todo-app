@@ -109,17 +109,9 @@ function AppearanceTab({ theme, setTheme, accent, changeAccent, ACCENT_PRESETS, 
             ))}
           </div>
 
-          {/* Live preview — shows real buttons reacting to shape change, no onClick needed */}
-          <div style={{ marginTop:"14px",padding:"12px",background:"var(--surface)",borderRadius:"10px",border:"1px solid var(--border)" }}>
-            <div style={{ fontSize:"11px",color:"var(--text-muted)",fontWeight:600,marginBottom:"8px" }}>Live preview</div>
-            <div style={{ display:"flex",gap:"8px" }}>
-              <div className="btn-primary" style={{ flex:1,height:"36px",fontSize:"12px",fontWeight:700,display:"flex",alignItems:"center",justifyContent:"center",cursor:"default" }}>
-                Save changes
-              </div>
-              <div className="btn-secondary" style={{ flex:1,fontSize:"12px",display:"flex",alignItems:"center",justifyContent:"center",cursor:"default" }}>
-                Cancel
-              </div>
-            </div>
+          {/* Shape applies instantly — no save needed */}
+          <div style={{ marginTop:"10px",fontSize:"11px",color:"var(--text-muted)",fontWeight:500,textAlign:"center",padding:"4px 0" }}>
+            Changes apply instantly across the whole app
           </div>
         </div>
       </Card>

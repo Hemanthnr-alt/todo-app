@@ -1,10 +1,11 @@
 /**
- * Today.jsx — Clean daily view
- * Fixed:
- *  - Recurring tasks can now be un-ticked (removed from completedDates for that date)
- *  - Single toast deduplication — no stacking
- *  - Notifications panel reads from unified "notifs" key, clean layout
- *  - Correct done-state derivation for recurring tasks
+ * Today.jsx
+ * Recurring task logic:
+ *  - Show on dueDate (today) → can tick/untick freely
+ *  - Show on past days where completed → locked (historical record)
+ *  - Show on future dueDate → locked padlock (can't complete early)
+ *  - Un-tick: removes from completedDates, resets dueDate to today → stays visible
+ *  - Tick: adds to completedDates, advances dueDate → appears locked on that future day
  */
 import { AnimatePresence, motion } from "framer-motion";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
@@ -28,17 +29,14 @@ function buildDates(s, e) {
   const mid  = new Date(base.getFullYear(), base.getMonth(), base.getDate());
   const arr  = [];
   for (let o = s; o <= e; o++) {
-    const d = new Date(mid);
-    d.setDate(mid.getDate() + o);
-    arr.push(d);
+    const d = new Date(mid); d.setDate(mid.getDate() + o); arr.push(d);
   }
   return arr;
 }
 
-// ── Lock icon ──────────────────────────────────────────────────────────────────
 function LockSvg({ color = "currentColor" }) {
   return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" style={{ opacity: .35 }}>
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" style={{ opacity:.35 }}>
       <rect x="5" y="11" width="14" height="11" rx="2.5" fill={color}/>
       <path d="M8 11V7a4 4 0 018 0v4" stroke={color} strokeWidth="2.2" fill="none" strokeLinecap="round"/>
     </svg>
@@ -56,12 +54,12 @@ function HelpModal({ onClose }) {
           <button type="button" onClick={onClose} className="btn-reset" style={{ width:"28px",height:"28px",borderRadius:"var(--radius-btn)",background:"var(--surface)",border:"1px solid var(--border)",color:"var(--text-muted)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"14px" }}>×</button>
         </div>
         {[
-          { icon:"📅", t:"Date strip",     d:"Scroll to view any day. Today is highlighted in accent color." },
-          { icon:"✅", t:"Complete items", d:"Tap the circle to mark habits or tasks done. Tap again to undo." },
-          { icon:"🔒", t:"Future habits",  d:"Future dates are locked — habits can't be logged ahead of time." },
-          { icon:"➕", t:"Add items",      d:"Tap + FAB or 'New list' to add a Habit, Recurring Task, or Task." },
-          { icon:"🔁", t:"Recurring tasks",d:"Shown with a repeat badge — these appear every day/week." },
-        ].map(it=>(
+          { icon:"📅", t:"Date strip",      d:"Scroll to view any day. Today is highlighted." },
+          { icon:"✅", t:"Complete items",  d:"Tap the circle to mark done. Tap again to undo." },
+          { icon:"🔒", t:"Locked items",    d:"Future recurring tasks and past habits are locked." },
+          { icon:"🔁", t:"Recurring tasks", d:"Shown on their due date. After ticking, the next day is scheduled." },
+          { icon:"➕", t:"Add items",       d:"Tap + to add a Habit, Recurring Task, or Task." },
+        ].map(it => (
           <div key={it.t} style={{ display:"flex",gap:"10px",padding:"8px 0",borderBottom:"1px solid var(--border)" }}>
             <div style={{ fontSize:"18px",width:"22px",flexShrink:0,textAlign:"center" }}>{it.icon}</div>
             <div>
@@ -79,24 +77,24 @@ function HelpModal({ onClose }) {
 // ── Add type sheet ─────────────────────────────────────────────────────────────
 function AddTypeSheet({ onClose, onGoToTasks, onGoToHabits }) {
   const types = [
-    { bg:"#FF7A5918",border:"#FF7A5940",icon:"🏆",iconBg:"#FF7A5933",title:"Habit",          sub:"Activity that repeats over time. It has detailed tracking and statistics.",          action:()=>{ onGoToHabits?.(); onClose(); } },
-    { bg:"#F5A62318",border:"#F5A62340",icon:"🔁",iconBg:"#F5A62333",title:"Recurring Task", sub:"Activity that repeats over time without tracking or statistics.",                   action:()=>{ onGoToTasks?.("recurring"); onClose(); } },
-    { bg:"#3DD68C18",border:"#3DD68C40",icon:"✅",iconBg:"#3DD68C33",title:"Task",            sub:"Single instance activity without tracking over time.",                               action:()=>{ onGoToTasks?.("single"); onClose(); } },
+    { bg:"#FF7A5918",border:"#FF7A5940",icon:"🏆",title:"Habit",         sub:"Tracks over time with streaks and statistics.",    action:()=>{ onGoToHabits?.(); onClose(); } },
+    { bg:"#F5A62318",border:"#F5A62340",icon:"🔁",title:"Recurring Task",sub:"Repeats daily/weekly without detailed tracking.",   action:()=>{ onGoToTasks?.("recurring"); onClose(); } },
+    { bg:"#3DD68C18",border:"#3DD68C40",icon:"✅",title:"Task",           sub:"One-time task, no tracking.",                      action:()=>{ onGoToTasks?.("single"); onClose(); } },
   ];
   return (
     <div onClick={onClose} style={{ position:"fixed",inset:0,zIndex:9000,background:"rgba(0,0,0,0.55)",backdropFilter:"blur(8px)",display:"flex",alignItems:"flex-end",justifyContent:"center" }}>
       <motion.div onClick={e=>e.stopPropagation()} initial={{y:80,opacity:0}} animate={{y:0,opacity:1}} exit={{y:80,opacity:0}} transition={{type:"spring",stiffness:340,damping:30}}
         style={{ width:"100%",maxWidth:"480px",background:"var(--surface-raised)",borderRadius:"20px 20px 0 0",padding:"12px 0 48px",border:"1px solid var(--border-strong)",borderBottom:"none" }}>
         <div style={{ width:"36px",height:"3px",borderRadius:"999px",background:"var(--border-strong)",margin:"0 auto 14px" }}/>
-        {types.map((t,i)=>(
+        {types.map((t,i) => (
           <button key={t.title} type="button" onClick={t.action} className="btn-reset"
             style={{ width:"100%",padding:"14px 20px",display:"flex",alignItems:"center",gap:"14px",borderBottom:i<types.length-1?"1px solid var(--border)":"none",background:"transparent" }}>
-            <div style={{ width:"44px",height:"44px",borderRadius:"var(--radius-btn)",background:t.bg,border:`1px solid ${t.border}`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:"20px",flexShrink:0 }}>{t.icon}</div>
+            <div style={{ width:"44px",height:"44px",borderRadius:"13px",background:t.bg,border:`1px solid ${t.border}`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:"20px",flexShrink:0 }}>{t.icon}</div>
             <div style={{ textAlign:"left",flex:1,minWidth:0 }}>
               <div style={{ fontSize:"14px",fontWeight:700,color:"var(--text-primary)",marginBottom:"2px" }}>{t.title}</div>
               <div style={{ fontSize:"11px",color:"var(--text-muted)",lineHeight:1.4 }}>{t.sub}</div>
             </div>
-            <span style={{ color:"var(--text-muted)",fontSize:"16px",flexShrink:0 }}>›</span>
+            <span style={{ color:"var(--text-muted)",fontSize:"16px" }}>›</span>
           </button>
         ))}
       </motion.div>
@@ -118,7 +116,7 @@ function SortSheet({ current, onSelect, onClose }) {
         style={{ width:"100%",maxWidth:"440px",background:"var(--surface-raised)",borderRadius:"20px 20px 0 0",padding:"12px 0 44px",border:"1px solid var(--border-strong)",borderBottom:"none" }}>
         <div style={{ width:"36px",height:"3px",borderRadius:"999px",background:"var(--border-strong)",margin:"0 auto 10px" }}/>
         <div style={{ padding:"4px 16px 10px",fontSize:"10px",fontWeight:700,color:"var(--text-muted)",letterSpacing:"0.07em",textTransform:"uppercase" }}>Sort</div>
-        {opts.map(o=>(
+        {opts.map(o => (
           <button key={o.v} type="button" onClick={()=>{ onSelect(o.v); onClose(); }} className="btn-reset"
             style={{ width:"100%",padding:"12px 18px",display:"flex",alignItems:"center",justifyContent:"space-between",background:current===o.v?"var(--accent-soft)":"transparent",borderLeft:current===o.v?"3px solid var(--accent)":"3px solid transparent",color:"var(--text-primary)",fontSize:"14px",fontWeight:current===o.v?700:400 }}>
             {o.l}
@@ -131,11 +129,11 @@ function SortSheet({ current, onSelect, onClose }) {
 }
 
 // ── Agenda item ────────────────────────────────────────────────────────────────
-function AgendaItem({ item, accent, onToggleTask, onToggleHabit, isFuture }) {
-  const color  = item.color || accent;
+// locked prop: shows padlock, prevents toggling
+function AgendaItem({ item, accent, onToggleTask, onToggleHabit, locked }) {
+  const color   = item.color || accent;
   const checked = item.done;
   const isTask  = item.type === "task";
-  const canAct  = !isFuture || isTask;
 
   return (
     <motion.div layout
@@ -148,17 +146,17 @@ function AgendaItem({ item, accent, onToggleTask, onToggleHabit, isFuture }) {
         position:"relative",
         background: checked ? `linear-gradient(90deg,${color}08,transparent 60%)` : "",
         transition:"background 250ms",
+        opacity: locked && !checked ? 0.65 : 1,
       }}>
 
-      {/* Left colour strip */}
       <div style={{ position:"absolute",left:0,top:"12%",bottom:"12%",width:"3px",borderRadius:"999px",
         background: checked ? color : `${color}44`, transition:"background 250ms" }}/>
       <div style={{ width:"10px",flexShrink:0 }}/>
 
       {/* Icon tile */}
       {isTask
-        ? <TaskIconTile  iconKey={item.taskIcon||"check"}  color={color} size={36}/>
-        : <HabitIconTile iconKey={item.icon||"default"}    color={color} size={36}/>
+        ? <TaskIconTile  iconKey={item.taskIcon||"check"} color={color} size={36}/>
+        : <HabitIconTile iconKey={item.icon||"default"}   color={color} size={36}/>
       }
 
       {/* Text */}
@@ -173,16 +171,25 @@ function AgendaItem({ item, accent, onToggleTask, onToggleHabit, isFuture }) {
           </span>
           {item.isRecurring && (
             <span style={{ display:"inline-flex",alignItems:"center",gap:"2px",fontSize:"10px",color:"var(--text-muted)",fontWeight:600 }}>
-              <IconRepeat size={10} stroke="var(--text-muted)"/> Daily
+              <IconRepeat size={10} stroke="var(--text-muted)"/> Recurring
+            </span>
+          )}
+          {locked && (
+            <span style={{ display:"inline-flex",alignItems:"center",gap:"3px",fontSize:"10px",color:"var(--text-muted)",fontWeight:600 }}>
+              <LockSvg color="var(--text-muted)"/>
+              {checked ? "Completed" : "Scheduled"}
             </span>
           )}
         </div>
       </div>
 
-      {/* Action */}
-      {!canAct ? (
-        <div style={{ width:"32px",height:"32px",display:"flex",alignItems:"center",justifyContent:"center",color }}>
-          <LockSvg color={color}/>
+      {/* Toggle / Lock */}
+      {locked ? (
+        <div style={{ width:"32px",height:"32px",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0 }}>
+          {checked
+            ? <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{opacity:0.5}}><path d="M20 6L9 17l-5-5"/></svg>
+            : <LockSvg color={color}/>
+          }
         </div>
       ) : (
         <PremiumRoundComplete
@@ -218,15 +225,15 @@ export default function Today({ onGoToTasks, onGoToCalendar, onGoToHabits }) {
   const [sortMode,   setSortMode]   = useState("default");
 
   const stripRef = useRef(null);
-  const dRef     = useRef(dates);    dRef.current  = dates;
-  const rsRef    = useRef(rangeStart); rsRef.current = rangeStart;
-  const reRef    = useRef(rangeEnd);   reRef.current = rangeEnd;
+  const dRef = useRef(dates); dRef.current = dates;
+  const rsRef = useRef(rangeStart); rsRef.current = rangeStart;
+  const reRef = useRef(rangeEnd);   reRef.current = rangeEnd;
 
   const scrollTo = useCallback((ds, beh = "smooth") => {
     const el = stripRef.current; if (!el) return;
     const idx = dRef.current.findIndex(d => formatLocalYMD(d) === ds); if (idx < 0) return;
     const ch = el.children[0]?.children[idx]; if (!ch) return;
-    el.scrollTo({ left: Math.max(0, ch.offsetLeft - el.clientWidth / 2 + ch.offsetWidth / 2), behavior: beh });
+    el.scrollTo({ left: Math.max(0, ch.offsetLeft - el.clientWidth/2 + ch.offsetWidth/2), behavior: beh });
   }, []);
 
   useLayoutEffect(() => { scrollTo(selected, "auto"); }, [scrollTo, selected, dates]);
@@ -249,75 +256,110 @@ export default function Today({ onGoToTasks, onGoToCalendar, onGoToHabits }) {
     return () => el.removeEventListener("scroll", fn);
   }, []);
 
-  const selDateObj   = new Date(`${selected}T00:00:00`);
-  const missedMap    = getMissed();
-  const isFutureDate = selected > todayStr;
+  const selDateObj = new Date(`${selected}T00:00:00`);
+  const missedMap  = getMissed();
+  const isToday    = selected === todayStr;
+  const isFuture   = selected > todayStr;
 
-  // ── Build agenda items ─────────────────────────────────────────────────────
-  // Tasks: show if due on selected date OR if recurring and completed on that date
-  const dayTasks = tasks.filter(t => {
-    if (t.lifecycleStatus && t.lifecycleStatus !== "active") return false;
-    if (t.dueDate === selected) return true;
-    if (t.isRecurring && (t.completedDates || []).includes(selected)) return true;
-    // Recurring tasks due today should always show
-    if (t.isRecurring && t.dueDate <= selected && t.dueDate >= todayStr) return false;
-    if (t.isRecurring && !t.dueDate) return true;
-    return false;
-  }).map(t => ({
-    type: "task",
-    id: t.id,
-    title: t.title,
-    taskIcon: t.icon || "check",
-    color: "#E84A8A",
-    kind: "Task",
-    // ← CRITICAL: for recurring, done = completedDates.includes(selected), not t.completed
-    done: t.isRecurring
-      ? (t.completedDates || []).includes(selected)
-      : t.completed,
-    isRecurring: !!t.isRecurring,
-    rawTask: t,           // pass the full live task object for toggleComplete
-  }));
+  // ── Build recurring task items for selected date ───────────────────────────
+  // RULES (matching user's spec):
+  //  TODAY (selected = todayStr):
+  //    - Show if dueDate = today  → UNLOCKED (can tick/untick freely)
+  //    - Show if completedDates includes today (already ticked today) → UNLOCKED (can untick)
+  //  FUTURE (selected > todayStr):
+  //    - Show if dueDate = selected day → LOCKED (can't complete early, padlock)
+  //    - Do NOT show historical completed dates on future days
+  //  PAST (selected < todayStr):
+  //    - Show if completedDates includes selected day → LOCKED+CHECKED (history record)
+  //    - Do NOT show dueDate-only entries for past days
+  const dayTasks = useMemo(() => {
+    return tasks
+      .filter(t => {
+        if (t.lifecycleStatus && t.lifecycleStatus !== "active") return false;
 
-  const dayHabits = habits.filter(h => {
-    const start = h.startDate || h.createdAt?.slice(0, 10) || todayStr;
-    if (selected < start) return false;
-    if (h.frequency === "daily")  return true;
-    if (h.frequency === "weekly") return (h.recurringDays || []).includes(selDateObj.getDay());
-    return true;
-  }).map(h => ({
-    type: "habit",
-    id: h.id,
-    title: h.name,
-    icon: h.icon || "default",
-    color: h.color,
-    kind: missedMap[`${h.id}_${selected}`] ? "Missed" : "Habit",
-    done: (h.completedDates || []).includes(selected),
-    date: selected,
-    goalMaxPerDay: h.goalMaxPerDay || null,
-    unit: h.unit || "times",
-  }));
+        if (!t.isRecurring) {
+          return t.dueDate === selected;
+        }
+
+        const completedOnDay = (t.completedDates || []).includes(selected);
+        const dueOnDay = t.dueDate === selected;
+
+        if (selected === todayStr) {
+          // Today: show if due today OR completed today (so user can untick)
+          return dueOnDay || completedOnDay;
+        } else if (selected > todayStr) {
+          // Future day: ONLY show if this is the scheduled due date (locked)
+          // Don't show historical completions on future dates
+          return dueOnDay;
+        } else {
+          // Past day: only show if actually completed on that day (history)
+          return completedOnDay;
+        }
+      })
+      .map(t => {
+        const completedOnDay = (t.completedDates || []).includes(selected);
+        const dueOnDay = t.dueDate === selected;
+
+        // Lock logic:
+        //  - Future due date → locked (can't complete early)
+        //  - Past completed day → locked (history, immutable)
+        //  - Today → NEVER locked (always interactive)
+        const isLockedTask = t.isRecurring && selected !== todayStr && (
+          (selected > todayStr && dueOnDay) ||    // future scheduled
+          (selected < todayStr && completedOnDay) // past history
+        );
+
+        return {
+          type: "task",
+          id: t.id,
+          title: t.title,
+          taskIcon: t.icon || "check",
+          color: t.color || "#E84A8A",
+          kind: "Task",
+          done: t.isRecurring ? completedOnDay : !!t.completed,
+          isRecurring: !!t.isRecurring,
+          locked: isLockedTask,
+          rawTask: t,
+        };
+      });
+  }, [tasks, selected, todayStr]);
+
+  const dayHabits = useMemo(() => {
+    return habits
+      .filter(h => {
+        const start = h.startDate || h.createdAt?.slice(0,10) || todayStr;
+        if (selected < start) return false;
+        if (h.frequency === "daily")  return true;
+        if (h.frequency === "weekly") return (h.recurringDays||[]).includes(selDateObj.getDay());
+        return true;
+      })
+      .map(h => ({
+        type: "habit",
+        id: h.id,
+        title: h.name,
+        icon: h.icon || "default",
+        color: h.color,
+        kind: missedMap[`${h.id}_${selected}`] ? "Missed" : "Habit",
+        done: (h.completedDates||[]).includes(selected),
+        locked: isFuture,  // habits: future dates are locked
+        date: selected,
+      }));
+  }, [habits, selected, todayStr, isFuture, selDateObj, missedMap]);
 
   const rawItems = useMemo(() => [...dayHabits, ...dayTasks], [dayHabits, dayTasks]);
 
   const items = useMemo(() => {
     if (sortMode === "habits")    return [...dayHabits, ...dayTasks];
     if (sortMode === "tasks")     return [...dayTasks, ...dayHabits];
-    if (sortMode === "done_last") return [...rawItems].sort((a, b) => a.done === b.done ? 0 : a.done ? 1 : -1);
+    if (sortMode === "done_last") return [...rawItems].sort((a,b) => a.done===b.done ? 0 : a.done ? 1 : -1);
     return rawItems;
   }, [rawItems, dayHabits, dayTasks, sortMode]);
 
   const doneCount  = items.filter(i => i.done).length;
   const headerDate = `${selDateObj.getDate()} ${MONTH_NAMES[selDateObj.getMonth()]} ${selDateObj.getFullYear()}`;
 
-  // ── Toggle handlers ────────────────────────────────────────────────────────
-  // Pass the live rawTask so toggleComplete reads fresh completedDates
-  const handleToggleTask = useCallback((rawTask) => {
-    toggleComplete(rawTask, selected);
-  }, [toggleComplete, selected]);
-
-  const handleToggleHabit = useCallback((id, date) => {
-    toggleHabit(id, date);
-  }, [toggleHabit]);
+  const handleToggleTask  = useCallback((rawTask) => toggleComplete(rawTask, selected), [toggleComplete, selected]);
+  const handleToggleHabit = useCallback((id, date) => toggleHabit(id, date), [toggleHabit]);
 
   if (!isAuthenticated) {
     return (
@@ -356,10 +398,10 @@ export default function Today({ onGoToTasks, onGoToCalendar, onGoToHabits }) {
       <div ref={stripRef} className="hide-scrollbar" style={{ overflowX:"auto",marginBottom:"12px" }}>
         <div style={{ display:"flex",gap:"6px",width:"max-content" }}>
           {dates.map(date => {
-            const ds = formatLocalYMD(date), isTd = ds === todayStr, isSel = ds === selected;
+            const ds = formatLocalYMD(date), isTd = ds===todayStr, isSel = ds===selected;
             return (
               <motion.button key={ds} whileTap={{scale:0.94}} onClick={()=>setSelected(ds)} className="btn-reset"
-                style={{ minWidth:"48px",padding:"7px 9px",borderRadius:"var(--radius-btn)",textAlign:"center",background:isSel?accent:"var(--surface)",color:isSel?"#fff":"var(--text-primary)",border:`1px solid ${isSel?accent:"var(--border)"}`,boxShadow:isSel?`0 3px 12px ${accent}40`:"none",transition:"all 150ms" }}>
+                style={{ minWidth:"48px",padding:"7px 9px",borderRadius:"12px",textAlign:"center",background:isSel?accent:"var(--surface)",color:isSel?"#fff":"var(--text-primary)",border:`1px solid ${isSel?accent:"var(--border)"}`,boxShadow:isSel?`0 3px 12px ${accent}40`:"none",transition:"all 150ms" }}>
                 <div style={{ fontSize:"9px",color:isSel?"rgba(255,255,255,0.75)":"var(--text-muted)",marginBottom:"4px",fontWeight:600,letterSpacing:"0.04em" }}>{DAY_LABELS[date.getDay()].slice(0,3)}</div>
                 <div style={{ fontSize:"18px",fontFamily:"var(--font-heading)",lineHeight:1,fontWeight:700 }}>{date.getDate()}</div>
                 {isTd && !isSel && <div style={{ marginTop:"4px",width:"4px",height:"4px",borderRadius:"50%",background:accent,marginInline:"auto" }}/>}
@@ -378,38 +420,34 @@ export default function Today({ onGoToTasks, onGoToCalendar, onGoToHabits }) {
           New list
         </motion.button>
         <div style={{ flex:1 }}/>
-        <motion.button whileTap={{scale:0.9}} onClick={()=>setShowSort(true)} className="btn-reset" title="Sort"
+        <motion.button whileTap={{scale:0.9}} onClick={()=>setShowSort(true)} className="btn-reset"
           style={{ padding:"5px 7px",borderRadius:"var(--radius-btn)",color:sortMode!=="default"?"var(--accent)":"var(--text-muted)",background:sortMode!=="default"?"var(--accent-soft)":"var(--surface)",border:`1px solid ${sortMode!=="default"?"var(--accent)":"var(--border)"}`,display:"flex",alignItems:"center",flexShrink:0 }}>
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><line x1="4" y1="6" x2="20" y2="6"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="11" y1="18" x2="13" y2="18"/></svg>
         </motion.button>
-        <motion.button whileTap={{scale:0.9}} onClick={()=>setShowHelp(true)} className="btn-reset" title="Help"
-          style={{ padding:"5px",borderRadius:"var(--radius-btn)",color:"var(--text-muted)",background:"var(--surface)",border:"1px solid var(--border)",display:"flex",alignItems:"center",flexShrink:0 }}>
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-        </motion.button>
         {selected !== todayStr && (
-          <motion.button whileTap={{scale:0.9}} onClick={()=>setSelected(todayStr)} className="btn-reset" title="Back to Today"
+          <motion.button whileTap={{scale:0.9}} onClick={()=>setSelected(todayStr)} className="btn-reset"
             style={{ padding:"5px",borderRadius:"var(--radius-btn)",color:"var(--text-muted)",background:"var(--surface)",border:"1px solid var(--border)",display:"flex",alignItems:"center",flexShrink:0 }}>
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
           </motion.button>
         )}
       </div>
 
-      {/* Future date banner */}
-      {isFutureDate && (
+      {/* Future banner */}
+      {isFuture && (
         <motion.div initial={{opacity:0,y:-4}} animate={{opacity:1,y:0}}
           style={{ background:"rgba(245,166,35,0.10)",border:"1px solid rgba(245,166,35,0.30)",borderRadius:"var(--radius-btn)",padding:"8px 12px",marginBottom:"10px",display:"flex",alignItems:"center",gap:"7px",fontSize:"11px",color:"#F5A623",fontWeight:600 }}>
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-          Future date — habits are view-only. Tasks can still be completed.
+          Future date — recurring tasks shown are scheduled but locked.
         </motion.div>
       )}
 
-      {/* Agenda list */}
+      {/* Agenda */}
       <div className="glass-panel" style={{ borderRadius:"14px",padding:"0 12px" }}>
         {items.length === 0 ? (
           <div style={{ padding:"32px 8px",textAlign:"center" }}>
             <div style={{ fontSize:"32px",marginBottom:"8px" }}>📭</div>
             <div style={{ color:"var(--text-muted)",fontSize:"13px",marginBottom:"14px" }}>
-              {selected === todayStr ? "Nothing for today yet." : "Nothing on this day."}
+              {isToday ? "Nothing for today yet." : "Nothing on this day."}
             </div>
             <motion.button whileTap={{scale:0.96}} onClick={()=>setShowAdd(true)} className="btn-primary" style={{ padding:"0 16px",height:"40px",fontSize:"13px" }}>Add item</motion.button>
           </div>
@@ -420,7 +458,7 @@ export default function Today({ onGoToTasks, onGoToCalendar, onGoToHabits }) {
                 key={`${item.type}-${item.id}`}
                 item={item}
                 accent={accent}
-                isFuture={isFutureDate}
+                locked={!!item.locked}
                 onToggleTask={handleToggleTask}
                 onToggleHabit={handleToggleHabit}
               />
@@ -431,7 +469,7 @@ export default function Today({ onGoToTasks, onGoToCalendar, onGoToHabits }) {
 
       {/* FAB */}
       <motion.button type="button" whileTap={{scale:0.9}} onClick={()=>setShowAdd(true)} className="btn-reset" aria-label="Add item"
-        style={{ position:"fixed",right:"16px",bottom:"calc(var(--mobile-nav-height) + 24px)",width:"54px",height:"54px",borderRadius:"var(--radius-btn)",background:`linear-gradient(145deg,var(--accent-hover),var(--accent))`,color:"#fff",display:"flex",alignItems:"center",justifyContent:"center",boxShadow:`0 4px 20px ${accent}55`,border:"1px solid rgba(255,255,255,0.2)" }}>
+        style={{ position:"fixed",right:"16px",bottom:"calc(var(--mobile-nav-height) + 24px)",width:"54px",height:"54px",borderRadius:"16px",background:`linear-gradient(145deg,var(--accent-hover),var(--accent))`,color:"#fff",display:"flex",alignItems:"center",justifyContent:"center",boxShadow:`0 4px 20px ${accent}55`,border:"1px solid rgba(255,255,255,0.2)" }}>
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
       </motion.button>
 

@@ -126,9 +126,10 @@ function TaskRow({ task, categories, tab, onToggle, onDelete, onEdit, onRestore,
 
   const overdue = due && due < now && !checked;
 
-  // For recurring tasks: locked if today is BEFORE the next due date (can't complete early)
-  // Same behavior as habits locking future dates
-  const isLocked = task.isRecurring && due && due > now;
+  // For recurring tasks: locked when dueDate is in the future (next occurrence, not today's)
+  // today's task (dueDate = today OR already done today) is always interactive
+  const doneToday = task.isRecurring && (task.completedDates||[]).includes(now);
+  const isLocked = task.isRecurring && !doneToday && due && due > now;
 
   return (
     <motion.div
@@ -151,7 +152,7 @@ function TaskRow({ task, categories, tab, onToggle, onDelete, onEdit, onRestore,
       {/* Toggle — locked for recurring tasks scheduled in the future */}
       {isActive ? (
         isLocked ? (
-          <div style={{ width:"32px",height:"32px",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,opacity:0.35 }}>
+          <div style={{ display:"flex",flexDirection:"column",alignItems:"center",gap:"2px",flexShrink:0,opacity:0.45,minWidth:"32px" }}>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
               <rect x="5" y="11" width="14" height="11" rx="2.5" fill={color}/>
               <path d="M8 11V7a4 4 0 018 0v4" stroke={color} strokeWidth="2.2" fill="none" strokeLinecap="round"/>
@@ -181,7 +182,8 @@ function TaskRow({ task, categories, tab, onToggle, onDelete, onEdit, onRestore,
           </span>
           {task.isRecurring && (
             <span style={{ fontSize:"10px",color:"var(--text-muted)",display:"inline-flex",alignItems:"center",gap:"2px",fontWeight:600,padding:"1px 7px",borderRadius:"999px",background:"var(--surface-elevated)" }}>
-              <IconRepeat size={9} stroke="var(--text-muted)"/> Recurring
+              <IconRepeat size={9} stroke="var(--text-muted)"/>
+              {isLocked ? `Next: ${due}` : "Recurring"}
             </span>
           )}
           {cat && (

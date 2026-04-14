@@ -469,35 +469,39 @@ export const useTasks = () => {
   }, [setTasks]);
 
   const toggleComplete = useCallback(async (task, customDate = null) => {
-    const ymd = customDate || localTodayYMD();
+    const today = localTodayYMD();
+    // Always use today for recurring tasks — you can only log/unlog today
+    const ymd = task.isRecurring ? today : (customDate || today);
 
     if (task.isRecurring) {
       const completedDates = task.completedDates || [];
-      const alreadyDone = completedDates.includes(ymd);
+      const alreadyDone = completedDates.includes(today);
 
       if (alreadyDone) {
-        // UN-TICK: remove this date from history — dueDate does NOT change
-        // (stays at today so the task is still visible and can be re-ticked)
-        const dates = completedDates.filter(d => d !== ymd);
+        // UN-TICK today:
+        //  - Remove today from completedDates
+        //  - Reset dueDate BACK to today so the task remains visible on today
+        //  - Task will NOT appear on tomorrow (dueDate=today, completedOnDay=false for tomorrow)
+        const dates = completedDates.filter(d => d !== today);
         const updated = await updateTask(task.id, {
           completed: false,
           completedDates: dates,
+          dueDate: today,   // reset to today — keeps it visible here, gone from future
           updatedAt: new Date().toISOString(),
         });
         return updated;
       } else {
-        // TICK: record this date.
-        // Only advance dueDate if completing on the scheduled due date
-        // (prevents advancing by ticking a past/future date)
-        const dates = [...new Set([...completedDates, ymd])];
-        const currentDue = task.dueDate || ymd;
-        // Only advance if we're completing ON the due date
-        const shouldAdvance = ymd >= currentDue;
-        const next = shouldAdvance ? computeNextDueDate(task, currentDue) : currentDue;
+        // TICK today:
+        //  - Add today to completedDates
+        //  - Advance dueDate to next occurrence so tomorrow shows it (locked)
+        const dates = [...new Set([...completedDates, today])];
+        // Use task.dueDate as the base if it's today, otherwise use today
+        const base = (task.dueDate && task.dueDate <= today) ? today : (task.dueDate || today);
+        const next = computeNextDueDate(task, base);
         const updated = await updateTask(task.id, {
           completed: false,
           completedDates: dates,
-          dueDate: next,
+          dueDate: next,    // advance to next day — tomorrow shows it locked
           updatedAt: new Date().toISOString(),
         });
         if (updated) toast.success("Logged · next date scheduled", { id: "recurring-log" });
@@ -505,7 +509,7 @@ export const useTasks = () => {
       }
     }
 
-    // Non-recurring task: simple flip
+    // Non-recurring task: simple completed flip
     const isCompleting = !task.completed;
     const updated = await updateTask(task.id, {
       completed: isCompleting,
