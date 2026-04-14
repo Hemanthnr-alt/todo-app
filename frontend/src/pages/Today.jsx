@@ -53,7 +53,7 @@ function HelpModal({ onClose }) {
         style={{ background:"var(--surface-raised)",borderRadius:"20px",padding:"20px",width:"100%",maxWidth:"340px",border:"1px solid var(--border-strong)" }}>
         <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:"14px" }}>
           <div style={{ fontSize:"16px",fontWeight:700,color:"var(--text-primary)" }}>How Today works</div>
-          <button type="button" onClick={onClose} className="btn-reset" style={{ width:"28px",height:"28px",borderRadius:"8px",background:"var(--surface)",border:"1px solid var(--border)",color:"var(--text-muted)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"14px" }}>×</button>
+          <button type="button" onClick={onClose} className="btn-reset" style={{ width:"28px",height:"28px",borderRadius:"var(--radius-btn)",background:"var(--surface)",border:"1px solid var(--border)",color:"var(--text-muted)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"14px" }}>×</button>
         </div>
         {[
           { icon:"📅", t:"Date strip",     d:"Scroll to view any day. Today is highlighted in accent color." },
@@ -91,7 +91,7 @@ function AddTypeSheet({ onClose, onGoToTasks, onGoToHabits }) {
         {types.map((t,i)=>(
           <button key={t.title} type="button" onClick={t.action} className="btn-reset"
             style={{ width:"100%",padding:"14px 20px",display:"flex",alignItems:"center",gap:"14px",borderBottom:i<types.length-1?"1px solid var(--border)":"none",background:"transparent" }}>
-            <div style={{ width:"44px",height:"44px",borderRadius:"13px",background:t.bg,border:`1px solid ${t.border}`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:"20px",flexShrink:0 }}>{t.icon}</div>
+            <div style={{ width:"44px",height:"44px",borderRadius:"var(--radius-btn)",background:t.bg,border:`1px solid ${t.border}`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:"20px",flexShrink:0 }}>{t.icon}</div>
             <div style={{ textAlign:"left",flex:1,minWidth:0 }}>
               <div style={{ fontSize:"14px",fontWeight:700,color:"var(--text-primary)",marginBottom:"2px" }}>{t.title}</div>
               <div style={{ fontSize:"11px",color:"var(--text-muted)",lineHeight:1.4 }}>{t.sub}</div>
@@ -342,11 +342,11 @@ export default function Today({ onGoToTasks, onGoToCalendar, onGoToHabits }) {
         </div>
         <div style={{ display:"flex",gap:"7px" }}>
           <motion.button whileTap={{scale:0.9}} onClick={onGoToCalendar} className="btn-reset" title="Calendar"
-            style={{ width:"36px",height:"36px",borderRadius:"10px",background:"var(--surface)",border:"1px solid var(--border)",color:"var(--text-secondary)",display:"flex",alignItems:"center",justifyContent:"center" }}>
+            style={{ width:"36px",height:"36px",borderRadius:"var(--radius-btn)",background:"var(--surface)",border:"1px solid var(--border)",color:"var(--text-secondary)",display:"flex",alignItems:"center",justifyContent:"center" }}>
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
           </motion.button>
           <motion.button whileTap={{scale:0.9}} onClick={()=>setShowHelp(true)} className="btn-reset" title="Help"
-            style={{ width:"36px",height:"36px",borderRadius:"10px",background:"var(--surface)",border:"1px solid var(--border)",color:"var(--text-secondary)",display:"flex",alignItems:"center",justifyContent:"center" }}>
+            style={{ width:"36px",height:"36px",borderRadius:"var(--radius-btn)",background:"var(--surface)",border:"1px solid var(--border)",color:"var(--text-secondary)",display:"flex",alignItems:"center",justifyContent:"center" }}>
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
           </motion.button>
         </div>
@@ -359,7 +359,7 @@ export default function Today({ onGoToTasks, onGoToCalendar, onGoToHabits }) {
             const ds = formatLocalYMD(date), isTd = ds === todayStr, isSel = ds === selected;
             return (
               <motion.button key={ds} whileTap={{scale:0.94}} onClick={()=>setSelected(ds)} className="btn-reset"
-                style={{ minWidth:"48px",padding:"7px 9px",borderRadius:"12px",textAlign:"center",background:isSel?accent:"var(--surface)",color:isSel?"#fff":"var(--text-primary)",border:`1px solid ${isSel?accent:"var(--border)"}`,boxShadow:isSel?`0 3px 12px ${accent}40`:"none",transition:"all 150ms" }}>
+                style={{ minWidth:"48px",padding:"7px 9px",borderRadius:"var(--radius-btn)",textAlign:"center",background:isSel?accent:"var(--surface)",color:isSel?"#fff":"var(--text-primary)",border:`1px solid ${isSel?accent:"var(--border)"}`,boxShadow:isSel?`0 3px 12px ${accent}40`:"none",transition:"all 150ms" }}>
                 <div style={{ fontSize:"9px",color:isSel?"rgba(255,255,255,0.75)":"var(--text-muted)",marginBottom:"4px",fontWeight:600,letterSpacing:"0.04em" }}>{DAY_LABELS[date.getDay()].slice(0,3)}</div>
                 <div style={{ fontSize:"18px",fontFamily:"var(--font-heading)",lineHeight:1,fontWeight:700 }}>{date.getDate()}</div>
                 {isTd && !isSel && <div style={{ marginTop:"4px",width:"4px",height:"4px",borderRadius:"50%",background:accent,marginInline:"auto" }}/>}
@@ -379,16 +379,16 @@ export default function Today({ onGoToTasks, onGoToCalendar, onGoToHabits }) {
         </motion.button>
         <div style={{ flex:1 }}/>
         <motion.button whileTap={{scale:0.9}} onClick={()=>setShowSort(true)} className="btn-reset" title="Sort"
-          style={{ padding:"5px 7px",borderRadius:"8px",color:sortMode!=="default"?"var(--accent)":"var(--text-muted)",background:sortMode!=="default"?"var(--accent-soft)":"var(--surface)",border:`1px solid ${sortMode!=="default"?"var(--accent)":"var(--border)"}`,display:"flex",alignItems:"center",flexShrink:0 }}>
+          style={{ padding:"5px 7px",borderRadius:"var(--radius-btn)",color:sortMode!=="default"?"var(--accent)":"var(--text-muted)",background:sortMode!=="default"?"var(--accent-soft)":"var(--surface)",border:`1px solid ${sortMode!=="default"?"var(--accent)":"var(--border)"}`,display:"flex",alignItems:"center",flexShrink:0 }}>
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><line x1="4" y1="6" x2="20" y2="6"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="11" y1="18" x2="13" y2="18"/></svg>
         </motion.button>
         <motion.button whileTap={{scale:0.9}} onClick={()=>setShowHelp(true)} className="btn-reset" title="Help"
-          style={{ padding:"5px",borderRadius:"8px",color:"var(--text-muted)",background:"var(--surface)",border:"1px solid var(--border)",display:"flex",alignItems:"center",flexShrink:0 }}>
+          style={{ padding:"5px",borderRadius:"var(--radius-btn)",color:"var(--text-muted)",background:"var(--surface)",border:"1px solid var(--border)",display:"flex",alignItems:"center",flexShrink:0 }}>
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
         </motion.button>
         {selected !== todayStr && (
           <motion.button whileTap={{scale:0.9}} onClick={()=>setSelected(todayStr)} className="btn-reset" title="Back to Today"
-            style={{ padding:"5px",borderRadius:"8px",color:"var(--text-muted)",background:"var(--surface)",border:"1px solid var(--border)",display:"flex",alignItems:"center",flexShrink:0 }}>
+            style={{ padding:"5px",borderRadius:"var(--radius-btn)",color:"var(--text-muted)",background:"var(--surface)",border:"1px solid var(--border)",display:"flex",alignItems:"center",flexShrink:0 }}>
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
           </motion.button>
         )}
@@ -397,7 +397,7 @@ export default function Today({ onGoToTasks, onGoToCalendar, onGoToHabits }) {
       {/* Future date banner */}
       {isFutureDate && (
         <motion.div initial={{opacity:0,y:-4}} animate={{opacity:1,y:0}}
-          style={{ background:"rgba(245,166,35,0.10)",border:"1px solid rgba(245,166,35,0.30)",borderRadius:"10px",padding:"8px 12px",marginBottom:"10px",display:"flex",alignItems:"center",gap:"7px",fontSize:"11px",color:"#F5A623",fontWeight:600 }}>
+          style={{ background:"rgba(245,166,35,0.10)",border:"1px solid rgba(245,166,35,0.30)",borderRadius:"var(--radius-btn)",padding:"8px 12px",marginBottom:"10px",display:"flex",alignItems:"center",gap:"7px",fontSize:"11px",color:"#F5A623",fontWeight:600 }}>
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
           Future date — habits are view-only. Tasks can still be completed.
         </motion.div>
@@ -431,7 +431,7 @@ export default function Today({ onGoToTasks, onGoToCalendar, onGoToHabits }) {
 
       {/* FAB */}
       <motion.button type="button" whileTap={{scale:0.9}} onClick={()=>setShowAdd(true)} className="btn-reset" aria-label="Add item"
-        style={{ position:"fixed",right:"16px",bottom:"calc(var(--mobile-nav-height) + 24px)",width:"54px",height:"54px",borderRadius:"16px",background:`linear-gradient(145deg,var(--accent-hover),var(--accent))`,color:"#fff",display:"flex",alignItems:"center",justifyContent:"center",boxShadow:`0 4px 20px ${accent}55`,border:"1px solid rgba(255,255,255,0.2)" }}>
+        style={{ position:"fixed",right:"16px",bottom:"calc(var(--mobile-nav-height) + 24px)",width:"54px",height:"54px",borderRadius:"var(--radius-btn)",background:`linear-gradient(145deg,var(--accent-hover),var(--accent))`,color:"#fff",display:"flex",alignItems:"center",justifyContent:"center",boxShadow:`0 4px 20px ${accent}55`,border:"1px solid rgba(255,255,255,0.2)" }}>
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
       </motion.button>
 

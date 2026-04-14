@@ -71,7 +71,7 @@ const IconPickerGrid = memo(function IconPickerGrid({ value, onChange, color }) 
     <div style={{ display:"flex", flexWrap:"wrap", gap:"8px" }}>
       {HABIT_ICON_LIST.map(key => (
         <button key={key} type="button" onClick={() => onChange(key)} className="btn-reset"
-          style={{ width:"40px", height:"40px", borderRadius:"10px",
+          style={{ width:"40px", height:"40px", borderRadius:"var(--radius-btn)",
             background: key===value ? `${color}28` : "var(--surface-elevated)",
             border: `1.5px solid ${key===value ? color : "var(--border)"}`,
             display:"flex", alignItems:"center", justifyContent:"center", padding:"8px" }}>
@@ -118,20 +118,20 @@ function QuantitySheet({ habit, onClose, onLog }) {
           </div>
           <HabitIconTile iconKey={habit.icon||"default"} color={habit.color} size={36}/>
         </div>
-        <div style={{ background:"var(--surface)",borderRadius:"14px",display:"flex",alignItems:"center",justifyContent:"space-between",padding:"5px",marginBottom:"10px",border:"1px solid var(--border)" }}>
+        <div style={{ background:"var(--surface)",borderRadius:"var(--radius-btn)",display:"flex",alignItems:"center",justifyContent:"space-between",padding:"5px",marginBottom:"10px",border:"1px solid var(--border)" }}>
           <button type="button" onClick={()=>setQty(v=>Math.max(0,v-1))} className="btn-reset"
-            style={{ width:"50px",height:"50px",borderRadius:"10px",background:"var(--surface-elevated)",color:"var(--text-primary)",fontSize:"24px",display:"flex",alignItems:"center",justifyContent:"center" }}>−</button>
+            style={{ width:"50px",height:"50px",borderRadius:"var(--radius-btn)",background:"var(--surface-elevated)",color:"var(--text-primary)",fontSize:"24px",display:"flex",alignItems:"center",justifyContent:"center" }}>−</button>
           <div style={{ textAlign:"center" }}>
             <div style={{ fontSize:"44px",fontWeight:900,color:habit.color,fontFamily:"var(--font-heading)",lineHeight:1 }}>{qty}</div>
             {max && <div style={{ fontSize:"11px",color:"var(--text-muted)",marginTop:"1px" }}>of {max} {unit}</div>}
           </div>
           <button type="button" onClick={()=>setQty(v=>v+1)} className="btn-reset"
-            style={{ width:"50px",height:"50px",borderRadius:"10px",background:habit.color,color:"#111",fontSize:"24px",display:"flex",alignItems:"center",justifyContent:"center",boxShadow:`0 4px 14px ${habit.color}44` }}>+</button>
+            style={{ width:"50px",height:"50px",borderRadius:"var(--radius-btn)",background:habit.color,color:"#111",fontSize:"24px",display:"flex",alignItems:"center",justifyContent:"center",boxShadow:`0 4px 14px ${habit.color}44` }}>+</button>
         </div>
-        <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",background:"var(--surface)",borderRadius:"10px",padding:"3px",marginBottom:"10px",border:"1px solid var(--border)" }}>
+        <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",background:"var(--surface)",borderRadius:"var(--radius-btn)",padding:"3px",marginBottom:"10px",border:"1px solid var(--border)" }}>
           {["replace","add"].map(m=>(
             <button key={m} type="button" onClick={()=>setMode(m)} className="btn-reset"
-              style={{ padding:"8px",borderRadius:"8px",background:mode===m?`${habit.color}20`:"transparent",color:mode===m?habit.color:"var(--text-muted)",fontWeight:700,fontSize:"13px",border:mode===m?`1px solid ${habit.color}44`:"1px solid transparent",transition:"all 140ms" }}>
+              style={{ padding:"8px",borderRadius:"var(--radius-btn)",background:mode===m?`${habit.color}20`:"transparent",color:mode===m?habit.color:"var(--text-muted)",fontWeight:700,fontSize:"13px",border:mode===m?`1px solid ${habit.color}44`:"1px solid transparent",transition:"all 140ms" }}>
               {m.charAt(0).toUpperCase()+m.slice(1)}
             </button>
           ))}
@@ -142,9 +142,9 @@ function QuantitySheet({ habit, onClose, onLog }) {
         </div>
         <div style={{ display:"flex",gap:"8px" }}>
           <button type="button" onClick={onClose} className="btn-reset"
-            style={{ flex:1,padding:"12px",borderRadius:"12px",background:"var(--surface)",color:"var(--text-secondary)",fontWeight:700,fontSize:"13px",border:"1px solid var(--border)" }}>CANCEL</button>
+            style={{ flex:1,padding:"12px",borderRadius:"var(--radius-btn)",background:"var(--surface)",color:"var(--text-secondary)",fontWeight:700,fontSize:"13px",border:"1px solid var(--border)" }}>CANCEL</button>
           <button type="button" onClick={()=>{onLog(habit.id,qty,mode);onClose();}} className="btn-reset"
-            style={{ flex:1,padding:"12px",borderRadius:"12px",background:habit.color,color:"#111",fontWeight:800,fontSize:"13px",boxShadow:`0 4px 16px ${habit.color}44` }}>OK</button>
+            style={{ flex:1,padding:"12px",borderRadius:"var(--radius-btn)",background:habit.color,color:"#111",fontWeight:800,fontSize:"13px",boxShadow:`0 4px 16px ${habit.color}44` }}>OK</button>
         </div>
       </motion.div>
     </div>
@@ -176,14 +176,14 @@ function CalendarModal({ habit, onClose }) {
             </div>
           </div>
           <button type="button" onClick={onClose} className="btn-reset"
-            style={{ width:"28px",height:"28px",borderRadius:"8px",background:"var(--surface)",border:"1px solid var(--border)",color:"var(--text-muted)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"14px" }}>×</button>
+            style={{ width:"28px",height:"28px",borderRadius:"var(--radius-btn)",background:"var(--surface)",border:"1px solid var(--border)",color:"var(--text-muted)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"14px" }}>×</button>
         </div>
         <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:"10px" }}>
           <button type="button" onClick={()=>setView(d=>new Date(d.getFullYear(),d.getMonth()-1,1))} className="btn-reset"
-            style={{ width:"30px",height:"30px",borderRadius:"8px",background:"var(--surface)",border:"1px solid var(--border)",color:"var(--text-primary)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"14px" }}>‹</button>
+            style={{ width:"30px",height:"30px",borderRadius:"var(--radius-btn)",background:"var(--surface)",border:"1px solid var(--border)",color:"var(--text-primary)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"14px" }}>‹</button>
           <span style={{ fontSize:"13px",fontWeight:700,color:"var(--text-primary)" }}>{MONTH_NAMES[month]} {year}</span>
           <button type="button" onClick={()=>setView(d=>new Date(d.getFullYear(),d.getMonth()+1,1))} className="btn-reset"
-            style={{ width:"30px",height:"30px",borderRadius:"8px",background:"var(--surface)",border:"1px solid var(--border)",color:"var(--text-primary)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"14px" }}>›</button>
+            style={{ width:"30px",height:"30px",borderRadius:"var(--radius-btn)",background:"var(--surface)",border:"1px solid var(--border)",color:"var(--text-primary)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"14px" }}>›</button>
         </div>
         <div style={{ display:"grid",gridTemplateColumns:"repeat(7,1fr)",marginBottom:"4px" }}>
           {["S","M","T","W","T","F","S"].map((d,i)=>(
@@ -250,7 +250,7 @@ function StatsModal({ habit, onClose }) {
             </div>
           </div>
           <button type="button" onClick={onClose} className="btn-reset"
-            style={{ width:"28px",height:"28px",borderRadius:"8px",background:"var(--surface)",border:"1px solid var(--border)",color:"var(--text-muted)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"14px" }}>×</button>
+            style={{ width:"28px",height:"28px",borderRadius:"var(--radius-btn)",background:"var(--surface)",border:"1px solid var(--border)",color:"var(--text-muted)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"14px" }}>×</button>
         </div>
         <div style={{ display:"flex",justifyContent:"center",marginBottom:"16px" }}>
           <div style={{ position:"relative",width:"90px",height:"90px" }}>
@@ -338,9 +338,9 @@ function ConfirmDelete({ habit, onCancel, onConfirm }) {
         <div style={{ fontSize:"15px",fontWeight:700,color:"var(--text-primary)",marginBottom:"6px" }}>Delete "{habit.name}"?</div>
         <div style={{ fontSize:"12px",color:"var(--text-muted)",marginBottom:"18px",lineHeight:1.5 }}>All logs and streak data will be permanently deleted.</div>
         <div style={{ display:"flex",gap:"8px" }}>
-          <button type="button" onClick={onCancel} className="glass-tile" style={{ flex:1,borderRadius:"12px",padding:"10px",color:"var(--text-primary)",fontWeight:600,fontSize:"13px" }}>Cancel</button>
+          <button type="button" onClick={onCancel} className="glass-tile" style={{ flex:1,borderRadius:"var(--radius-btn)",padding:"10px",color:"var(--text-primary)",fontWeight:600,fontSize:"13px" }}>Cancel</button>
           <button type="button" onClick={onConfirm} className="btn-reset"
-            style={{ flex:1,borderRadius:"12px",padding:"10px",background:"var(--danger)",color:"#fff",fontWeight:700,fontSize:"13px",boxShadow:"0 4px 14px rgba(255,92,106,0.4)" }}>Delete</button>
+            style={{ flex:1,borderRadius:"var(--radius-btn)",padding:"10px",background:"var(--danger)",color:"#fff",fontWeight:700,fontSize:"13px",boxShadow:"0 4px 14px rgba(255,92,106,0.4)" }}>Delete</button>
         </div>
       </motion.div>
     </div>
@@ -402,7 +402,7 @@ function HabitCard({ habit, onToggle, onDelete, onEdit, onOpenQty, onOpenAction,
           onClick={()=>habit.goalMaxPerDay?onOpenQty(habit):onToggle(habit.id,today)}
           className="btn-reset" aria-label="Log today"
           style={{
-            width:"36px",height:"36px",borderRadius:"10px",flexShrink:0,
+            width:"36px",height:"36px",borderRadius:"var(--radius-btn)",flexShrink:0,
             background:doneToday?`${sc}18`:`linear-gradient(145deg,${habit.color},${habit.color}cc)`,
             color:doneToday?sc:"#111",
             display:"flex",alignItems:"center",justifyContent:"center",
@@ -440,7 +440,7 @@ function HabitCard({ habit, onToggle, onDelete, onEdit, onOpenQty, onOpenAction,
                       <span style={{ fontSize:"9px",fontWeight:isToday?700:400,color:isToday?habit.color:"var(--text-muted)" }}>{dayL}</span>
                       <motion.button type="button" whileTap={!locked?{scale:0.85}:{}}
                         onClick={()=>!locked&&onToggle(habit.id,dateStr)} disabled={locked} className="btn-reset"
-                        style={{ width:"26px",height:"26px",borderRadius:"7px",display:"flex",alignItems:"center",justifyContent:"center",cursor:locked?"not-allowed":"pointer",
+                        style={{ width:"26px",height:"26px",borderRadius:"var(--radius-btn)",display:"flex",alignItems:"center",justifyContent:"center",cursor:locked?"not-allowed":"pointer",
                           fontSize:"11px",fontWeight:isDone||isToday?700:500,
                           background:isDone?habit.color:locked?"transparent":isToday?`${habit.color}12`:"var(--surface-elevated)",
                           border:locked?"1px solid var(--border)":isDone?"none":isToday?`1.5px solid ${habit.color}55`:"1px solid var(--border)",
@@ -457,7 +457,7 @@ function HabitCard({ habit, onToggle, onDelete, onEdit, onOpenQty, onOpenAction,
                   {fn:()=>onStats(habit),   icon:<IconBarChart  size={11} stroke="currentColor"/>,label:"Stats"},
                 ].map(b=>(
                   <motion.button key={b.label} type="button" whileTap={{scale:0.88}} onClick={b.fn} className="btn-reset"
-                    style={{ padding:"4px 9px",borderRadius:"8px",background:"var(--surface)",border:"1px solid var(--border)",color:"var(--text-muted)",display:"flex",alignItems:"center",gap:"4px",fontSize:"10px",fontWeight:600 }}>
+                    style={{ padding:"4px 9px",borderRadius:"var(--radius-btn)",background:"var(--surface)",border:"1px solid var(--border)",color:"var(--text-muted)",display:"flex",alignItems:"center",gap:"4px",fontSize:"10px",fontWeight:600 }}>
                     {b.icon} {b.label}
                   </motion.button>
                 ))}
@@ -507,7 +507,7 @@ export default function Habits() {
   const R=16, CIRC=2*Math.PI*R;
   const dash      = total>0?CIRC*(1-doneToday/total):CIRC;
 
-  const IS = { width:"100%",padding:"10px 12px",borderRadius:"12px",border:"1px solid var(--border)",background:"var(--surface-raised)",color:"var(--text-primary)",fontFamily:"var(--font-body)",fontSize:"13px",outline:"none",boxSizing:"border-box" };
+  const IS = { width:"100%",padding:"10px 12px",borderRadius:"var(--radius-btn)",border:"1px solid var(--border)",background:"var(--surface-raised)",color:"var(--text-primary)",fontFamily:"var(--font-body)",fontSize:"13px",outline:"none",boxSizing:"border-box" };
   const SL = { fontSize:"10px",fontWeight:700,color:"var(--text-muted)",textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:"6px" };
 
   return (
@@ -563,7 +563,7 @@ export default function Habits() {
 
       {/* FAB */}
       <motion.button type="button" whileTap={{scale:0.9}} onClick={openCreate} className="btn-reset" aria-label="New habit"
-        style={{position:"fixed",right:"16px",bottom:"calc(var(--mobile-nav-height) + 24px)",width:"52px",height:"52px",borderRadius:"15px",background:`linear-gradient(145deg,var(--accent-hover),var(--accent))`,color:"#fff",display:"flex",alignItems:"center",justifyContent:"center",boxShadow:`0 4px 20px ${accent}55`,border:"1px solid rgba(255,255,255,0.2)"}}>
+        style={{position:"fixed",right:"16px",bottom:"calc(var(--mobile-nav-height) + 24px)",width:"52px",height:"52px",borderRadius:"var(--radius-btn)",background:`linear-gradient(145deg,var(--accent-hover),var(--accent))`,color:"#fff",display:"flex",alignItems:"center",justifyContent:"center",boxShadow:`0 4px 20px ${accent}55`,border:"1px solid rgba(255,255,255,0.2)"}}>
         <IconPlus size={22} stroke="#fff"/>
       </motion.button>
 
@@ -586,7 +586,7 @@ export default function Habits() {
             <div>
               <div style={SL}>Icon</div>
               <button type="button" onClick={()=>setShowIcons(v=>!v)} className="glass-tile"
-                style={{width:"100%",padding:"9px 12px",borderRadius:"12px",display:"flex",alignItems:"center",gap:"8px",color:"var(--text-primary)",fontWeight:600,fontSize:"12px"}}>
+                style={{width:"100%",padding:"9px 12px",borderRadius:"var(--radius-btn)",display:"flex",alignItems:"center",gap:"8px",color:"var(--text-primary)",fontWeight:600,fontSize:"12px"}}>
                 <div style={{width:"20px",height:"20px",color:fColor}}>{HABIT_ICONS[fIcon]?.(fColor)}</div>
                 {showIcons?"Collapse":"Pick icon"}
               </button>
@@ -626,7 +626,7 @@ export default function Habits() {
             {fReminder&&<input type="time" value={fRemTime} onChange={e=>setFRemTime(e.target.value)} style={{...IS,fontSize:"12px"}}/>}
           </div>
           <div style={{display:"flex",gap:"8px"}}>
-            <button type="button" onClick={closeForm} className="glass-tile" style={{flex:1,borderRadius:"12px",padding:"10px",color:"var(--text-primary)",fontWeight:600,fontSize:"13px"}}>Cancel</button>
+            <button type="button" onClick={closeForm} className="glass-tile" style={{flex:1,borderRadius:"var(--radius-btn)",padding:"10px",color:"var(--text-primary)",fontWeight:600,fontSize:"13px"}}>Cancel</button>
             <button type="button" onClick={handleSave} className="btn-primary" style={{flex:2,height:"44px",fontSize:"13px"}}>{editingId?"Save changes":"Create habit"}</button>
           </div>
         </div>
