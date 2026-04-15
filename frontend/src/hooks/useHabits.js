@@ -165,11 +165,27 @@ export const useHabits = () => {
     }
   }, [NATIVE, isAuthenticated]);
 
+  // ── Habit reminders ────────────────────────────────────────────────────────
+  // Native (Android): schedule exact-time notifications via Capacitor.
+  // Web: poll every minute and write to in-app notifs history.
   useEffect(() => {
-    if (NATIVE || !isAuthenticated) return undefined;
+    if (!isAuthenticated) return undefined;
+
+    const { scheduleHabitReminders } = require("../services/notifications");
+
+    if (NATIVE) {
+      // Schedule native notifications whenever the habit list changes
+      // (debounced so rapid updates don't spam)
+      const t = setTimeout(() => {
+        scheduleHabitReminders(habitsRef.current).catch(() => {});
+      }, 1500);
+      return () => clearTimeout(t);
+    }
+
+    // Web fallback: poll every minute
     const tick = () => {
       const now = new Date();
-      const hm = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
+      const hm = `${String(now.getHours()).padStart(2,"0")}:${String(now.getMinutes()).padStart(2,"0")}`;
       habitsRef.current.forEach((h) => {
         if (!h.reminderEnabled || !h.reminderTime) return;
         const rt = String(h.reminderTime).slice(0, 5);
@@ -182,19 +198,24 @@ export const useHabits = () => {
           if (notifs.some((n) => n.id === nid)) return;
           notifs.unshift({
             id: nid,
-            title: "Habit reminder",
-            body: `${h.name} — keep your streak going today.`,
+            type: "reminder",
+            title: `⏰ ${h.name}`,
+            body: `Time for your habit${h.streak > 0 ? ` · 🔥 ${h.streak} day streak` : ""}`,
             time: hm,
             read: false,
           });
           localStorage.setItem("notifs", JSON.stringify(notifs.slice(0, 40)));
+          // Also try to show a browser notification
+          if (typeof Notification !== "undefined" && Notification.permission === "granted") {
+            try { new Notification(`⏰ ${h.name}`, { body: `Time for your habit`, icon: "/favicon.svg" }); } catch {}
+          }
         } catch { /* ignore */ }
       });
     };
     const id = setInterval(tick, 55 * 1000);
     tick();
     return () => clearInterval(id);
-  }, [NATIVE, isAuthenticated]);
+  }, [NATIVE, isAuthenticated, habits]); // re-run when habits change to reschedule native
 
   return { habits, loading, addHabit, toggleHabit, deleteHabit, updateHabit };
 };
