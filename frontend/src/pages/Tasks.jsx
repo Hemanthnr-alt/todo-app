@@ -21,7 +21,7 @@ import {
 import { useTheme } from "../context/ThemeContext";
 import { useTasks } from "../hooks/useTasks";
 import { localTodayYMD } from "../utils/date";
-import { computeNextDueDate, lifecycleOf } from "../utils/recurringTask";
+import { lifecycleOf } from "../utils/recurringTask";
 
 // ─── Constants ──────────────────────────────────────────────────────────────────
 const PRIORITY = {
@@ -111,7 +111,7 @@ function TaskActionSheet({ task, categories, onClose, onEdit, onDelete, onArchiv
 
 // ─── Task Row ─────────────────────────────────────────────────────────────────
 // Recurring tasks behave like habits: checked = completedDates.includes(today)
-function TaskRow({ task, categories, tab, onToggle, onDelete, onEdit, onRestore, onArchive, onPermanent, onSkipRecurring, onOpenAction }) {
+function TaskRow({ task, categories, tab, onToggle, onDelete, onEdit, onRestore, onArchive, onPermanent, onOpenAction }) {
   const cat      = categories.find(c => c.id === task.categoryId);
   const p        = PRIORITY[task.priority] || PRIORITY.medium;
   const due      = task.dueDate;
@@ -201,12 +201,7 @@ function TaskRow({ task, categories, tab, onToggle, onDelete, onEdit, onRestore,
 
       {/* Actions */}
       <div style={{ display:"flex",gap:"6px",flexShrink:0,alignItems:"center" }}>
-        {isActive && task.isRecurring && (
-          <motion.button whileTap={{scale:0.92}} type="button" onClick={() => onSkipRecurring(task)} className="btn-reset"
-            style={{ fontSize:"11px",fontWeight:700,color:"var(--text-secondary)",padding:"4px 10px",borderRadius:"var(--radius-btn)",border:"1px solid var(--border)",background:"var(--surface-raised)" }}>
-            Skip
-          </motion.button>
-        )}
+
         {isActive && (
           <motion.button whileTap={{scale:0.88}} type="button" onClick={() => onOpenAction(task)} className="btn-reset"
             style={{ width:"30px",height:"30px",borderRadius:"var(--radius-btn)",background:"var(--surface)",border:"1px solid var(--border)",color:"var(--text-muted)",display:"flex",alignItems:"center",justifyContent:"center" }}>
@@ -298,12 +293,7 @@ export default function Tasks({ initialTab = null }) {
   // ── Toggle — habit-style for recurring, simple flip for single ────────────────
   const handleToggle = (task) => toggleComplete(task, now);
 
-  const handleSkip = async (task) => {
-    const skips = [...new Set([...(task.recurringSkipDates||[]), now])];
-    const next  = computeNextDueDate(task, task.dueDate || now);
-    await updateTask(task.id, { recurringSkipDates:skips, dueDate:next });
-    toast.success("Skipped · next date set", { id:"task-skip" });
-  };
+
 
   // ── Form ──────────────────────────────────────────────────────────────────────
   const closeForm = () => {
@@ -472,7 +462,7 @@ export default function Tasks({ initialTab = null }) {
                 onToggle={handleToggle}
                 onDelete={deleteTask} onEdit={openEdit}
                 onRestore={restoreTask} onArchive={archiveTask}
-                onPermanent={permanentDeleteTask} onSkipRecurring={handleSkip}
+                onPermanent={permanentDeleteTask}
                 onOpenAction={setActionTask}/>
             ))}
           </AnimatePresence>
