@@ -1,8 +1,9 @@
+import { Capacitor } from "@capacitor/core";
 import { addDaysToYMD, localTodayYMD } from "../utils/date";
 
 // ── Universal local storage for offline-first APK ────────────────────────────
 const isNativeApp = () => {
-  try { return window?.Capacitor?.isNativePlatform?.() === true; } catch { return false; }
+  try { return Capacitor.isNativePlatform(); } catch { return false; }
 };
 
 const PREFIX = "30app_";

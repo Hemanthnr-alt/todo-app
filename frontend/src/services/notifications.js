@@ -20,6 +20,9 @@
 // 2000–2999   : task overdue reminders
 // 3000–3999   : habit reminders
 // 4000–4999   : recurring task reminders
+import { Capacitor } from '@capacitor/core';
+import { LocalNotifications } from '@capacitor/local-notifications';
+
 const ID = {
   TIMER_DONE:    1,
   TIMER_WARN:    2,
@@ -30,26 +33,13 @@ const ID = {
   RECURRING:  (i) => 4000 + (i % 1000),
 };
 
-// ── Detect native platform DYNAMICALLY (not cached at module load) ────────────
 const isCapacitor = () => {
-  try { return window?.Capacitor?.isNativePlatform?.() === true; } catch { return false; }
+  try { return Capacitor.isNativePlatform(); } catch { return false; }
 };
 
-// ── Lazy-load Capacitor LocalNotifications ────────────────────────────────────
-let _ln = null;
 const getLN = async () => {
-  // Check dynamically every time — Capacitor bridge may not be ready at module load
   if (!isCapacitor()) return null;
-  if (_ln) return _ln;
-  try {
-    const m = await import("@capacitor/local-notifications");
-    _ln = m.LocalNotifications;
-    console.log("[Notif] ✅ LocalNotifications loaded successfully");
-    return _ln;
-  } catch (e) {
-    console.warn("[Notif] ❌ LocalNotifications not available:", e);
-    return null;
-  }
+  return LocalNotifications;
 };
 
 // ── Create notification channel (Android 8+) ─────────────────────────────────
