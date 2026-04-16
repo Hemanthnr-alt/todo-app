@@ -3,6 +3,7 @@ import { useAuth } from "../context/AuthContext";
 import api from "../services/api";
 import { localHabits, isNativeApp } from "../services/storage";
 import { addDaysToYMD, localTodayYMD } from "../utils/date";
+import { scheduleHabitReminders } from "../services/notifications";
 
 const HABITS_KEY = "30_habits";
 const HQUEUE_KEY = "30_habits_queue";
@@ -170,8 +171,6 @@ export const useHabits = () => {
   // Web: poll every minute and write to in-app notifs history.
   useEffect(() => {
     if (!isAuthenticated) return undefined;
-
-    const { scheduleHabitReminders } = require("../services/notifications");
 
     if (NATIVE) {
       // Schedule native notifications whenever the habit list changes
