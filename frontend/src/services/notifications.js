@@ -14,10 +14,6 @@
  *  - Falls back to Notification API when in foreground
  */
 
-import { isNativeApp } from "./storage";
-
-const NATIVE = isNativeApp();
-
 // ── Notification ID ranges (avoids collisions) ────────────────────────────────
 // 1–999       : one-off / timer notifications
 // 1000–1999   : task due-today reminders
@@ -34,25 +30,33 @@ const ID = {
   RECURRING:  (i) => 4000 + (i % 1000),
 };
 
+// ── Detect native platform DYNAMICALLY (not cached at module load) ────────────
+const isCapacitor = () => {
+  try { return window?.Capacitor?.isNativePlatform?.() === true; } catch { return false; }
+};
+
 // ── Lazy-load Capacitor LocalNotifications ────────────────────────────────────
 let _ln = null;
 const getLN = async () => {
-  if (!NATIVE) return null;
+  // Check dynamically every time — Capacitor bridge may not be ready at module load
+  if (!isCapacitor()) return null;
   if (_ln) return _ln;
   try {
     const m = await import("@capacitor/local-notifications");
     _ln = m.LocalNotifications;
+    console.log("[Notif] ✅ LocalNotifications loaded successfully");
     return _ln;
   } catch (e) {
-    console.warn("[Notif] LocalNotifications not available:", e);
+    console.warn("[Notif] ❌ LocalNotifications not available:", e);
     return null;
   }
 };
 
 // ── Create notification channel (Android 8+) ─────────────────────────────────
 // Channels appear in Android Settings → App → Notifications
+let _channelsCreated = false;
 const ensureChannels = async (ln) => {
-  if (!ln) return;
+  if (!ln || _channelsCreated) return;
   try {
     await ln.createChannel({
       id:          "reminders",
@@ -60,7 +64,6 @@ const ensureChannels = async (ln) => {
       description: "Habit and task reminders",
       importance:  5,          // IMPORTANCE_HIGH — shows as heads-up
       visibility:  1,          // VISIBILITY_PUBLIC
-      sound:       "beep.wav",
       vibration:   true,
       lights:      true,
       lightColor:  "#14B8A6",
@@ -71,7 +74,6 @@ const ensureChannels = async (ln) => {
       description: "Timer and countdown notifications",
       importance:  5,
       visibility:  1,
-      sound:       "beep.wav",
       vibration:   true,
     });
     await ln.createChannel({
@@ -82,8 +84,10 @@ const ensureChannels = async (ln) => {
       visibility:  1,
       vibration:   true,
     });
+    _channelsCreated = true;
+    console.log("[Notif] ✅ Notification channels created");
   } catch (e) {
-    console.warn("[Notif] Channel creation failed:", e);
+    console.warn("[Notif] ❌ Channel creation failed:", e);
   }
 };
 
@@ -93,9 +97,13 @@ export const requestNotificationPermission = async () => {
   if (ln) {
     try {
       await ensureChannels(ln);
-      const { display } = await ln.requestPermissions();
-      return display === "granted";
-    } catch { return false; }
+      const result = await ln.requestPermissions();
+      console.log("[Notif] Permission result:", result);
+      return result?.display === "granted";
+    } catch (e) {
+      console.warn("[Notif] ❌ Permission request failed:", e);
+      return false;
+    }
   }
   // Web fallback
   if (!("Notification" in window)) return false;
@@ -118,8 +126,9 @@ export const needsPermissionPrompt = async () => {
   if (ln) {
     try {
       const { display } = await ln.checkPermissions();
-      // 'prompt' means they haven't explicitly denied or granted yet
-      return display === "prompt";
+      console.log("[Notif] Current permission status:", display);
+      // On Android 13+, 'prompt' means not yet asked
+      return display !== "granted";
     } catch { return true; }
   }
   if ("Notification" in window) {
@@ -170,24 +179,26 @@ export const sendNotification = async ({
 
   if (ln) {
     try {
+      await ensureChannels(ln);
+      const safeId = Math.abs(Math.floor(id % 2147483647)) || 1;
       await ln.schedule({
         notifications: [{
           title,
           body,
-          id:            Math.abs(Math.floor(id % 2147483647)) || 1,
+          id:            safeId,
           channelId:     channel,
           schedule:      { at: new Date(Date.now() + 500) },
-          sound:         sound ? "beep.wav" : undefined,
           smallIcon:     "ic_stat_notify",
           iconColor:     "#14B8A6",
           actionTypeId:  "",
           extra:         null,
         }],
       });
-    } catch (e) { console.warn("[Notif] Send failed:", e); }
+      console.log("[Notif] ✅ Notification scheduled:", title);
+    } catch (e) { console.warn("[Notif] ❌ Send failed:", e); }
   } else {
     const sent = await postToSW({ type:"SHOW_NOTIFICATION", title, body, tag, requireInteraction });
-    if (!sent && Notification?.permission === "granted") {
+    if (!sent && typeof Notification !== "undefined" && Notification?.permission === "granted") {
       try { new Notification(title, { body }); } catch {}
     }
   }
@@ -209,6 +220,7 @@ export const scheduleNotification = async ({
   if (!ln) return;  // Exact scheduling is native-only
 
   try {
+    await ensureChannels(ln);
     await ln.schedule({
       notifications: [{
         title,
@@ -220,14 +232,13 @@ export const scheduleNotification = async ({
           allowWhileIdle: true,   // fire even in Doze mode
           repeats,
         },
-        sound:         sound ? "beep.wav" : undefined,
         smallIcon:     "ic_stat_notify",
         iconColor:     "#14B8A6",
         actionTypeId:  "",
         extra:         null,
       }],
     });
-  } catch (e) { console.warn("[Notif] Schedule failed:", e); }
+  } catch (e) { console.warn("[Notif] ❌ Schedule failed:", e); }
 };
 
 // ── Cancel scheduled notifications ───────────────────────────────────────────
@@ -247,6 +258,7 @@ export const scheduleHabitReminders = async (habits) => {
   const ln = await getLN();
   if (!ln) return;
 
+  await ensureChannels(ln);
   const today     = new Date();
   const todayStr  = today.toISOString().split("T")[0];
 
@@ -283,14 +295,14 @@ export const scheduleHabitReminders = async (habits) => {
             allowWhileIdle: true,
             repeats:        false,   // We reschedule daily after completion
           },
-          sound:         "beep.wav",
           smallIcon:     "ic_stat_notify",
           iconColor:     "#14B8A6",
           actionTypeId:  "",
           extra:         JSON.stringify({ habitId: h.id, type: "habit_reminder" }),
         }],
       });
-    } catch (e) { console.warn(`[Notif] Habit ${h.name} schedule failed:`, e); }
+      console.log(`[Notif] ✅ Habit reminder scheduled: ${h.name} at ${fireAt}`);
+    } catch (e) { console.warn(`[Notif] ❌ Habit ${h.name} schedule failed:`, e); }
   }
 };
 
@@ -319,6 +331,7 @@ export const scheduleTaskReminders = async (tasks) => {
   );
 
   if (ln) {
+    await ensureChannels(ln);
     // Cancel previous task reminders
     const cancelIds = [
       ...dueTodayTasks.map((_, i) => ID.TASK_DUE(i)),
@@ -341,14 +354,14 @@ export const scheduleTaskReminders = async (tasks) => {
             id:       ID.TASK_DUE(0),
             channelId:"due",
             schedule: { at: fireAt, allowWhileIdle: true },
-            sound:    "beep.wav",
             smallIcon:"ic_stat_notify",
             iconColor:"#14B8A6",
             actionTypeId: "",
-            extra:    null,
+            extra:    JSON.stringify({ type: "task_due" }),
           }],
         });
-      } catch (e) { console.warn("[Notif] Task due reminder failed:", e); }
+        console.log("[Notif] ✅ Task due reminder scheduled");
+      } catch (e) { console.warn("[Notif] ❌ Task due reminder failed:", e); }
     }
 
     // Overdue: show immediately if any
@@ -362,14 +375,14 @@ export const scheduleTaskReminders = async (tasks) => {
             id:       ID.TASK_OVER(0),
             channelId:"due",
             schedule: { at: new Date(now.getTime() + 3000), allowWhileIdle: true },
-            sound:    "beep.wav",
             smallIcon:"ic_stat_notify",
             iconColor:"#F5A623",
             actionTypeId: "",
-            extra:    null,
+            extra:    JSON.stringify({ type: "task_overdue" }),
           }],
         });
-      } catch (e) { console.warn("[Notif] Overdue reminder failed:", e); }
+        console.log("[Notif] ✅ Overdue reminder scheduled");
+      } catch (e) { console.warn("[Notif] ❌ Overdue reminder failed:", e); }
     }
   } else {
     // Web: save to in-app history
@@ -390,49 +403,60 @@ export const scheduleTaskReminders = async (tasks) => {
 
 // ── Timer notifications ───────────────────────────────────────────────────────
 export const startBackgroundTimer = async ({ label, totalMs }) => {
-  if (NATIVE) {
-    const ln = await getLN();
-    if (ln) {
-      const now = Date.now();
-      const endAt = new Date(now + totalMs);
-      const notifs = [
-        {
-          title: `⏱ ${label || "Timer"} running...`,
-          body: `Ends at ${endAt.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}`,
-          id: ID.TIMER_RUNNING,
-          channelId: "timer",
-          ongoing: false,
-          autoCancel: false,
-          smallIcon: "ic_stat_notify",
-        },
-        {
-          title: `✅ ${label || "Timer"} complete!`,
-          body: "Your timer has finished. Tap to open the app.",
-          id: ID.TIMER_DONE,
-          channelId: "timer",
-          schedule: { at: endAt, allowWhileIdle: true },
-          sound: "beep.wav",
-          smallIcon: "ic_stat_notify",
-          extra: JSON.stringify({ type: "timer_done" })
-        }
-      ];
-      if (totalMs > 60000) {
-        notifs.push({
-          title: "⏰ 1 minute left",
-          body: `${label || "Your timer"} finishes in 1 minute.`,
-          id: ID.TIMER_WARN,
-          channelId: "timer",
-          schedule: { at: new Date(now + totalMs - 60000), allowWhileIdle: true },
-          sound: "beep.wav",
-          smallIcon: "ic_stat_notify"
-        });
-      }
-      try {
-        await ln.cancel({ notifications: [{ id: ID.TIMER_RUNNING }, { id: ID.TIMER_DONE }, { id: ID.TIMER_WARN }] });
-        await ln.schedule({ notifications: notifs });
-      } catch (e) {
-        console.warn("[Notif] Native timer scheduling failed", e);
-      }
+  const ln = await getLN();
+
+  if (ln) {
+    await ensureChannels(ln);
+    const now = Date.now();
+    const endAt = new Date(now + totalMs);
+
+    // Cancel any previous timer notifications
+    try {
+      await ln.cancel({ notifications: [{ id: ID.TIMER_RUNNING }, { id: ID.TIMER_DONE }, { id: ID.TIMER_WARN }] });
+    } catch {}
+
+    const notifs = [
+      // Immediate "running" notification — shows now in the status bar
+      {
+        title:        `⏱ ${label || "Timer"} running...`,
+        body:         `Ends at ${endAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`,
+        id:           ID.TIMER_RUNNING,
+        channelId:    "timer",
+        schedule:     { at: new Date(now + 200) },  // fire 200ms from now (essentially immediate)
+        smallIcon:    "ic_stat_notify",
+        iconColor:    "#14B8A6",
+      },
+      // Completion notification — fires exactly when timer ends
+      {
+        title:        `✅ ${label || "Timer"} complete!`,
+        body:         "Your timer has finished. Tap to open the app.",
+        id:           ID.TIMER_DONE,
+        channelId:    "timer",
+        schedule:     { at: endAt, allowWhileIdle: true },
+        smallIcon:    "ic_stat_notify",
+        iconColor:    "#14B8A6",
+        extra:        JSON.stringify({ type: "timer_done" }),
+      },
+    ];
+
+    // Warning 1 minute before if timer is long enough
+    if (totalMs > 60000) {
+      notifs.push({
+        title:      "⏰ 1 minute left",
+        body:       `${label || "Your timer"} finishes in 1 minute.`,
+        id:         ID.TIMER_WARN,
+        channelId:  "timer",
+        schedule:   { at: new Date(now + totalMs - 60000), allowWhileIdle: true },
+        smallIcon:  "ic_stat_notify",
+        iconColor:  "#14B8A6",
+      });
+    }
+
+    try {
+      await ln.schedule({ notifications: notifs });
+      console.log("[Notif] ✅ Timer notifications scheduled:", notifs.length, "notifications");
+    } catch (e) {
+      console.warn("[Notif] ❌ Native timer scheduling failed:", e);
     }
   } else {
     await postToSW({ type:"TIMER_START", label, totalMs });
@@ -440,19 +464,18 @@ export const startBackgroundTimer = async ({ label, totalMs }) => {
 };
 
 export const stopBackgroundTimer = async () => {
-  if (NATIVE) {
-    const ln = await getLN();
-    if (ln) {
-      try { await ln.cancel({ notifications: [{ id: ID.TIMER_RUNNING }, { id: ID.TIMER_DONE }, { id: ID.TIMER_WARN }] }); } catch {}
-    }
+  const ln = await getLN();
+  if (ln) {
+    try { await ln.cancel({ notifications: [{ id: ID.TIMER_RUNNING }, { id: ID.TIMER_DONE }, { id: ID.TIMER_WARN }] }); } catch {}
   } else {
     await postToSW({ type:"TIMER_STOP" });
   }
 };
 
 export const pauseBackgroundTimer = async () => {
-  if (NATIVE) {
-    await stopBackgroundTimer();
+  const ln = await getLN();
+  if (ln) {
+    try { await ln.cancel({ notifications: [{ id: ID.TIMER_RUNNING }, { id: ID.TIMER_DONE }, { id: ID.TIMER_WARN }] }); } catch {}
   } else {
     await postToSW({ type:"TIMER_PAUSE" });
   }
@@ -462,25 +485,66 @@ export const pauseBackgroundTimer = async () => {
 // Call once on app startup to handle tapping a notification that opens the app
 export const setupNotificationListeners = async () => {
   const ln = await getLN();
-  if (!ln) return;
+  if (!ln) {
+    console.log("[Notif] Not on native platform, skipping listener setup");
+    return;
+  }
 
   try {
     // When user taps a notification
     await ln.addListener("localNotificationActionPerformed", (event) => {
+      console.log("[Notif] Notification tapped:", event);
       const extra = event.notification?.extra;
       if (!extra) return;
       try {
         const data = typeof extra === "string" ? JSON.parse(extra) : extra;
-        // Could navigate to relevant page — dispatch custom event
+        // Navigate to relevant page
         window.dispatchEvent(new CustomEvent("thirty-notification-tap", { detail: data }));
       } catch {}
     });
 
     // Received while app is in foreground — add to in-app history
     await ln.addListener("localNotificationReceived", (notification) => {
+      console.log("[Notif] Notification received in foreground:", notification.title);
       saveToHistory(notification.title || "Reminder", notification.body || "");
     });
-  } catch (e) { console.warn("[Notif] Listener setup failed:", e); }
+
+    console.log("[Notif] ✅ Notification listeners registered");
+  } catch (e) { console.warn("[Notif] ❌ Listener setup failed:", e); }
+};
+
+// ── Send a test notification (for debugging) ─────────────────────────────────
+export const sendTestNotification = async () => {
+  const ln = await getLN();
+  console.log("[Notif] sendTestNotification called, ln =", !!ln, "isCapacitor =", isCapacitor());
+  
+  if (ln) {
+    try {
+      await ensureChannels(ln);
+      await ln.schedule({
+        notifications: [{
+          title:       "🔔 Thirty is working!",
+          body:        "Notifications are set up correctly. You'll get reminders for tasks, habits, and timers.",
+          id:          999,
+          channelId:   "reminders",
+          schedule:    { at: new Date(Date.now() + 1000) },
+          smallIcon:   "ic_stat_notify",
+          iconColor:   "#14B8A6",
+        }],
+      });
+      console.log("[Notif] ✅ Test notification scheduled");
+      return true;
+    } catch (e) {
+      console.warn("[Notif] ❌ Test notification failed:", e);
+      return false;
+    }
+  } else {
+    if (typeof Notification !== "undefined" && Notification.permission === "granted") {
+      new Notification("🔔 Thirty is working!", { body: "Notifications are set up correctly." });
+      return true;
+    }
+    return false;
+  }
 };
 
 // ── Timer sound (Web Audio API) ───────────────────────────────────────────────

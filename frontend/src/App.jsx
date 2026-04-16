@@ -17,7 +17,8 @@ import {
   requestNotificationPermission,
   scheduleTaskReminders,
   setupNotificationListeners,
-  needsPermissionPrompt
+  needsPermissionPrompt,
+  sendTestNotification,
 } from "./services/notifications";
 import { useTasks } from "./hooks/useTasks";
 
@@ -120,7 +121,11 @@ function NotificationBootstrap() {
         <div style={{ display:"flex", flexDirection:"column", gap:"8px" }}>
           <motion.button whileTap={{ scale:0.96 }}
             onClick={async () => {
-              await requestNotificationPermission();
+              const granted = await requestNotificationPermission();
+              if (granted) {
+                // Fire a test notification so user sees it in the panel immediately
+                await sendTestNotification();
+              }
               setShowPrompt(false);
             }}
             className="btn-primary" style={{ padding:"14px", width:"100%", background:accent, boxShadow:`0 4px 16px ${accent}44` }}>
