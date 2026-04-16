@@ -22,6 +22,7 @@
 // 4000–4999   : recurring task reminders
 import { Capacitor } from '@capacitor/core';
 import { LocalNotifications } from '@capacitor/local-notifications';
+import { toast } from 'react-hot-toast';
 
 const ID = {
   TIMER_DONE:    1,
@@ -34,7 +35,10 @@ const ID = {
 };
 
 const isCapacitor = () => {
-  try { return Capacitor.isNativePlatform(); } catch { return false; }
+  try { return Capacitor.isNativePlatform(); } catch (e) {
+    toast.error("Capacitor check failed: " + String(e));
+    return false;
+  }
 };
 
 const getLN = async () => {
@@ -77,6 +81,7 @@ const ensureChannels = async (ln) => {
     _channelsCreated = true;
     console.log("[Notif] ✅ Notification channels created");
   } catch (e) {
+    toast.error("Channel Error: " + String(e));
     console.warn("[Notif] ❌ Channel creation failed:", e);
   }
 };
@@ -89,8 +94,10 @@ export const requestNotificationPermission = async () => {
       await ensureChannels(ln);
       const result = await ln.requestPermissions();
       console.log("[Notif] Permission result:", result);
+      toast.success("Native Permission: " + result?.display);
       return result?.display === "granted";
     } catch (e) {
+      toast.error("Permission Error: " + String(e?.message || e));
       console.warn("[Notif] ❌ Permission request failed:", e);
       return false;
     }
@@ -119,7 +126,10 @@ export const needsPermissionPrompt = async () => {
       console.log("[Notif] Current permission status:", display);
       // On Android 13+, 'prompt' means not yet asked
       return display !== "granted";
-    } catch { return true; }
+    } catch (e) {
+      toast.error("Status Error: " + String(e?.message || e));
+      return true;
+    }
   }
   if ("Notification" in window) {
     return Notification.permission === "default";
@@ -185,7 +195,11 @@ export const sendNotification = async ({
         }],
       });
       console.log("[Notif] ✅ Notification scheduled:", title);
-    } catch (e) { console.warn("[Notif] ❌ Send failed:", e); }
+      toast.success("Notif Scheduled: " + title);
+    } catch (e) {
+      toast.error("Send Error: " + String(e?.message || e));
+      console.warn("[Notif] ❌ Send failed:", e);
+    }
   } else {
     const sent = await postToSW({ type:"SHOW_NOTIFICATION", title, body, tag, requireInteraction });
     if (!sent && typeof Notification !== "undefined" && Notification?.permission === "granted") {
@@ -396,56 +410,58 @@ export const startBackgroundTimer = async ({ label, totalMs }) => {
   const ln = await getLN();
 
   if (ln) {
-    await ensureChannels(ln);
-    const now = Date.now();
-    const endAt = new Date(now + totalMs);
-
-    // Cancel any previous timer notifications
     try {
-      await ln.cancel({ notifications: [{ id: ID.TIMER_RUNNING }, { id: ID.TIMER_DONE }, { id: ID.TIMER_WARN }] });
-    } catch {}
+      await ensureChannels(ln);
+      const now = Date.now();
+      const endAt = new Date(now + totalMs);
 
-    const notifs = [
-      // Immediate "running" notification — shows now in the status bar
-      {
-        title:        `⏱ ${label || "Timer"} running...`,
-        body:         `Ends at ${endAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`,
-        id:           ID.TIMER_RUNNING,
-        channelId:    "timer",
-        schedule:     { at: new Date(now + 200) },  // fire 200ms from now (essentially immediate)
-        smallIcon:    "ic_stat_notify",
-        iconColor:    "#14B8A6",
-      },
-      // Completion notification — fires exactly when timer ends
-      {
-        title:        `✅ ${label || "Timer"} complete!`,
-        body:         "Your timer has finished. Tap to open the app.",
-        id:           ID.TIMER_DONE,
-        channelId:    "timer",
-        schedule:     { at: endAt, allowWhileIdle: true },
-        smallIcon:    "ic_stat_notify",
-        iconColor:    "#14B8A6",
-        extra:        JSON.stringify({ type: "timer_done" }),
-      },
-    ];
+      // Cancel any previous timer notifications
+      try {
+        await ln.cancel({ notifications: [{ id: ID.TIMER_RUNNING }, { id: ID.TIMER_DONE }, { id: ID.TIMER_WARN }] });
+      } catch {}
 
-    // Warning 1 minute before if timer is long enough
-    if (totalMs > 60000) {
-      notifs.push({
-        title:      "⏰ 1 minute left",
-        body:       `${label || "Your timer"} finishes in 1 minute.`,
-        id:         ID.TIMER_WARN,
-        channelId:  "timer",
-        schedule:   { at: new Date(now + totalMs - 60000), allowWhileIdle: true },
-        smallIcon:  "ic_stat_notify",
-        iconColor:  "#14B8A6",
-      });
-    }
+      const notifs = [
+        // Immediate "running" notification — shows now in the status bar
+        {
+          title:        `⏱ ${label || "Timer"} running...`,
+          body:         `Ends at ${endAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`,
+          id:           ID.TIMER_RUNNING,
+          channelId:    "timer",
+          schedule:     { at: new Date(now + 200) },  // fire 200ms from now (essentially immediate)
+          smallIcon:    "ic_stat_notify",
+          iconColor:    "#14B8A6",
+        },
+        // Completion notification — fires exactly when timer ends
+        {
+          title:        `✅ ${label || "Timer"} complete!`,
+          body:         "Your timer has finished. Tap to open the app.",
+          id:           ID.TIMER_DONE,
+          channelId:    "timer",
+          schedule:     { at: endAt, allowWhileIdle: true },
+          smallIcon:    "ic_stat_notify",
+          iconColor:    "#14B8A6",
+          extra:        JSON.stringify({ type: "timer_done" }),
+        },
+      ];
 
-    try {
+      // Warning 1 minute before if timer is long enough
+      if (totalMs > 60000) {
+        notifs.push({
+          title:      "⏰ 1 minute left",
+          body:       `${label || "Your timer"} finishes in 1 minute.`,
+          id:         ID.TIMER_WARN,
+          channelId:  "timer",
+          schedule:   { at: new Date(now + totalMs - 60000), allowWhileIdle: true },
+          smallIcon:  "ic_stat_notify",
+          iconColor:  "#14B8A6",
+        });
+      }
+      
       await ln.schedule({ notifications: notifs });
       console.log("[Notif] ✅ Timer notifications scheduled:", notifs.length, "notifications");
+      toast.success("Timer scheduled");
     } catch (e) {
+      toast.error("Timer Schedule Error: " + String(e?.message || e));
       console.warn("[Notif] ❌ Native timer scheduling failed:", e);
     }
   } else {
