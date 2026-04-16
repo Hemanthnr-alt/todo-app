@@ -178,17 +178,20 @@ export function TimerProvider({ children }) {
     setIntRound(1);
     setIntPhase("work");
     intTarget.current = Date.now() + workMs;
+    startBackgroundTimer({ label: "Interval Workout", totalMs: workMs });
   }, []);
 
   const intToggle = useCallback(() => {
     if (intRunning) {
       clearInterval(intInterval.current);
       setIntRunning(false);
+      pauseBackgroundTimer();
     } else {
       intTarget.current = Date.now() + (currentPhaseMs - intElapsed);
       setIntRunning(true);
+      startBackgroundTimer({ label: `Interval ${intPhase}`, totalMs: currentPhaseMs - intElapsed });
     }
-  }, [intRunning, currentPhaseMs, intElapsed]);
+  }, [intRunning, currentPhaseMs, intElapsed, intPhase]);
 
   const intReset = useCallback(() => {
     clearInterval(intInterval.current);
@@ -197,6 +200,7 @@ export function TimerProvider({ children }) {
     setIntElapsed(0);
     setIntRound(1);
     setIntPhase("work");
+    stopBackgroundTimer();
   }, []);
 
   useEffect(() => {
@@ -257,9 +261,11 @@ export function TimerProvider({ children }) {
     if (pomoRunning) {
       clearInterval(pomoInterval.current);
       setPomoRunning(false);
+      pauseBackgroundTimer();
     } else {
       pomoTarget.current = Date.now() + pomoRemaining;
       setPomoRunning(true);
+      startBackgroundTimer({ label: "Focus Session", totalMs: pomoRemaining });
     }
   }, [pomoRunning, pomoRemaining, pomoPhases]);
 
@@ -271,6 +277,7 @@ export function TimerProvider({ children }) {
     setPomoRemaining(ms);
     setPomoTotalMs(ms);
     clearInterval(pomoInterval.current);
+    stopBackgroundTimer();
   }, []);
   
   const pomoReset = useCallback((ms) => {
@@ -278,6 +285,7 @@ export function TimerProvider({ children }) {
     setPomoRemaining(ms);
     setPomoTotalMs(ms);
     clearInterval(pomoInterval.current);
+    stopBackgroundTimer();
   }, []);
 
   const value = {
