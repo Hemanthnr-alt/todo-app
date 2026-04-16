@@ -347,8 +347,7 @@ export default function Navbar({ activePage, onPageChange }) {
             const active = activePage === item.id;
             return (
               <motion.button key={item.id} whileTap={{scale:0.90}} onClick={()=>onPageChange(item.id)} className="btn-reset"
-                style={{ flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:"3px",padding:"4px 2px",color:active?"var(--accent)":"var(--text-muted)",position:"relative",WebkitTapHighlightColor:"transparent" }}>
-                {active && <motion.div layoutId="nav-active-dot" style={{ position:"absolute",top:"4px",left:0,right:0,margin:"auto",width:"4px",height:"4px",borderRadius:"50%",background:"var(--accent)" }}/>}
+                style={{ flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:"3px",padding:"4px 2px",color:active?"var(--accent)":"var(--text-muted)",WebkitTapHighlightColor:"transparent" }}>
                 <item.Icon active={active}/>
                 <span style={{ fontSize:"9px",fontWeight:active?700:500,letterSpacing:"0.02em" }}>{item.label}</span>
               </motion.button>
