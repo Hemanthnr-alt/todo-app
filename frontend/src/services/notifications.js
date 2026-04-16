@@ -113,6 +113,21 @@ export const checkPermissionStatus = async () => {
   return Notification.permission === "granted";
 };
 
+export const needsPermissionPrompt = async () => {
+  const ln = await getLN();
+  if (ln) {
+    try {
+      const { display } = await ln.checkPermissions();
+      // 'prompt' means they haven't explicitly denied or granted yet
+      return display === "prompt";
+    } catch { return true; }
+  }
+  if ("Notification" in window) {
+    return Notification.permission === "default";
+  }
+  return false;
+};
+
 // ── Service Worker helpers (web only) ─────────────────────────────────────────
 const getSW = async () => {
   if (!("serviceWorker" in navigator)) return null;

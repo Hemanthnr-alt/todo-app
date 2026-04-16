@@ -17,6 +17,7 @@ import {
   requestNotificationPermission,
   scheduleTaskReminders,
   setupNotificationListeners,
+  needsPermissionPrompt
 } from "./services/notifications";
 import { useTasks } from "./hooks/useTasks";
 
@@ -69,18 +70,9 @@ function NotificationBootstrap() {
         if (localStorage.getItem("thirty_notif_dismissed")) return;
 
         // Check if we need to request permission via user gesture
-        if (isNativeApp()) {
-           const ln = window.Capacitor?.Plugins?.LocalNotifications;
-           if (ln) {
-             const { display } = await ln.checkPermissions();
-             if (display !== "granted" && display !== "denied" && mounted) {
-                setShowPrompt(true);
-             }
-           }
-        } else {
-           if ("Notification" in window && Notification.permission === "default" && mounted) {
-              setShowPrompt(true);
-           }
+        if (mounted) {
+           const needs = await needsPermissionPrompt();
+           if (needs) setShowPrompt(true);
         }
       } catch {}
     };
