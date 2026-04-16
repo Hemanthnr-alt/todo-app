@@ -288,6 +288,36 @@ export default function Navbar({ activePage, onPageChange }) {
       {/* Top bar */}
       <div style={{ position:"sticky",top:0,zIndex:300,paddingTop:"env(safe-area-inset-top,0px)",background:"var(--bg)",borderBottom:"1px solid var(--border)" }}>
         <div style={{ maxWidth:"1200px",margin:"0 auto",padding:"8px 14px",display:"flex",alignItems:"center",gap:"10px" }}>
+        
+          <button onClick={async () => {
+            const { Capacitor } = await import('@capacitor/core');
+            const { LocalNotifications } = await import('@capacitor/local-notifications');
+            const { toast } = await import('react-hot-toast');
+            
+            try {
+              const isCap = Capacitor.isNativePlatform();
+              toast("NATIVE: " + isCap, { duration: 5000 });
+              if (!isCap) return toast("Not native context");
+              
+              const req = await LocalNotifications.requestPermissions();
+              toast("Req: " + req.display, { duration: 5000 });
+              
+              await LocalNotifications.schedule({
+                notifications: [{
+                  title: "DEBUG TEST",
+                  body: "This is a raw plugin test",
+                  id: 9999,
+                  schedule: { at: new Date(Date.now() + 1000) },
+                  smallIcon: "ic_stat_notify"
+                }]
+              });
+              toast.success("Plugin SCHEDULED! Expect notif in 1s");
+            } catch (e) {
+              toast.error("CRITICAL: " + String(e?.message||e), { duration: 10000 });
+            }
+          }} style={{ background:"red", color:"white", padding:"4px", fontSize:"10px", fontWeight:"bold", border:"none", borderRadius:"4px" }}>
+            DEBUG FIX
+          </button>
 
           <motion.div whileTap={{scale:0.95}} onClick={()=>onPageChange("today")}
             style={{ display:"flex",alignItems:"center",gap:"8px",cursor:"pointer",flexShrink:0 }}>
