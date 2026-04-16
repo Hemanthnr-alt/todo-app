@@ -3,6 +3,7 @@ import { Toaster } from "react-hot-toast";
 import Navbar from "./components/Navbar";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import { ThemeProvider, useTheme } from "./context/ThemeContext";
+import { TimerProvider } from "./context/TimerContext";
 import Calendar from "./pages/Calendar";
 import Categories from "./pages/Categories";
 import Habits from "./pages/Habits";
@@ -53,19 +54,34 @@ function LoadingScreen() {
 
 // ── Notification bootstrap — runs once after auth loads ───────────────────────
 function NotificationBootstrap() {
-  const { isAuthenticated } = useAuth();
   const { tasks } = useTasks();
-  const NATIVE = isNativeApp();
+  const [showPrompt, setShowPrompt] = useState(false);
+  const { accent } = useTheme();
 
-  // 1. Request permission + set up listeners on first launch
+  // 1. Check permissions and set up listeners on first launch
   useEffect(() => {
     let mounted = true;
     const boot = async () => {
       try {
-        // Set up tap listeners (native only)
         await setupNotificationListeners();
-        // Request permission — on Android shows system dialog
-        await requestNotificationPermission();
+        
+        // Don't repeatedly prompt if they dismissed it locally
+        if (localStorage.getItem("thirty_notif_dismissed")) return;
+
+        // Check if we need to request permission via user gesture
+        if (isNativeApp()) {
+           const ln = window.Capacitor?.Plugins?.LocalNotifications;
+           if (ln) {
+             const { display } = await ln.checkPermissions();
+             if (display !== "granted" && display !== "denied" && mounted) {
+                setShowPrompt(true);
+             }
+           }
+        } else {
+           if ("Notification" in window && Notification.permission === "default" && mounted) {
+              setShowPrompt(true);
+           }
+        }
       } catch {}
     };
     boot();
@@ -96,7 +112,36 @@ function NotificationBootstrap() {
     return () => window.removeEventListener("thirty-notification-tap", handler);
   }, []);
 
-  return null;
+  if (!showPrompt) return null;
+
+  return (
+    <div style={{ position:"fixed", inset:0, zIndex:99999, background:"rgba(0,0,0,0.6)", backdropFilter:"blur(8px)", display:"flex", alignItems:"center", justifyContent:"center", padding:"20px" }}>
+      <motion.div initial={{ scale:0.9, opacity:0, y:20 }} animate={{ scale:1, opacity:1, y:0 }}
+        style={{ background:"var(--surface-raised)", border:"1px solid var(--border)", borderRadius:"24px", padding:"32px", maxWidth:"360px", textAlign:"center", boxShadow:"var(--shadow-xl)" }}>
+        <div style={{ width:"64px", height:"64px", borderRadius:"50%", background:`${accent}22`, color:accent, display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 20px" }}>
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+        </div>
+        <h2 style={{ fontSize:"22px", fontWeight:800, color:"var(--text-primary)", marginBottom:"10px", fontFamily:"var(--font-heading)" }}>Push Notifications</h2>
+        <p style={{ fontSize:"14px", color:"var(--text-muted)", marginBottom:"28px", lineHeight:1.5 }}>
+          Enable notifications so Thirty can ping you when your timers finish and remind you of daily tasks and habits.
+        </p>
+        <div style={{ display:"flex", flexDirection:"column", gap:"8px" }}>
+          <motion.button whileTap={{ scale:0.96 }}
+            onClick={async () => {
+              await requestNotificationPermission();
+              setShowPrompt(false);
+            }}
+            className="btn-primary" style={{ padding:"14px", width:"100%", background:accent, boxShadow:`0 4px 16px ${accent}44` }}>
+            Enable Push
+          </motion.button>
+          <button onClick={() => { localStorage.setItem("thirty_notif_dismissed", "1"); setShowPrompt(false); }}
+             style={{ padding:"14px", width:"100%", background:"transparent", border:"none", color:"var(--text-secondary)", fontWeight:600, fontSize:"14px", cursor:"pointer" }}>
+            Not Now
+          </button>
+        </div>
+      </motion.div>
+    </div>
+  );
 }
 
 function AppContent() {
@@ -127,7 +172,7 @@ function AppContent() {
     return () => { clearTimeout(t); ctl.abort(); };
   }, [NATIVE]);
 
-  // Handle navigation from notification taps
+  // Handle navigation from internal triggers
   useEffect(() => {
     const handler = (e) => {
       const { page: p } = e.detail || {};
@@ -135,6 +180,18 @@ function AppContent() {
     };
     window.addEventListener("thirty-navigate", handler);
     return () => window.removeEventListener("thirty-navigate", handler);
+  }, []);
+
+  // Handle navigation from native/push notification taps
+  useEffect(() => {
+    const handler = (e) => {
+      const { type } = e.detail || {};
+      if (type === "timer_done") setPage("timer");
+      else if (type === "habit_reminder") setPage("habits");
+      else setPage("today"); // default fallback
+    };
+    window.addEventListener("thirty-notification-tap", handler);
+    return () => window.removeEventListener("thirty-notification-tap", handler);
   }, []);
 
   const handlePageChange = (p, tab = null) => {
@@ -202,7 +259,9 @@ export default function App() {
   return (
     <ThemeProvider>
       <AuthProvider>
-        <AppFrame/>
+        <TimerProvider>
+          <AppFrame/>
+        </TimerProvider>
       </AuthProvider>
     </ThemeProvider>
   );

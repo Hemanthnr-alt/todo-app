@@ -4,8 +4,8 @@ import CustomSelect from "../components/CustomSelect";
 import { useAuth } from "../context/AuthContext";
 import { useTheme } from "../context/ThemeContext";
 import { useTasks } from "../hooks/useTasks";
-import { playTimerSound, sendNotification, startBackgroundTimer, stopBackgroundTimer, pauseBackgroundTimer } from "../services/notifications";
 import { lifecycleOf } from "../utils/recurringTask";
+import { useTimerContext } from "../context/TimerContext";
 
 /* ── Wake Lock hook ───────────────────────────────────────────────────── */
 function useWakeLock() {
@@ -114,30 +114,7 @@ const PillBtn = ({ onClick, children, style={} }) => (
    STOPWATCH
 ──────────────────────────────────────────────── */
 function Stopwatch({ accent }) {
-  const [running,setRunning]=useState(false);
-  const [elapsed,setElapsed]=useState(0);
-  const [laps,setLaps]=useState([]);
-  const startRef=useRef(null), stored=useRef(0), raf=useRef(null);
-
-  const tick=useCallback(()=>{
-    setElapsed(stored.current+Date.now()-startRef.current);
-    raf.current=requestAnimationFrame(tick);
-  },[]);
-
-  const toggle=()=>{
-    if(running){ cancelAnimationFrame(raf.current); stored.current+=Date.now()-startRef.current; }
-    else { startRef.current=Date.now(); raf.current=requestAnimationFrame(tick); }
-    setRunning(r=>!r);
-  };
-  const reset=()=>{ cancelAnimationFrame(raf.current);setRunning(false);setElapsed(0);setLaps([]);stored.current=0; };
-  const lap=()=>{
-    if(!running) return;
-    const prev=laps[0]?.total||0;
-    setLaps(l=>[{n:l.length+1,split:elapsed-prev,total:elapsed},...l]);
-    playTimerSound("beep");
-  };
-  useEffect(()=>()=>cancelAnimationFrame(raf.current),[]);
-
+  const { swRunning: running, swElapsed: elapsed, swLaps: laps, swToggle: toggle, swReset: reset, swLap: lap } = useTimerContext();
   const fastest=laps.length>1?Math.min(...laps.map(l=>l.split)):null;
   const slowest=laps.length>1?Math.max(...laps.map(l=>l.split)):null;
 
@@ -213,50 +190,12 @@ const PRESETS=[
 ];
 
 function Countdown({ accent }) {
-  const [started,setStarted]=useState(false);
-  const [running,setRunning]=useState(false);
+  const { cdStarted: started, cdRunning: running, cdTotalMs: totalMs, cdRemaining: remaining, cdCompleted: completed, cdStart: startReq, cdToggle: toggle, cdReset: reset } = useTimerContext();
   const [h,setH]=useState(0),[m,setM]=useState(5),[s,setS]=useState(0);
-  const [remaining,setRemaining]=useState(0);
-  const [completed,setCompleted]=useState(false);
-  const interval=useRef(null);
-  const totalMs=((h||0)*3600+(m||0)*60+(s||0))*1000;
+  const baseMs=((h||0)*3600+(m||0)*60+(s||0))*1000;
 
   const ring = completed?"var(--success)":remaining<10000?"var(--danger)":"var(--accent)";
   const pct  = started&&totalMs>0?((totalMs-remaining)/totalMs)*100:0;
-
-  const start=()=>{
-    if(totalMs<=0) return;
-    setRemaining(totalMs); setStarted(true); setRunning(true); setCompleted(false);
-    playTimerSound("start");
-    startBackgroundTimer({ label:"Countdown", totalMs });
-  };
-  const toggle=()=>{
-    setRunning(r=>!r);
-    if (running) pauseBackgroundTimer();
-    else startBackgroundTimer({ label:"Countdown", totalMs: remaining });
-  };
-  const reset=()=>{
-    clearInterval(interval.current);
-    setStarted(false); setRunning(false); setRemaining(0); setCompleted(false);
-    stopBackgroundTimer();
-  };
-
-  useEffect(()=>{
-    if(!running){ clearInterval(interval.current); return; }
-    interval.current=setInterval(()=>{
-      setRemaining(r=>{
-        if(r<=100){
-          clearInterval(interval.current); setRunning(false); setCompleted(true);
-          playTimerSound("complete");
-          sendNotification({title:"⏰ Timer done!",body:"Your countdown has finished.",sound:true});
-          return 0;
-        }
-        if(r<=10000&&r>9900) playTimerSound("warning");
-        return r-100;
-      });
-    },100);
-    return()=>clearInterval(interval.current);
-  },[running]);
 
   return (
     <div style={{textAlign:"center"}}>
@@ -283,9 +222,9 @@ function Countdown({ accent }) {
             <span style={{fontSize:"32px",fontWeight:800,color:"var(--text-muted)",paddingTop:"24px"}}>:</span>
             <NumSpin value={s} onChange={setS} label="sec" max={59}/>
           </div>
-          <motion.button whileTap={{scale:0.96}} onClick={start} disabled={totalMs<=0}
+          <motion.button whileTap={{scale:0.96}} onClick={()=>startReq(baseMs)} disabled={baseMs<=0}
             className="btn-primary"
-            style={{padding:"0 56px",opacity:totalMs>0?1:0.4,cursor:totalMs>0?"pointer":"default"}}>
+            style={{padding:"0 56px",opacity:baseMs>0?1:0.4,cursor:baseMs>0?"pointer":"default"}}>
             Start
           </motion.button>
         </>
@@ -324,53 +263,16 @@ function Countdown({ accent }) {
    INTERVALS
 ──────────────────────────────────────────────── */
 function Intervals({ accent }) {
-  const [started,setStarted]=useState(false);
-  const [running,setRunning]=useState(false);
-  const [phase,setPhase]=useState("work");
-  const [elapsed,setElapsed]=useState(0);
-  const [round,setRound]=useState(1);
+  const { intStarted: started, intRunning: running, intPhase: phase, intElapsed: elapsed, intRound: round, intTotalRounds: totalRounds, currentPhaseMs: current, intBegin: begin, intToggle: toggle, intReset: reset } = useTimerContext();
   const [rounds,setRounds]=useState(3);
-  const [totalRounds,setTotalRounds]=useState(0);
   const [workM,setWorkM]=useState(0),[workS,setWorkS]=useState(30);
   const [restM,setRestM]=useState(0),[restS,setRestS]=useState(10);
-  const interval=useRef(null);
 
   const workMs=((workM||0)*60+(workS||0))*1000;
   const restMs=((restM||0)*60+(restS||0))*1000;
-  const current=phase==="work"?workMs:restMs;
   const remaining=Math.max(0,current-elapsed);
   const pct=current>0?(elapsed/current)*100:0;
   const phaseColor=phase==="work"?accent:"var(--success)";
-
-  useEffect(()=>{
-    if(!running){ clearInterval(interval.current); return; }
-    interval.current=setInterval(()=>{
-      setElapsed(e=>{
-        const next=e+100;
-        if(current-next<=3000&&current-next>2900) playTimerSound("warning");
-        if(next>=current){
-          if(phase==="work"){
-            playTimerSound("interval"); setPhase("rest"); setElapsed(0); return 0;
-          }
-          if(round>=(totalRounds||rounds)){
-            playTimerSound("complete");
-            sendNotification({title:"🏋️ Workout done!",body:`Finished ${totalRounds||rounds} rounds!`,sound:true});
-            clearInterval(interval.current);
-            setRunning(false); setStarted(false); setRound(1); setPhase("work"); return 0;
-          }
-          playTimerSound("interval"); setRound(r=>r+1); setPhase("work"); setElapsed(0); return 0;
-        }
-        return next;
-      });
-    },100);
-    return()=>clearInterval(interval.current);
-  },[running,phase,current,round,rounds,totalRounds]);
-
-  const begin=()=>{
-    if(workMs<=0) return;
-    setTotalRounds(rounds); setStarted(true); setRunning(true); setElapsed(0); setRound(1); setPhase("work");
-  };
-  const reset=()=>{ clearInterval(interval.current);setStarted(false);setRunning(false);setElapsed(0);setRound(1);setPhase("work"); };
 
   return (
     <div style={{textAlign:"center"}}>
@@ -416,7 +318,7 @@ function Intervals({ accent }) {
           <div style={{fontSize:"12px",color:"var(--text-muted)",marginBottom:"24px"}}>
             Total: ~{Math.round(((workMs+restMs)*rounds)/60000)} min
           </div>
-          <motion.button whileTap={{scale: 0.96}} onClick={begin} disabled={workMs<=0}
+          <motion.button whileTap={{scale: 0.96}} onClick={()=>begin(workMs,restMs,rounds)} disabled={workMs<=0}
             className="btn-primary"
             style={{padding:"0 56px",opacity:workMs>0?1:0.4,cursor:workMs>0?"pointer":"default"}}>
             Start
@@ -452,7 +354,7 @@ function Intervals({ accent }) {
             </div>
           </Ring>
           <div style={{display:"flex",gap:"10px",justifyContent:"center"}}>
-            <motion.button whileTap={{scale:0.95}} onClick={()=>setRunning(r=>!r)}
+            <motion.button whileTap={{scale:0.95}} onClick={toggle}
               className="btn-primary"
               style={{padding:"0 40px",background:running?"var(--danger)":"var(--accent)",
                 boxShadow:running?"0 4px 20px rgba(255,69,58,0.4)":"0 4px 20px var(--accent-glow)"}}>
@@ -472,6 +374,8 @@ const POMO_MINS_KEY = "thirty_pomodoro_mins";
    POMODORO
 ──────────────────────────────────────────────── */
 function Pomodoro({ accent, linkedTaskId, onLinkedTaskId, taskOptions, showTaskLink }) {
+  const { pomoRunning: running, pomoPhaseIdx: phaseIdx, pomoRemaining: remaining, pomoSessions: sessions, pomoTotalMs: totalMs, pomoToggle: toggle, pomoSwitchPhase: switchPhase, pomoReset: localPomoReset } = useTimerContext();
+  
   const defaultMins = { focus: 25, short: 5, long: 15 };
   const [mins, setMins] = useState(() => {
     try {
@@ -494,57 +398,8 @@ function Pomodoro({ accent, linkedTaskId, onLinkedTaskId, taskOptions, showTaskL
     { id: "long", label: "Long Break", mins: mins.long, color: "var(--info)" },
   ], [mins, accent]);
 
-  const [phaseIdx, setPhaseIdx] = useState(0);
-  const [running, setRunning] = useState(false);
-  const [remaining, setRemaining] = useState(() => defaultMins.focus * 60 * 1000);
-  const [sessions, setSessions] = useState(0);
-  const interval = useRef(null);
-  const phase = phases[phaseIdx];
-  const totalMs = phase.mins * 60 * 1000;
+  const phase = phases[phaseIdx] || phases[0];
   const pct = ((totalMs - remaining) / totalMs) * 100;
-
-  useEffect(() => {
-    if (!running) setRemaining(phases[phaseIdx].mins * 60 * 1000);
-  }, [mins, phaseIdx, running, phases]);
-
-  const switchPhase = (idx) => {
-    setPhaseIdx(idx);
-    setRunning(false);
-    setRemaining(phases[idx].mins * 60 * 1000);
-    clearInterval(interval.current);
-  };
-
-  useEffect(() => {
-    if (!running) {
-      clearInterval(interval.current);
-      return undefined;
-    }
-    interval.current = setInterval(() => {
-      setRemaining((r) => {
-        if (r <= 100) {
-          clearInterval(interval.current);
-          setRunning(false);
-          playTimerSound("complete");
-          if (phaseIdx === 0) {
-            sendNotification({ title: "🍅 Focus session done!", body: "Time for a break!", sound: true });
-          }
-          setSessions((s) => {
-            const nextS = phaseIdx === 0 ? s + 1 : s;
-            const next = phaseIdx === 0 ? (nextS % 4 === 0 ? 2 : 1) : 0;
-            const nextMins = next === 0 ? mins.focus : next === 1 ? mins.short : mins.long;
-            setPhaseIdx(next);
-            setRemaining(nextMins * 60 * 1000);
-            return nextS;
-          });
-          return 0;
-        }
-        if (r <= 60000 && r > 59900) playTimerSound("warning");
-        return r - 100;
-      });
-    }, 100);
-    return () => clearInterval(interval.current);
-  }, [running, phaseIdx, mins]);
-
   const linkedLabel = taskOptions.find((o) => o.value === linkedTaskId)?.label;
 
   return (
@@ -596,7 +451,7 @@ function Pomodoro({ accent, linkedTaskId, onLinkedTaskId, taskOptions, showTaskL
           <button
             key={p.id}
             type="button"
-            onClick={() => switchPhase(i)}
+            onClick={() => switchPhase(i, phases)}
             style={{
               padding: "8px 16px",
               borderRadius: "12px",
@@ -644,7 +499,7 @@ function Pomodoro({ accent, linkedTaskId, onLinkedTaskId, taskOptions, showTaskL
       <div style={{ display: "flex", gap: "10px", justifyContent: "center" }}>
         <motion.button
           whileTap={{ scale: 0.95 }}
-          onClick={() => setRunning((r) => !r)}
+          onClick={() => toggle(phases)}
           className="btn-primary"
           style={{
             padding: "0 44px",
@@ -656,9 +511,7 @@ function Pomodoro({ accent, linkedTaskId, onLinkedTaskId, taskOptions, showTaskL
         </motion.button>
         <PillBtn
           onClick={() => {
-            setRunning(false);
-            setRemaining(phase.mins * 60 * 1000);
-            clearInterval(interval.current);
+            localPomoReset(phase.mins * 60 * 1000);
           }}
         >
           Reset
