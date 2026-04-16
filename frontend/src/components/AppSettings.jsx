@@ -279,7 +279,10 @@ function GeneralTab({ accent }) {
 
   useEffect(()=>{ setS("sound",sound); },[sound]);
   useEffect(()=>{ setS("haptic",haptic); },[haptic]);
-  useEffect(()=>{ setS("weekStart",weekStart); },[weekStart]);
+  useEffect(()=>{ 
+    setS("weekStart",weekStart); 
+    window.dispatchEvent(new Event("weekStart-changed"));
+  },[weekStart]);
   useEffect(()=>{ if(!NATIVE && "Notification" in window) setPush(Notification.permission); },[NATIVE]);
 
   const reqPush = async()=>{

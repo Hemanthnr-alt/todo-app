@@ -41,9 +41,40 @@ function statusColor(pct) {
   return "#FF5A5F";
 }
 
-function getLast7(today) {
+function useWeekStart() {
+  const [ws, setWs] = useState(() => {
+    try { return JSON.parse(localStorage.getItem("thirty_set_weekStart")||'"sunday"'); } catch { return "sunday"; }
+  });
+  useEffect(() => {
+    const handle = () => {
+      try { setWs(JSON.parse(localStorage.getItem("thirty_set_weekStart")||'"sunday"')); } catch {}
+    };
+    window.addEventListener("storage", handle);
+    // Custom event since local storage events don't fire within the same tab in all browsers reliably
+    window.addEventListener("weekStart-changed", handle);
+    return () => { window.removeEventListener("storage", handle); window.removeEventListener("weekStart-changed", handle); };
+  }, []);
+  return ws;
+}
+
+function getCurrentWeek(todayStr, weekStart) {
+  const d = new Date(todayStr + "T12:00:00");
+  const day = d.getDay();
+  let diff = 0;
+  if (weekStart === "monday") {
+    diff = day === 0 ? -6 : -(day - 1);
+  } else {
+    diff = -day;
+  }
   const out = [];
-  for (let i = 6; i >= 0; i--) out.push(addDaysToYMD(today, -i));
+  for (let i = 0; i < 7; i++) {
+    const tmp = new Date(d);
+    tmp.setDate(d.getDate() + diff + i);
+    const y = tmp.getFullYear();
+    const m = String(tmp.getMonth() + 1).padStart(2,'0');
+    const dd = String(tmp.getDate()).padStart(2,'0');
+    out.push(`${y}-${m}-${dd}`);
+  }
   return out;
 }
 
@@ -350,16 +381,16 @@ function ConfirmDelete({ habit, onCancel, onConfirm }) {
 /* ─── Compact Habit Card ─────────────────────────────────────── */
 function HabitCard({ habit, onToggle, onDelete, onEdit, onOpenQty, onOpenAction, onCalendar, onStats }) {
   const today     = localTodayYMD();
+  const weekStart = useWeekStart();
   const startDate = habit.startDate || habit.createdAt?.slice(0,10) || today;
   const doneSet   = new Set(habit.completedDates||[]);
   const doneToday = doneSet.has(today);
-  const window7   = useMemo(()=>getLast7(today),[today]);
+  const window7   = useMemo(()=>getCurrentWeek(today, weekStart),[today, weekStart]);
   const activeDays = window7.filter(d=>d>=startDate&&d<=today);
   const doneInWin  = activeDays.filter(d=>doneSet.has(d)).length;
   const pct        = activeDays.length>0?Math.round((doneInWin/activeDays.length)*100):0;
   const streak     = habit.streak??0;
   const sc         = statusColor(pct);
-  const [expanded, setExpanded] = useState(false);
 
   return (
     <motion.div layout
@@ -390,13 +421,6 @@ function HabitCard({ habit, onToggle, onDelete, onEdit, onOpenQty, onOpenAction,
           </div>
         </div>
 
-        {/* Expand toggle */}
-        <motion.button type="button" onClick={()=>setExpanded(v=>!v)} className="btn-reset"
-          style={{ width:"22px",height:"22px",display:"flex",alignItems:"center",justifyContent:"center",color:"var(--text-muted)",flexShrink:0 }}
-          animate={{ rotate: expanded ? 180 : 0 }} transition={{ duration:0.18 }}>
-          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M6 9l6 6 6-6"/></svg>
-        </motion.button>
-
         {/* Log button */}
         <motion.button type="button" whileTap={{scale:0.84}}
           onClick={()=>habit.goalMaxPerDay?onOpenQty(habit):onToggle(habit.id,today)}
@@ -422,50 +446,43 @@ function HabitCard({ habit, onToggle, onDelete, onEdit, onOpenQty, onOpenAction,
         </motion.button>
       </div>
 
-      {/* Expandable 7-day tray */}
-      <AnimatePresence>
-        {expanded && (
-          <motion.div initial={{height:0,opacity:0}} animate={{height:"auto",opacity:1}} exit={{height:0,opacity:0}}
-            transition={{duration:0.2,ease:[0.22,1,0.36,1]}} style={{overflow:"hidden"}}>
-            <div style={{ borderTop:"1px solid var(--border)",background:"var(--surface-raised)",padding:"10px 12px 12px" }}>
-              <div style={{ display:"flex",gap:"4px",justifyContent:"space-between",marginBottom:"8px" }}>
-                {window7.map(dateStr=>{
-                  const isFuture=dateStr>today, before=dateStr<startDate;
-                  const isDone=doneSet.has(dateStr), isToday=dateStr===today;
-                  const locked=isFuture||before;
-                  const dayN=new Date(`${dateStr}T00:00:00`).getDate();
-                  const dayL=WEEKDAY_SHORT[new Date(`${dateStr}T00:00:00`).getDay()];
-                  return (
-                    <div key={dateStr} style={{ display:"flex",flexDirection:"column",alignItems:"center",gap:"3px",flex:1 }}>
-                      <span style={{ fontSize:"9px",fontWeight:isToday?700:400,color:isToday?habit.color:"var(--text-muted)" }}>{dayL}</span>
-                      <motion.button type="button" whileTap={!locked?{scale:0.85}:{}}
-                        onClick={()=>!locked&&onToggle(habit.id,dateStr)} disabled={locked} className="btn-reset"
-                        style={{ width:"26px",height:"26px",borderRadius:"var(--radius-btn)",display:"flex",alignItems:"center",justifyContent:"center",cursor:locked?"not-allowed":"pointer",
-                          fontSize:"11px",fontWeight:isDone||isToday?700:500,
-                          background:isDone?habit.color:locked?"transparent":isToday?`${habit.color}12`:"var(--surface-elevated)",
-                          border:locked?"1px solid var(--border)":isDone?"none":isToday?`1.5px solid ${habit.color}55`:"1px solid var(--border)",
-                          color:isDone?"#000":locked?"var(--text-tertiary)":isToday?habit.color:"var(--text-secondary)" }}>
-                        {isFuture?<LockIcon/>:before?<span style={{opacity:.25}}>–</span>:dayN}
-                      </motion.button>
-                    </div>
-                  );
-                })}
+      {/* Fixed 7-day tray */}
+      <div style={{ borderTop:"1px solid var(--border)",background:"var(--surface-raised)",padding:"10px 12px 12px" }}>
+        <div style={{ display:"flex",gap:"4px",justifyContent:"space-between",marginBottom:"8px" }}>
+          {window7.map(dateStr=>{
+            const isFuture=dateStr>today, before=dateStr<startDate;
+            const isDone=doneSet.has(dateStr), isToday=dateStr===today;
+            const locked=isFuture||before;
+            const dayN=new Date(`${dateStr}T12:00:00`).getDate();
+            const dayL=WEEKDAY_SHORT[new Date(`${dateStr}T12:00:00`).getDay()];
+            return (
+              <div key={dateStr} style={{ display:"flex",flexDirection:"column",alignItems:"center",gap:"3px",flex:1 }}>
+                <span style={{ fontSize:"9px",fontWeight:isToday?700:400,color:isToday?habit.color:"var(--text-muted)" }}>{dayL}</span>
+                <motion.button type="button" whileTap={!locked?{scale:0.85}:{}}
+                  onClick={()=>!locked&&onToggle(habit.id,dateStr)} disabled={locked} className="btn-reset"
+                  style={{ width:"26px",height:"26px",borderRadius:"var(--radius-btn)",display:"flex",alignItems:"center",justifyContent:"center",cursor:locked?"not-allowed":"pointer",
+                    fontSize:"11px",fontWeight:isDone||isToday?700:500,
+                    background:isDone?habit.color:locked?"transparent":isToday?`${habit.color}12`:"var(--surface-elevated)",
+                    border:locked?"1px solid var(--border)":isDone?"none":isToday?`1.5px solid ${habit.color}55`:"1px solid var(--border)",
+                    color:isDone?"#000":locked?"var(--text-tertiary)":isToday?habit.color:"var(--text-secondary)" }}>
+                  {isFuture?<LockIcon/>:before?<span style={{opacity:.25}}>–</span>:dayN}
+                </motion.button>
               </div>
-              <div style={{ display:"flex",gap:"5px",justifyContent:"flex-end" }}>
-                {[
-                  {fn:()=>onCalendar(habit),icon:<IconCalendar size={11} stroke="currentColor"/>,label:"Calendar"},
-                  {fn:()=>onStats(habit),   icon:<IconBarChart  size={11} stroke="currentColor"/>,label:"Stats"},
-                ].map(b=>(
-                  <motion.button key={b.label} type="button" whileTap={{scale:0.88}} onClick={b.fn} className="btn-reset"
-                    style={{ padding:"4px 9px",borderRadius:"var(--radius-btn)",background:"var(--surface)",border:"1px solid var(--border)",color:"var(--text-muted)",display:"flex",alignItems:"center",gap:"4px",fontSize:"10px",fontWeight:600 }}>
-                    {b.icon} {b.label}
-                  </motion.button>
-                ))}
-              </div>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+            );
+          })}
+        </div>
+        <div style={{ display:"flex",gap:"5px",justifyContent:"flex-end" }}>
+          {[
+            {fn:()=>onCalendar(habit),icon:<IconCalendar size={11} stroke="currentColor"/>,label:"Calendar"},
+            {fn:()=>onStats(habit),   icon:<IconBarChart  size={11} stroke="currentColor"/>,label:"Stats"},
+          ].map(b=>(
+            <motion.button key={b.label} type="button" whileTap={{scale:0.88}} onClick={b.fn} className="btn-reset"
+              style={{ padding:"4px 9px",borderRadius:"var(--radius-btn)",background:"var(--surface)",border:"1px solid var(--border)",color:"var(--text-muted)",display:"flex",alignItems:"center",gap:"4px",fontSize:"10px",fontWeight:600 }}>
+              {b.icon} {b.label}
+            </motion.button>
+          ))}
+        </div>
+      </div>
     </motion.div>
   );
 }
