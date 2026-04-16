@@ -27,6 +27,7 @@ const NATIVE = isNativeApp();
 const ID = {
   TIMER_DONE:    1,
   TIMER_WARN:    2,
+  TIMER_RUNNING: 3,
   TASK_DUE:   (i) => 1000 + (i % 1000),
   TASK_OVER:  (i) => 2000 + (i % 1000),
   HABIT:      (i) => 3000 + (i % 1000),
@@ -379,16 +380,27 @@ export const startBackgroundTimer = async ({ label, totalMs }) => {
     if (ln) {
       const now = Date.now();
       const endAt = new Date(now + totalMs);
-      const notifs = [{
-        title: `✅ ${label || "Timer"} complete!`,
-        body: "Your timer has finished. Tap to open the app.",
-        id: ID.TIMER_DONE,
-        channelId: "timer",
-        schedule: { at: endAt, allowWhileIdle: true },
-        sound: "beep.wav",
-        smallIcon: "ic_stat_notify",
-        extra: JSON.stringify({ type: "timer_done" })
-      }];
+      const notifs = [
+        {
+          title: `⏱ ${label || "Timer"} running...`,
+          body: `Ends at ${endAt.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}`,
+          id: ID.TIMER_RUNNING,
+          channelId: "timer",
+          ongoing: false,
+          autoCancel: false,
+          smallIcon: "ic_stat_notify",
+        },
+        {
+          title: `✅ ${label || "Timer"} complete!`,
+          body: "Your timer has finished. Tap to open the app.",
+          id: ID.TIMER_DONE,
+          channelId: "timer",
+          schedule: { at: endAt, allowWhileIdle: true },
+          sound: "beep.wav",
+          smallIcon: "ic_stat_notify",
+          extra: JSON.stringify({ type: "timer_done" })
+        }
+      ];
       if (totalMs > 60000) {
         notifs.push({
           title: "⏰ 1 minute left",
@@ -401,7 +413,7 @@ export const startBackgroundTimer = async ({ label, totalMs }) => {
         });
       }
       try {
-        await ln.cancel({ notifications: [{ id: ID.TIMER_DONE }, { id: ID.TIMER_WARN }] });
+        await ln.cancel({ notifications: [{ id: ID.TIMER_RUNNING }, { id: ID.TIMER_DONE }, { id: ID.TIMER_WARN }] });
         await ln.schedule({ notifications: notifs });
       } catch (e) {
         console.warn("[Notif] Native timer scheduling failed", e);
@@ -416,7 +428,7 @@ export const stopBackgroundTimer = async () => {
   if (NATIVE) {
     const ln = await getLN();
     if (ln) {
-      try { await ln.cancel({ notifications: [{ id: ID.TIMER_DONE }, { id: ID.TIMER_WARN }] }); } catch {}
+      try { await ln.cancel({ notifications: [{ id: ID.TIMER_RUNNING }, { id: ID.TIMER_DONE }, { id: ID.TIMER_WARN }] }); } catch {}
     }
   } else {
     await postToSW({ type:"TIMER_STOP" });
