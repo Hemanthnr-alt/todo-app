@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
 
     <!-- Network -->
     <uses-permission android:name="android.permission.INTERNET"/>
@@ -10,17 +11,16 @@
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
     <uses-permission android:name="android.permission.VIBRATE"/>
 
-    <!-- Exact alarms — required to show notifications at precise times (Android 12+) -->
+    <!-- Exact alarms — required for precise reminder times (Android 12+) -->
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM"/>
     <uses-permission android:name="android.permission.USE_EXACT_ALARM"/>
 
-    <!-- Wake device to fire reminder even when screen is off -->
+    <!-- Wake device to fire reminder when screen is off -->
     <uses-permission android:name="android.permission.WAKE_LOCK"/>
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
 
-    <!-- Foreground service for timer countdown in notification bar -->
+    <!-- Foreground service for timer notification in status bar -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE"/>
 
     <application
         android:allowBackup="true"
@@ -50,21 +50,20 @@
 
         </activity>
 
-        <!-- Capacitor Local Notifications broadcast receiver (reschedules after reboot) -->
+        <!--
+          DO NOT re-declare capacitor-local-notifications receivers here.
+          The library's own manifest already declares:
+            - LocalNotificationRestoreReceiver (exported=false, BOOT_COMPLETED)
+            - TimedNotificationPublisher
+            - NotificationDismissReceiver
+          Duplicating them causes a manifest merger conflict.
+          We use tools:replace on the restore receiver to override exported if needed.
+        -->
         <receiver
             android:name="com.capacitorjs.plugins.localnotifications.LocalNotificationRestoreReceiver"
-            android:exported="true">
-            <intent-filter>
-                <action android:name="android.intent.action.BOOT_COMPLETED"/>
-                <action android:name="android.intent.action.MY_PACKAGE_REPLACED"/>
-                <action android:name="android.intent.action.QUICKBOOT_POWERON"/>
-            </intent-filter>
+            android:exported="false"
+            tools:replace="android:exported">
         </receiver>
-
-        <!-- Capacitor Local Notifications alarm receiver -->
-        <receiver
-            android:name="com.capacitorjs.plugins.localnotifications.TimedNotificationPublisher"
-            android:exported="false"/>
 
         <provider
             android:name="androidx.core.content.FileProvider"
