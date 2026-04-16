@@ -374,20 +374,61 @@ export const scheduleTaskReminders = async (tasks) => {
 
 // ── Timer notifications ───────────────────────────────────────────────────────
 export const startBackgroundTimer = async ({ label, totalMs }) => {
-  await postToSW({ type:"TIMER_START", label, totalMs });
+  if (NATIVE) {
+    const ln = await getLN();
+    if (ln) {
+      const now = Date.now();
+      const endAt = new Date(now + totalMs);
+      const notifs = [{
+        title: `✅ ${label || "Timer"} complete!`,
+        body: "Your timer has finished. Tap to open the app.",
+        id: ID.TIMER_DONE,
+        channelId: "timer",
+        schedule: { at: endAt, allowWhileIdle: true },
+        sound: "beep.wav",
+        smallIcon: "ic_stat_notify",
+        extra: JSON.stringify({ type: "timer_done" })
+      }];
+      if (totalMs > 60000) {
+        notifs.push({
+          title: "⏰ 1 minute left",
+          body: `${label || "Your timer"} finishes in 1 minute.`,
+          id: ID.TIMER_WARN,
+          channelId: "timer",
+          schedule: { at: new Date(now + totalMs - 60000), allowWhileIdle: true },
+          sound: "beep.wav",
+          smallIcon: "ic_stat_notify"
+        });
+      }
+      try {
+        await ln.cancel({ notifications: [{ id: ID.TIMER_DONE }, { id: ID.TIMER_WARN }] });
+        await ln.schedule({ notifications: notifs });
+      } catch (e) {
+        console.warn("[Notif] Native timer scheduling failed", e);
+      }
+    }
+  } else {
+    await postToSW({ type:"TIMER_START", label, totalMs });
+  }
 };
 
 export const stopBackgroundTimer = async () => {
-  await postToSW({ type:"TIMER_STOP" });
-  // Also cancel any native timer notification
-  const ln = await getLN();
-  if (ln) {
-    try { await ln.cancel({ notifications: [{ id: ID.TIMER_DONE }, { id: ID.TIMER_WARN }] }); } catch {}
+  if (NATIVE) {
+    const ln = await getLN();
+    if (ln) {
+      try { await ln.cancel({ notifications: [{ id: ID.TIMER_DONE }, { id: ID.TIMER_WARN }] }); } catch {}
+    }
+  } else {
+    await postToSW({ type:"TIMER_STOP" });
   }
 };
 
 export const pauseBackgroundTimer = async () => {
-  await postToSW({ type:"TIMER_PAUSE" });
+  if (NATIVE) {
+    await stopBackgroundTimer();
+  } else {
+    await postToSW({ type:"TIMER_PAUSE" });
+  }
 };
 
 // ── Set up notification tap handler ──────────────────────────────────────────

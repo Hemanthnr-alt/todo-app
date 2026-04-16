@@ -79,7 +79,13 @@ const MenuIcons = {
 // KEY FIX: uses AnimatePresence with key on EACH notification so that when a new
 // notification arrives, the previous one instantly exits and the new one enters.
 // This replaces the stacking behaviour with a smooth swap.
-const TYPE_ICON = { due_today:"📅", overdue:"⚠️", task_completed:"✅", reminder:"🔔", info:"💡" };
+const TYPE_ICON = { 
+  due_today: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--info, #3b82f6)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>,
+  overdue: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--danger, #ef4444)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>,
+  task_completed: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--success, #22c55e)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>,
+  reminder: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>,
+  info: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--text-secondary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>,
+};
 
 function NotifPanel({ onClose }) {
   const [notifs, setNotifs] = useState(() => {
@@ -303,16 +309,14 @@ export default function Navbar({ activePage, onPageChange }) {
           </nav>
 
           <div style={{ display:"flex",gap:"7px",alignItems:"center",marginLeft:"auto" }}>
-            {!NATIVE && (
-              <motion.button whileTap={{scale:0.92}} onClick={()=>setShowNotifs(true)} className="btn-reset" style={btnStyle}>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 0 1-3.46 0"/>
-                </svg>
-                {unread > 0 && (
-                  <div style={{ position:"absolute",top:"6px",right:"6px",width:"7px",height:"7px",borderRadius:"50%",background:"var(--accent)",boxShadow:`0 0 0 2px var(--bg)` }}/>
-                )}
-              </motion.button>
-            )}
+            <motion.button whileTap={{scale:0.92}} onClick={()=>setShowNotifs(true)} className="btn-reset" style={btnStyle}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 0 1-3.46 0"/>
+              </svg>
+              {unread > 0 && (
+                <div style={{ position:"absolute",top:"6px",right:"6px",width:"7px",height:"7px",borderRadius:"50%",background:"var(--accent)",boxShadow:`0 0 0 2px var(--bg)` }}/>
+              )}
+            </motion.button>
 
             {isAuthenticated ? (
               <motion.button whileTap={{scale:0.92}} onClick={()=>setShowMenu(true)} className="btn-reset"

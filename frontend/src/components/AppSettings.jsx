@@ -283,8 +283,18 @@ function GeneralTab({ accent }) {
   useEffect(()=>{ if(!NATIVE && "Notification" in window) setPush(Notification.permission); },[NATIVE]);
 
   const reqPush = async()=>{
-    if(NATIVE) return;
-    if(!("Notification" in window)){toast.error("Not supported");return;}
+    if(!("Notification" in window) && !NATIVE){toast.error("Not supported");return;}
+    if (NATIVE) {
+      if (window.Capacitor?.Plugins?.LocalNotifications) {
+        const { display } = await window.Capacitor.Plugins.LocalNotifications.requestPermissions();
+        setPush(display);
+        if(display==="granted") toast.success("Notifications enabled");
+        else toast.error("Permission denied");
+      } else {
+        toast.error("Local notifications plugin missing");
+      }
+      return;
+    }
     const p=await Notification.requestPermission(); setPush(p);
     if(p==="granted") toast.success("Notifications enabled");
     else toast.error("Permission denied");
@@ -292,20 +302,16 @@ function GeneralTab({ accent }) {
 
   return (
     <>
-      {!NATIVE && (
-        <>
-          <SH title="Notifications"/>
-          <Card>
-            <SettingRow label="Push alerts"
-              sub={push==="granted"?"Active":push==="denied"?"Blocked by browser":"Tap to enable"}
-              onClick={push==="granted"?null:reqPush}
-              right={push==="granted"
-                ?<span style={{fontSize:"12px",fontWeight:700,color:"var(--success)"}}>Enabled</span>
-                :<span style={{padding:"6px 14px",borderRadius:"var(--radius-btn)",background:"var(--accent-subtle)",color:"var(--accent)",fontSize:"12px",fontWeight:700}}>Turn on</span>
-              }/>
-          </Card>
-        </>
-      )}
+      <SH title="Notifications"/>
+      <Card>
+        <SettingRow label="Push alerts"
+          sub={push==="granted"?"Active":push==="denied"?"Blocked by device":"Tap to enable"}
+          onClick={push==="granted"?null:reqPush}
+          right={push==="granted"
+            ?<span style={{fontSize:"12px",fontWeight:700,color:"var(--success)"}}>Enabled</span>
+            :<span style={{padding:"6px 14px",borderRadius:"var(--radius-btn)",background:"var(--accent-subtle)",color:"var(--accent)",fontSize:"12px",fontWeight:700}}>Turn on</span>
+          }/>
+      </Card>
 
       <SH title="App Preferences"/>
       <Card>
